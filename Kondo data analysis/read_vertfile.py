@@ -7,6 +7,7 @@ import matplotlib.transforms as transforms
 from itertools import product
 import tkinter as tk
 from tkinter.filedialog import askopenfilenames
+from fano_fit_line_spectrum import plot_fano_fit_line
 
 radii = [4.5, 3.8, 2.5]
 
@@ -97,7 +98,21 @@ class DraggableMarker():
         mini = np.argmin(np.abs(x-mx))
         return x[mini], y[mini]
 
-def fano_function(V, e0, w, q, a, b, c):
+def plot_fano_fit_line(f):
+    d1 = pd.read_csv(f, delimiter="\t", index_col=False)
+    fs = d1["file"]
+    ns = fs.str.extract(r"L([0-9]*).VERT").astype(float)
+    d = np.array(d1[d1.columns[1:]])
+    im = [fano(np.arange(-100,100,0.2),*n) for n in d]
+    im = np.array(im).T
+    plt.imshow(im, aspect=1/len(d), extent=[min(ns), max(ns), -100,100])
+    plt.xlabel("line index")
+    plt.ylabel("bias (mV)")
+    plt.colorbar()
+    plt.title("Fano fits to Kondo resonance on corral central atom")
+    plt.show()
+
+def fano(V, e0, w, q, a, b, c):
     def eps(V, e0, w):
         return (np.array(V)-e0)/w
     return a*((q + eps(V, e0, w))**2/(1+eps(V, e0, w)**2))+ b* V + c
@@ -135,18 +150,18 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0, savefig: bool = 
     p0 = [8, 6, 1, 1, 0, np.mean(fit_dIdV)]
     bounds = np.array([[0,16],[0,10],[-1,1], [-np.inf,np.inf], [-np.inf,np.inf], [-np.inf,np.inf]]).T
 
-    popt, pcov = optimize.curve_fit(fano_function, sb, fit_dIdV, p0=p0, bounds=bounds)
+    popt, pcov = optimize.curve_fit(fano, sb, fit_dIdV, p0=p0, bounds=bounds)
     fig, ax = plt.subplots()
 
     # since there are 6 parameters w/+-sd, we have 2**6 = 64 parameter sets
     t = np.prod(list(product(pcov.diagonal(), [1, -1])),axis=1).reshape(pcov.shape[0],2)
     a = np.sum([list(product([popt[n]], t[n])) for n in range(len(popt))], axis=2)
     y = list(product(*a))
-    # sort the parameter sets by the residual to the data, pick the two with the highest residuals
-    l = list(sorted(y, key=lambda x: residual(fit_dIdV, fano_function(sb, *x))))[-2:]
-    plt.fill_between(sb, fano_function(sb, *l[0]), fano_function(sb, *l[1]))
+    # sort parameter sets by residual to data, pick two with highest residual
+    l = list(sorted(y, key=lambda x: residual(fit_dIdV, fano(sb, *x))))[-2:]
+    plt.fill_between(sb, fano(sb, *l[0]), fano(sb, *l[1]))
 
-    plt.plot(sb, fano_function(sb, *popt),'r--')
+    plt.plot(sb, fano(sb, *popt),'r--')
 
     trans = transforms.blended_transform_factory(
         ax.transAxes, ax.transAxes) #ax.transData
@@ -166,17 +181,16 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0, savefig: bool = 
     if savefig:
         plt.savefig("/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/Kondo data analysis/%s_fano_fit.png" %(t))
 
-
     plt.show()
     return [popt, pcov, marker1, marker2]
 
 def residual(data, fit):
     return np.sqrt(sum([(data[i]-fit[i])**2 for i in range(len(data))]))
 
-def save_fano_fits(files: list, opts: list, covs: list):
+def save_fano_fits(files: list, opts: list, covs: list, markers: list):
     log = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/Kondo data analysis/fano_fit_data.txt"
     with open(log, "w") as f:
-        f.write("file\te0\tw\tq\ta\tb\tc\n")
+        f.write("file\te0\tw\tq\ta\tb\tc\tmarker1\tmarker2\n")
         for nf, file in enumerate(files):
             f.write("%s\t" %(os.path.split(file)[-1]))
             try:
@@ -188,11 +202,6 @@ def save_fano_fits(files: list, opts: list, covs: list):
             #     f.write(str(c)+"\t")
             f.write("\n")
     f.close()
-
-# opts, covs = fit_fano_functions_to_Co_atoms_at_corral_centers(files)
-# save_fano_fits(files, opts, covs)
-
-# pdb.set_trace()
 
 class Application(tk.Frame):
     def __init__(self, master=None):
@@ -237,7 +246,7 @@ class Application(tk.Frame):
         # self.quit.pack(side="bottom")
 
     def analyze_files(self, files):
-        opts = []; covs = []
+        opts = []; covs = []; m1s = []; m2s = []
         for n,f in enumerate(files):
             # define the markers based on the first (-10, 24)
             if n==0 or self.var1.get()==0:
@@ -250,7 +259,9 @@ class Application(tk.Frame):
                     print("could not fit to %s" %(os.path.split(f)[-1]))
             opts.append(popt)
             covs.append(pcov)
-        return [opts, covs]
+            m1s.append(marker1)
+            m2s.append(marker2)
+        return [opts, covs, m1s, m2s]
 
     def analyze_large_range(self):
         opts, covs = self.analyze_files(large_range_spectra)
