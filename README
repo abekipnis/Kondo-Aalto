@@ -1,0 +1,3 @@
+# Small Kondo Corrals data analysis
+
+Read a spectrum (or a series of spectra) from a .VERT file output by the Createc software, perform a fit of a Fano function over the Kondo resonance around a user-chosen range of values, and get the extracted parameters for the Fano linewidth w, the center of the Fano lineshape E0, and the Fano asymmetry parameter q, which can be compared with other values from literature. 
