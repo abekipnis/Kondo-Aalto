@@ -9,6 +9,7 @@ from itertools import product
 import tkinter as tk
 from tkinter.filedialog import askopenfilenames, asksaveasfile
 import pandas as pd
+import scipy.signal
 kb = 8.617333262145e-5 #eV/K
 
 ### TO DO:
@@ -61,14 +62,19 @@ def get_spec_data(fname: str):
     XPos_nm = l[7]
     YPos_nm = l[8]
     data = a[data_idx+2:]
+    T_ADC2 = float([b[0].split("=")[1] for b in a[0:n-2] if b[0].split("=")[0]=="b'T_ADC2[K]"][0].strip("\\r\\n'"))
+    T_ADC3 = float([b[0].split("=")[1] for b in a[0:n-2] if b[0].split("=")[0]=="b'T_ADC3[K]"][0].strip("\\r\\n'"))
+    # auxadc6 is STM head temperature, auxadc7 is cryostat LHe temp
+    T_AUXADC6 = float([b[0].split("=")[1] for b in a[0:n-2] if b[0].split("=")[0]=="b'T_AUXADC6[K]"][0].strip("\\r\\n'"))
+    T_AUXADC7 = float([b[0].split("=")[1] for b in a[0:n-2] if b[0].split("=")[0]=="b'T_AUXADC7[K]"][0].strip("\\r\\n'"))
     bias_mv = [float(d[1]) for d in data][19:]
     current = [float(d[4]) for d in data][19:]
     dIdV = [float(d[5]) for d in data][19:]
-    return bias_mv, dIdV, current, a, XPos_nm, YPos_nm
+    return bias_mv, dIdV, current, a, XPos_nm, YPos_nm, T_AUXADC6
 
 def plot_large_range_spectra():
     for n,f in enumerate(files):
-        bias, dIdV, current, a = get_spec_data(f)
+        bias, dIdV, current, a, XPos_nm, YPos_nm, T_AUXADC6 = get_spec_data(f)
         p = np.array(dIdV)/current[0]
         plt.plot(bias, p, label="%1.2lf nm radius" %(radii[n]))
     plt.legend()
@@ -249,29 +255,26 @@ def fano(V, e0, w, q, a, b, c):
     fit_func = a*((q + eps(V, e0, w))**2/(1+eps(V, e0, w)**2))+ b*np.array(V) + c
     return fit_func
 
-def fano_w_therm_broadening(V, e0, w, q, a, b, c):
+def fano_w_therm_broadening(T, V, e0, w, q, a, b, c):
     # padding so there are no edge effects from convolution included in fit
     dV = np.abs(V[0] - V[1])
-    padmVs = 20 # amount of padding (in mV) on either side of the fit range
+    padmVs = np.abs(V[0]-V[-1])/2 # padding (in mV) on either side of fit range
     pad_idcs = int(padmVs/dV) #padding in array indices based on dV
-    V_pad_minus = [min(V)-dV*i for i in list(range(pad_idcs))]
-    V_pad_plus = [max(V)+dV*i for i in list(reversed(list(range(pad_idcs))))]
+    V_pad_minus = [min(V)-dV*(i+1) for i in list(range(pad_idcs))]
+    V_pad_plus = [max(V)+dV*(i+1) for i in list(reversed(list(range(pad_idcs))))]
     V_padded = np.concatenate([V_pad_plus, V, V_pad_minus])
-
-    T = 5 # Kelvin
+    assert([V_padded[n]<V_padded[n+1] for n, v in enumerate(V_padded[0:-2])])
     mu = 0 # Fermi energy
     conv = np.diff(fermi_dirac(V_padded, mu, T))
     fit = fano(V_padded, e0, w, q, a, b, c)
-
+    # pdb.set_trace()
     # this is a list with edge effects - we only want the middle of this list
-    thermally_broadened = np.convolve(fit, conv, mode="same")
-
     # function over the space, including thermal broadening, w/no edge effects
-    return thermally_broadened[pad_idcs:-pad_idcs]
+    return np.convolve(fit, conv, mode="same")[pad_idcs:-pad_idcs]
 
 def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
              savefig: bool = True, showfig: bool = True) -> list:
-    bias, dIdV, current, a, xpos, ypos = get_spec_data(file)
+    bias, dIdV, current, a, xpos, ypos, T = get_spec_data(file)
 
     # implement thermal broadening integral here?
     if marker1==0 and marker2==0: # then create / get new markers
@@ -303,20 +306,33 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
     fit_dIdV = np.array(dIdV)[[int(n) for n in nsb]]
 
     # initial guess for e0, w, q, a, b, c,
-    p0 = [8, 6, 1, 1, 0, np.mean(fit_dIdV)]
+    b0 = (fit_dIdV[-1]-fit_dIdV[0])/(sb[-1]-sb[0])
+    e00 = sb[np.argmin(scipy.signal.detrend(fit_dIdV))]
+    p0 = [e00, 4, 1, 1, b0, np.mean(fit_dIdV)]
 
     # bounds for e0, w, q, a, b, c
-    bounds = np.array([[-20,16],
-                        [0,20],
-                        [-1,3],
-                        [-np.inf,np.inf],
-                        [-np.inf,np.inf],
-                        [-np.inf,np.inf]]).T
+    bounds = np.array([[min(sb),max(sb)],                   # e0
+                        [0,50],                             # w
+                        [-np.inf,np.inf],                   # q
+                        [0, max(fit_dIdV)],     # a
+                        [-np.inf,np.inf],                   # b
+                        [-np.inf,np.inf]]).T                # c
+    # fix temperature while still fitting other Fano parameters
+    def fix_T(T):
+        return lambda V, e0, w, q, a, b, c: fano_w_therm_broadening(T, V, e0, w, q, a, b, c)
 
-    popt, pcov = optimize.curve_fit(fano_w_therm_broadening, sb, fit_dIdV, p0=p0, bounds=bounds)
+    try:
+        # popt, pcov = optimize.curve_fit(fix_T(T), sb, fit_dIdV, p0=p0, bounds=bounds)
+        popt, pcov = optimize.curve_fit(fano, sb, fit_dIdV, p0=p0, bounds=bounds)
+        popt1, _ = optimize.curve_fit(fano, sb, fit_dIdV, p0=p0, bounds=bounds)
+
+    except RuntimeError as e:
+        print(e)
+        exit(0)
+
     fig, ax = plt.subplots()
 
-    # trying to plot the 'boundaries' of the fit using the Hessian diagonal
+    # trying to plot 'boundaries' of fit using Hessian diagonal
     # since there are 6 parameters w/+-sd, we have 2**6 = 64 parameter sets
     # t = np.prod(list(product(pcov.diagonal(), [1, -1])),axis=1).reshape(pcov.shape[0],2)
     # a = np.sum([list(product([popt[n]], t[n])) for n in range(len(popt))], axis=2)
@@ -344,16 +360,31 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
          %(tuple(np.array(list(zip(popt,pcov.diagonal()))).flatten())),
         transform=trans)
 
+    plt.text(0.05, 0.8, "fit range\nmin: %1.2lf\n"
+                        "max: %1.2lf" %(marker1, marker2), transform=trans)
+
     plt.plot(bias, dIdV)
     plt.plot(sb, fit_dIdV,"b-")
     f = fano(sb, *popt)
+
+    # f = fix_T(T)(sb, *popt)
+    # plt.plot(bias, fix_T(T)(bias, *popt), "black")
     plt.plot(sb, f,'r--')
+    # plt.plot(sb, fano(sb, *popt1),'go', markersize=2)
+
+    residY, residtot = residual(fit_dIdV, f)
 
     plt.subplots_adjust(left=0.4)
     plt.xlabel("Bias (mV)")
-    t = os.path.split(file)[-1]
-    plt.title(t)
-    plt.legend(["best fit",r'fit data',"data"])
+    t1 = os.path.split(file.split(dpath)[-1])
+    t = t1[-1]
+    plt.title("\n".join(list(t1)))
+    # plt.legend(["data",r'fit data',"model w thermal broadening", "model w/o thermal broadening"])
+    plt.legend(["data",r'fit data',"model w/o thermal broadening"])
+
+    fig2, (a1, a2) = plt.subplots(2,1)
+    a1.plot(sb, residY)
+    a2.hist(residY)
 
     if savefig:
         plt.savefig(file.split(".VERT")[0]+"%s_fano_fit.png" %(t))
@@ -361,11 +392,11 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
         plt.show()
 
     plt.close()
-    resid = residual(fit_dIdV, f)
-    return [popt, pcov, marker1, marker2, xpos, ypos, resid]
+    return [popt, pcov, marker1, marker2, xpos, ypos, residtot]
 
 def residual(data, fit):
-    return np.sqrt(sum([(data[i]-fit[i])**2 for i in range(len(data))]))
+    r = [(data[i]-fit[i]) for i in range(len(data))]
+    return r, np.sqrt(sum([a*a for a in r]))
 
 def save_fano_fits(files: list, opts: list, covs: list, m1: list, m2: list, path: str, xs: list, ys: list, resid: list):
     with open(path, "w") as f:
@@ -422,7 +453,7 @@ class Application(tk.Frame):
 
         self.large = tk.Button(self)
         self.large["text"] = "Analyze large range spectra"
-        self.large["command"] = self.analyze_small_range
+        self.large["command"] = self.analyze_large_range
         # self.large.grid(row = 1, column = 2, pady = 2)
 
         self.large.pack(side="top")
@@ -435,7 +466,7 @@ class Application(tk.Frame):
         self.var1 = tk.IntVar()
         # self.choose.grid(row = 0, column = 0, pady = 2)
         self.c1 = tk.Checkbutton(self.master, text='Keep same fit bounds',variable=self.var1, onvalue=1, offvalue=0)
-        self.c1.select()
+        # self.c1.select()
         self.c1.pack()
 
 
@@ -447,7 +478,7 @@ class Application(tk.Frame):
         self.var3 = tk.IntVar()
         # self.choose.grid(row = 0, column = 0, pady = 2)
         self.c3 = tk.Checkbutton(self.master, text='Create line spectra',variable=self.var3, onvalue=1, offvalue=0)
-        self.c3.select()
+        # self.c3.select()
         self.c3.pack()
 
         self.quit = tk.Button(self, text="QUIT", fg="red",
@@ -481,11 +512,21 @@ class Application(tk.Frame):
 
     def analyze_large_range(self):
         opts, covs, m1, m2, xs, ys, resids = self.analyze_files(large_range_spectra)
-        save_fano_fits(large_range_spectra, opts, covs,  m1, m2, xs, ys, resids)
+        if self.var3.get():
+            path = asksaveasfile(parent=root,
+                                 # defaultextension=["txt", "*.txt"],
+                                 initialfile="test.txt").name
+            self.update()
+            save_fano_fits(large_range_spectra, opts, covs,  m1, m2, "", xs, ys, resids)
 
     def analyze_small_range(self):
         opts, covs, m1, m2, xs, ys,resids = self.analyze_files(small_range_spectra)
-        save_fano_fits(small_range_spectra, opts, covs,  m1, m2, xs, ys, resids)
+        if self.var3.get():
+            path = asksaveasfile(parent=root,
+                                 # defaultextension=["txt", "*.txt"],
+                                 initialfile="test.txt").name
+            self.update()
+            save_fano_fits(small_range_spectra, opts, covs,  m1, m2, "", xs, ys, resids)
 
     def open_files(self):
         filenames = askopenfilenames(parent=self.master)
@@ -493,12 +534,12 @@ class Application(tk.Frame):
         self.update()
         opts, covs, m1, m2, xs, ys,resids = self.analyze_files(filenames)
         try:
-            path = asksaveasfile(parent=root,
-                                 # defaultextension=["txt", "*.txt"],
-                                 initialfile="test.txt").name
-            self.update()
-            save_fano_fits(filenames, opts, covs, m1, m2, path, xs, ys, resids)
             if self.var3.get():
+                path = asksaveasfile(parent=root,
+                                     # defaultextension=["txt", "*.txt"],
+                                     initialfile="test.txt").name
+                self.update()
+                save_fano_fits(filenames, opts, covs, m1, m2, path, xs, ys, resids)
                 plot_fano_fit_line(path)
         except (AttributeError, UnboundLocalError) as e:
             print("did not get path")
@@ -506,15 +547,24 @@ class Application(tk.Frame):
 
 if __name__=="__main__":
     small_range_spectra = []
-    small_range_spectra.append("/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/Ag 2021-08-12 4p5 nm radius/pm 20mV line/Createc2_210812.171526.L0036.VERT")
-    small_range_spectra.append("/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/Ag 2021-08-13 3p8 nm radius/3p8nm pm20mV line/Createc2_210813.103843.VERT")
-    small_range_spectra.append("/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/Ag 2021-08-13 2p5 nm radius/pm20 mV on Co/Createc2_210813.163836.VERT")
+    dpath = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
+    small_range_spectra.append(dpath + "Ag 2021-07-29 corral built/Line spectrum across corral/Createc2_210729.180059.L0026.VERT")
+    small_range_spectra.append(dpath + "Ag 2021-08-13 2p5 nm radius/2p5nm radius pm 20mV line spectrum/Createc2_210813.165557.L0029.VERT")
+    small_range_spectra.append(dpath + "Ag 2021-08-12 4p5 nm radius/pm 20mV line/Createc2_210812.171526.L0036.VERT")
+    small_range_spectra.append(dpath + "Ag 2021-08-13 3p8 nm radius/3p8nm pm20mV line/Createc2_210813.103843.VERT")
+    small_range_spectra.append(dpath + "Ag 2021-08-13 3p8 nm radius/3p8nm pm20mV line/Createc2_210813.105240.L0029.VERT")
+    small_range_spectra.append(dpath + "Ag 2021-08-13 3p8 nm radius/pm 20mV spectrum on Co/Createc2_210813.104416.VERT")
+    small_range_spectra.append(dpath + "Ag 2021-08-13 2p5 nm radius/pm20 mV on Co/Createc2_210813.163836.VERT")
 
     ## these are the locations of the +-100mV spectra on the corrals
     large_range_spectra = []
-    large_range_spectra.append("/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/Ag 2021-08-12 4p5 nm radius/Createc2_210812.163415.VERT")
-    large_range_spectra.append("/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/Ag 2021-08-11/3p8 nm radius line spectra pm100mV/Createc2_210811.113827.L0029.VERT")
-    large_range_spectra.append("/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/Ag 2021-08-09 2p5 nm radius/100mV spectrum on Co/Createc2_210809.162718.VERT")
+    large_range_spectra.append(dpath + "Ag 2021-08-12 4p5 nm radius/4p5 nm line spectrum pm100mV/Createc2_210812.154131.L0036.VERT")
+    large_range_spectra.append(dpath+ "Ag 2021-08-09 2p5 nm radius/pm 100mV line spectrum across corral/Createc2_210809.154356.L0025.VERT")
+    large_range_spectra.append(dpath + "Ag 2021-08-12 4p5 nm radius/Createc2_210812.163415.VERT")
+    large_range_spectra.append(dpath + "Ag 2021-08-11/3p8 nm radius line spectra pm100mV/Createc2_210811.113827.L0029.VERT")
+    large_range_spectra.append(dpath + "Ag 2021-08-09 2p5 nm radius/100mV spectrum on Co/Createc2_210809.162718.VERT")
+    large_range_spectra.append(dpath + "Ag 2021-08-13 2p5 nm radius/pm 100 mV 2p5 nm radius line spectrum/Createc2_210813.173235.L0030.VERT")
+    large_range_spectra.append(dpath + "Ag 2021-08-13 2p5 nm radius/300mV to -200mV line/Createc2_210813.231403.L0031.VERT")
 
     root = tk.Tk()
     app = Application(master=root)
