@@ -3,16 +3,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pdb
 from skimage import morphology, measure
-from numpy import empty, sqrt, square
+from numpy import empty, sqrt, square, meshgrid, linspace
 from scipy.linalg import lstsq
 from scipy.spatial import distance_matrix
+from scipy.optimize import leastsq
 from scipy.stats import pearsonr
 from dataclasses import dataclass
 from multiprocessing import Process, Queue, Array
 import multiprocessing
 from sklearn.preprocessing import normalize
 from math import cos, sin
-
 
 
 # DEFINING CONSTANTS
@@ -158,7 +158,6 @@ class CircCorralData:
         r, center = self.nsphere_fit(self.centroids)
         center_idx = np.argmin([np.linalg.norm(center-o) for o in self.centroids])
         # remove outlier
-
         return self.centroids[center_idx]
 
     def nsphere_fit(self, x, axis=-1, scaling=False):
@@ -245,17 +244,16 @@ class CircCorralData:
         xs, ys = np.array(self.remove_central_atom()).T
         return [min(xs), min(ys), max(xs), max(ys)]
 
-    def make_lattice(self, theta):
+    def make_lattice(self, theta, offset=0):
         theta = -theta
         origin = self.get_central_atom()
         bbox = self.bbox()
 
-        width = 1.1*(bbox[2] - bbox[0])
-        height = 1.1*(bbox[3] - bbox [1])
+        width = 1.5*(bbox[2] - bbox[0])
+        height = 1.5*(bbox[3] - bbox [1])
 
-        natoms_per_row = int(np.ceil(self.pix_to_nm(width)/b/2)*2)
-        #make this an even # so things are easier
-        nrows = int(np.ceil(self.pix_to_nm(height)/d/2.)*2)
+        natoms_per_row = round_to_even(self.pix_to_nm(width)/b)
+        nrows = round_to_even(self.pix_to_nm(height)/d)
         offset = [width/2, height/2]
 
         ls = []
@@ -333,28 +331,121 @@ class CircCorralData:
     #     # plt.show()
     #     return ret
     def correlate_lattice_to_atom_positions(self, angle, spread):
+        #return sum of Gaussians centered @ atoms evaluated at lattice vectors
+        # g = meshgrid(linspace(0, self.xPix-1, self.xPix), linspace(0, self.yPix-1, self.yPix))
+        # m = np.sum([gaussian(3,*cen,14,14)(*np.array(g).reshape(2,256*256)) for cen in self.centroids], axis=0)
+        # plt.imshow(m.reshape(256,256), alpha=0.4)
+        # plt.figure()
+        # plt.imshow(self.im)
+        # plt.title("image")
+        # plt.show()
         lat = self.make_lattice(angle)
-        g2d = np.sum([gauss2d(lat, cen, 0.4) for cen in self.centroids], axis=0)
+        g2d = np.sum([gaussian(1, *cen, 23, 23)(*np.array(lat).T) for cen in self.centroids], axis=0)
         return sum(g2d)
 
-def gauss2d(grid, mu, sigma):
-    # pdb.set_trace()
-    return 1/(sigma*np.sqrt(2*np.pi))**2*np.exp(-(np.sum((grid-mu)**2,axis=-1)/(2*sigma)**2))
+    def get_im_square(self, x, y, sidelen):
+        print(x,y, round_to_even(sidelen))
+        # return the image around x,y with sides sidelen
+        return self.im[int(y)-sidelen//2:int(y)+sidelen//2,int(x)-sidelen//2:int(x)+sidelen//2]
+
+    def fit_lattice(self):
+        angs = np.pi/3*np.arange(0,1.01,0.001)
+        corrs = [self.correlate_lattice_to_atom_positions(ang,2) for ang in angs]
+        plt.plot(corrs)
+        plt.show()
+
+        plt.figure(figsize=(6,6))
+        plt.imshow(self.im)
+        plt.triplot(*np.array(c.make_lattice(angs[np.argmax(corrs)])).T)
+
+def round_to_even(n):
+    # return n rounded up to the nearest even integer
+    return int(np.ceil(n/2.)*2)
+
+def gaussian(height, center_x, center_y, width_x, width_y):
+    """Returns a gaussian function with the given parameters"""
+    width_x = float(width_x)
+    width_y = float(width_y)
+    return lambda x,y: height*np.exp(
+                -(((center_x-x)/width_x)**2+((center_y-y)/width_y)**2)/2)
+
+def moments(data):
+    """Returns (height, x, y, width_x, width_y)
+    the gaussian parameters of a 2D distribution by calculating its
+    moments
+
+    first guess for fit parameters
+    """
+    total = data.sum()
+    X, Y = np.indices(data.shape)
+    x = (X*data).sum()/total
+    y = (Y*data).sum()/total
+    try:
+        col = data[:, int(y)]
+        width_x = np.sqrt(np.abs((np.arange(col.size)-x)**2*col).sum()/col.sum())
+        row = data[int(x), :]
+        width_y = np.sqrt(np.abs((np.arange(row.size)-y)**2*row).sum()/row.sum())
+    except:
+        width_x, width_y = [22,22]
+    height = data.max()
+    return height, x, y, width_x, width_y
+
+def fitgaussian(data):
+    """Returns (height, x, y, width_x, width_y)
+    the gaussian parameters of a 2D distribution found by a fit"""
+    params = moments(data)
+    errorfunction = lambda p: np.ravel(gaussian(*p)(*np.indices(data.shape)) -
+                                 data)
+    errorfunction = lambda p: np.ravel(gaussian(*p)(*np.indices(data.shape)) -
+                                 data)
+    p, success = leastsq(errorfunction, params)
+    return p
 
 if __name__=="__main__":
     c = CircCorralData(dpath + c1   )
     c.subtract_plane()
     c.get_region_centroids()
-
     radius, center = c.nsphere_fit(c.remove_central_atom())
-    angs = np.pi/3*np.arange(0,1.01,0.001)
-    corrs = [c.correlate_lattice_to_atom_positions(ang,2) for ang in angs]
-    plt.plot(corrs)
-    plt.show()
+    c.plot_circle_fit()
 
-    plt.figure(figsize=(6,6))
+    full_im = np.zeros(c.im.shape)
+    fit_params = []
+    box_size = 40
+    for cen in c.centroids:
+        f = c.get_im_square(*cen, box_size)
+        params = fitgaussian(f)
+        fitc = gaussian(*params)
+        # plt.matshow(f);
+        # plt.contour(fitc(*np.indices(f.shape)), cmap=plt.cm.copper)
+        #
+        # plt.scatter([params[2]], [params[1]], )
+        # plt.scatter([box_size/2],[box_size/2],c="red")
+        # plt.show()
+
+        # add the original 'box' back to the center
+        params[1] += cen[1]
+        params[2] += cen[0]
+        fit_params.append(params)
+        full_im = full_im + gaussian(*params)(*np.indices(c.im.shape))
+
+    fp = np.array([np.array(fit_params).T[2],np.array(fit_params).T[1]])
+
+    plt.matshow(full_im)
+    plt.scatter(*fp)
+
+    plt.matshow(np.rot90(full_im[::-1]))
+    plt.scatter(*np.rot90(np.rot90(fp[::-1])))
+    # c.plot_circle_fit()
+    theta = np.pi/2
+    rot = np.array([[cos(theta), -sin(theta)], [sin(theta), cos(theta)]])
+
+
+    plt.scatter(*fp[:,::-1])
+    plt.scatter(  *np.dot(rot,fp) + np.array([c.im.shape[0],0]))
+
+
+
     plt.imshow(c.im)
-    plt.triplot(*np.array(c.make_lattice(angs[np.argmax(corrs)])).T)
     c.plot_circle_fit()
     ##TO DO:
     """
@@ -362,7 +453,6 @@ if __name__=="__main__":
         - get region around local maximum & fit 2D gaussian to that region
     - look at Gaussians and see where it starts to resemble scan
     - implement shift into fitting
-
     """
     exit(0)
 
@@ -479,21 +569,20 @@ for n in range(nrows):
 
 
 
-ang_ppx_x
-plt.figure(figsize=(10,10))
-lines, markers = plt.triplot(*np.array(lattice_sites[:]).T)
-lines.set_alpha(0.3)
-lines.set_color("green")
-plt.imshow(im)
-plt.scatter(*np.array(centroids).T)
-
-
-plt.imshow()
-plt.imshow(morphology.diameter_closing(im,diameter_threshold=16, connectivity=10))
-plt.imshow(cv2.dilate(cv2.erode(im, kernel, iterations=6), kernel, iterations=6))
-
-plt.imshow()
-help(image_file)
+# ang_ppx_x
+# plt.figure(figsize=(10,10))
+# lines, markers = plt.triplot(*np.array(lattice_sites[:]).T)
+# lines.set_alpha(0.3)
+# lines.set_color("green")
+# plt.imshow(im)
+# plt.scatter(*np.array(centroids).T)
+#
+#
+# plt.imshow()
+# plt.imshow(morphology.diameter_closing(im,diameter_threshold=16, connectivity=10))
+# plt.imshow(cv2.dilate(cv2.erode(im, kernel, iterations=6), kernel, iterations=6))
+#
+# plt.imshow()
 
 def generate_lattice(image_shape, lattice_vectors) :
     center_pix = np.array(image_shape) // 2
@@ -529,14 +618,3 @@ def generate_lattice(image_shape, lattice_vectors) :
     out[:, 0] = y_lattice
     out[:, 1] = x_lattice
     return out
-
-
-x1 = c.nm_to_pix(np.sqrt(2)*a/2*np.cos(0*2*np.pi/6+theta_offset))
-y1 = c.nm_to_pix(np.sqrt(2)*a/2*np.sin(0*2*np.pi/6+theta_offset))
-
-x2 = c.nm_to_pix(np.sqrt(2)*a/2*np.cos(1*2*np.pi/6+theta_offset))
-y2 = c.nm_to_pix(np.sqrt(2)*a/2*np.sin(1*2*np.pi/6+theta_offset))
-
-plt.scatter([0, x1, x2],[0, y1, y2])
-
-plt.scatter(*np.array(generate_lattice((120, 120), ((x1,y1),(x1,y2)))).T)
