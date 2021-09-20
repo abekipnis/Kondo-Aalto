@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pdb
 from skimage import morphology, measure
-from numpy import empty, sqrt, square, meshgrid, linspace
-from scipy.linalg import lstsq
+from numpy import empty, sqrt, square, meshgrid, linspace, dot, argmax, argmin, reshape
+from numpy.linalg import norm, pinv, lstsq
 from scipy.spatial import distance_matrix
-from scipy.optimize import leastsq
+# from scipy.optimize import leastsq
 from scipy.stats import pearsonr
 from dataclasses import dataclass
 from multiprocessing import Process, Queue, Array
@@ -26,9 +26,10 @@ dpath = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals E
 #corral with 14 atoms:
 c1 = "Ag 2021-07-29 corral built/Createc2_210730.105015.dat"
 c2 = "Ag 2021-08-10 2p5 nm radius/2p5 nm radius pm20mV line spectrum/Createc2_210810.090437.dat"
-
+c3 = "Ag 2021-08-13 3p8 nm radius/Createc2_210813.102220.dat"
+c4 = "Ag 2021-08-13 2p5 nm radius/2p5nm radius pm 20mV line spectrum/Createc2_210813.161840.dat"
 # image_file = createc.DAT_IMG(dpath + )
-image_file = createc.DAT_IMG(dpath + "Ag 2021-08-10 2p5 nm radius/2p5 nm radius pm20mV line spectrum/Createc2_210810.090437.dat")
+# image_file = createc.DAT_IMG(dpath + "Ag 2021-08-10 2p5 nm radius/2p5 nm radius pm20mV line spectrum/Createc2_210810.090437.dat")
 
 def worker(c, v, i, queue, lattice_sites, theta_offset, bbox):
     """
@@ -56,7 +57,7 @@ class Vector:
         self.x = x
         self.y = y
         self.arr = np.array([x,y])
-        self.norm = np.linalg.norm(self.arr)
+        self.norm = norm(self.arr)
         self.normed = self.arr/self.norm
 
     def __sub__(self, other):
@@ -67,16 +68,16 @@ class Vector:
 
     def rot(self, th):
         rmatrix = np.array([[np.cos(th), -np.sin(th)],[np.sin(th), np.cos(th)]])
-        return Vector(*np.dot(rmatrix,self.arr))
+        return Vector(*dot(rmatrix,self.arr))
 
 @dataclass
 class CircCorralData:
     file: str
     def __init__(self, file):
         self.file = file
-        self.image_file = createc.DAT_IMG(file)
+        self.image_file = createc.DAT_IMG(self.file)
         # topography,
-        self.im = image_file._crop_img(image_file.img_array_list[0][:][:])
+        self.im = self.image_file._crop_img(self.image_file.img_array_list[0][:][:])
         self.imshape = self.im.shape
         self.xPix = self.imshape[0]
         self.yPix = self.imshape[1]
@@ -95,11 +96,11 @@ class CircCorralData:
     def subtract_plane(self):
         X1, X2 = np.mgrid[:self.xPix, :self.yPix]
         nxny = self.xPix*self.yPix
-        X = np.hstack( (np.reshape(X1, (nxny, 1)), np.reshape(X2, (nxny, 1))))
+        X = np.hstack((reshape(X1, (nxny, 1)), reshape(X2, (nxny, 1))))
         X = np.hstack((np.ones((nxny, 1)), X))
         YY = np.reshape(self.im, (nxny,1))
-        theta = np.dot(np.dot(np.linalg.pinv(np.dot(X.transpose(), X)), X. transpose()), YY)
-        plane = np.reshape(np.dot(X, theta), (self.xPix, self.yPix))
+        theta = dot(dot(pinv(dot(X.transpose(), X)), X. transpose()), YY)
+        plane = np.reshape(dot(X, theta), (self.xPix, self.yPix))
         self.im -= plane
         # return plane
 
@@ -139,7 +140,7 @@ class CircCorralData:
         # # create a copy since we want to save central atom
 
         r, center = self.nsphere_fit(self.centroids)
-        center_idx = np.argmin([np.linalg.norm(center-o) for o in self.centroids])
+        center_idx = argmin([norm(center-o) for o in self.centroids])
         ccopy = self.centroids.copy()
 
         # remove outlier
@@ -156,7 +157,7 @@ class CircCorralData:
         # # centroid w largest nearest neighbor distance is the central atom
         # center_idx = np.argmax(dists)
         r, center = self.nsphere_fit(self.centroids)
-        center_idx = np.argmin([np.linalg.norm(center-o) for o in self.centroids])
+        center_idx = argmin([norm(center-o) for o in self.centroids])
         # remove outlier
         return self.centroids[center_idx]
 
@@ -211,7 +212,7 @@ class CircCorralData:
             X /= scale
 
         d = square(X).sum(axis=-1)
-
+        pdb.set_trace()
         y, *_ = lstsq(B, d, overwrite_a=True, overwrite_b=True)
 
         c = 0.5 * y[:-1]
@@ -231,10 +232,10 @@ class CircCorralData:
         return x, y
 
     def plot_circle_fit(self):
-        xc, yc = self.circle(100)
+        xc, yc = self.circle(1000)
         # plt.figure(figsize=(8,8))
         plt.scatter(*np.array(self.centroids).T)
-        plt.scatter(xc, yc, alpha=0.5)
+        plt.scatter(xc, yc, alpha=0.5, s=5, label="circle fit")
         plt.show()
 
     def bbox(self):
@@ -266,7 +267,7 @@ class CircCorralData:
         rot = np.array([[cos(theta), -sin(theta)], [sin(theta), cos(theta)]])
         # plt.triplot(*np.array(ls).T)
 
-        ls = np.dot(ls, rot)
+        ls = dot(ls, rot)
         # ls += np.dot(rot, offset)
         ls += np.array(origin)
 
@@ -358,6 +359,38 @@ class CircCorralData:
         plt.imshow(self.im)
         plt.triplot(*np.array(c.make_lattice(angs[np.argmax(corrs)])).T)
 
+    def fit_atom_pos_gauss(self, box_size=40):
+        """
+        Given a CircCorralData object with first-guess centroids,
+        get square of side length box_size and fit 2D Gaussian to the atom shape
+        to get a better guess for atom positions. Return a 'reconstruction'
+        of the original image using the Gaussian fit parameters for every atom
+        and a list of the atoms and their fit parameters
+        """
+        full_im = np.zeros(c.im.shape)
+        fit_params = []
+        for cen in c.centroids:
+            # pdb.set_trace()
+            f = c.get_im_square(*cen, box_size)
+            params = fitgaussian(f)
+            fitc = gaussian(*params)
+            # plt.matshow(f);
+            # plt.contour(fitc(*np.indices(f.shape)), cmap=plt.cm.copper)
+            #
+            # plt.scatter([params[2]], [params[1]], )
+            # plt.scatter([box_size/2],[box_size/2],c="red")
+            # plt.show()
+
+            # add the original 'box' back to the center
+            params[1] += cen[1] -box_size/2
+            params[2] += cen[0] -box_size/2
+            fit_params.append(params)
+            full_im = full_im + gaussian(*params)(*np.indices(c.im.shape))
+
+        norm(c.pix_to_nm(np.array(c.centroids))-c.pix_to_nm(fp.T),axis=1)*10
+
+        return full_im, fit_params
+
 def round_to_even(n):
     # return n rounded up to the nearest even integer
     return int(np.ceil(n/2.)*2)
@@ -402,51 +435,47 @@ def fitgaussian(data):
     return p
 
 if __name__=="__main__":
-    c = CircCorralData(dpath + c1   )
+    c = CircCorralData(dpath + c4)
     c.subtract_plane()
     c.get_region_centroids()
     radius, center = c.nsphere_fit(c.remove_central_atom())
     c.plot_circle_fit()
 
-    full_im = np.zeros(c.im.shape)
-    fit_params = []
-    box_size = 40
-    for cen in c.centroids:
-        f = c.get_im_square(*cen, box_size)
-        params = fitgaussian(f)
-        fitc = gaussian(*params)
-        # plt.matshow(f);
-        # plt.contour(fitc(*np.indices(f.shape)), cmap=plt.cm.copper)
-        #
-        # plt.scatter([params[2]], [params[1]], )
-        # plt.scatter([box_size/2],[box_size/2],c="red")
-        # plt.show()
+    c.fit_atom_pos_gauss()
 
-        # add the original 'box' back to the center
-        params[1] += cen[1]
-        params[2] += cen[0]
-        fit_params.append(params)
-        full_im = full_im + gaussian(*params)(*np.indices(c.im.shape))
+    plt.matshow(c.im-full_im); plt.colorbar(); plt.show()
+
+    #distance (angstroms) that 'max height' guess is off from Gaussian fit
+    fp.T
 
     fp = np.array([np.array(fit_params).T[2],np.array(fit_params).T[1]])
 
-    plt.matshow(full_im)
-    plt.scatter(*fp)
+    plt.matshow(c.im)
+    plt.scatter(*fp, label="Gaussian fit points")
+    plt.legend()
 
-    plt.matshow(np.rot90(full_im[::-1]))
-    plt.scatter(*np.rot90(np.rot90(fp[::-1])))
-    # c.plot_circle_fit()
-    theta = np.pi/2
-    rot = np.array([[cos(theta), -sin(theta)], [sin(theta), cos(theta)]])
-
-
-    plt.scatter(*fp[:,::-1])
-    plt.scatter(  *np.dot(rot,fp) + np.array([c.im.shape[0],0]))
-
-
-
-    plt.imshow(c.im)
     c.plot_circle_fit()
+    plt.savefig(c.file+"_circle_fits.png")
+    #
+    # plt.imshow(full_im)
+    # plt.scatter(*fp)
+    #
+    # c.nsphere_fit(c.remove_central_atom())
+    # c.nsphere_fit(np.array(fp).T)
+    #
+    # plt.matshow((full_im))
+    # plt.scatter(np.array(fp[:,::-1]).T)
+    # # c.plot_circle_fit()
+    # theta = np.pi/2
+    # rot = np.array([[cos(theta), -sin(theta)], [sin(theta), cos(theta)]])
+    #
+    #
+    # plt.scatter(*fp[:,::-1])
+    # plt.scatter(  *np.dot(rot,fp) + np.array([c.im.shape[0],0]))
+
+
+
+    # c.plot_circle_fit()
     ##TO DO:
     """
     - add another layer of refinement to fitting atom positions:
@@ -457,31 +486,31 @@ if __name__=="__main__":
     exit(0)
 
 
-    # breadth first search to create the lattice grid around an atom position
-
-    # theta offset
-    to = 0
-
-    origin = c.centroids[0]
-    # lattice_sites.append(origin)
-    # queue.append(origin)
-
-    pool = multiprocessing.Pool(processes=6)
-    m = multiprocessing.Manager()
-
-    # lattice sites
-    ls = m.list()
-    ls.append(origin)
-    q = m.Queue()
-    q.put(origin)
-
-    bbox = c.bbox()
-    while not q.empty():
-        v = q.get()
-        workers = [pool.apply_async(worker, (c, v, i, q, ls, to, bbox)) for i in range(6)]
-        [w.get() for w in workers]
-    plt.triplot(*np.array(ls).T)
-    plt.show()
+    # # breadth first search to create the lattice grid around an atom position
+    #
+    # # theta offset
+    # to = 0
+    #
+    # origin = c.centroids[0]
+    # # lattice_sites.append(origin)
+    # # queue.append(origin)
+    #
+    # pool = multiprocessing.Pool(processes=6)
+    # m = multiprocessing.Manager()
+    #
+    # # lattice sites
+    # ls = m.list()
+    # ls.append(origin)
+    # q = m.Queue()
+    # q.put(origin)
+    #
+    # bbox = c.bbox()
+    # while not q.empty():
+    #     v = q.get()
+    #     workers = [pool.apply_async(worker, (c, v, i, q, ls, to, bbox)) for i in range(6)]
+    #     [w.get() for w in workers]
+    # plt.triplot(*np.array(ls).T)
+    # plt.show()
     exit(0)
 
 
@@ -507,7 +536,7 @@ s(Vector(*w)-Vector(*l))
 
 
 # atom farthest from the left atom
-r = c.centroids[np.argmax(np.linalg.norm(np.array(c.centroids)-np.array(l), axis=1))]
+r = c.centroids[np.argmax(np.norm(np.array(c.centroids)-np.array(l), axis=1))]
 r = Vector(*r)
 
 n= Vector(*[xn, yn])
