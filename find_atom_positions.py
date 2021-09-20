@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pdb
 from skimage import morphology, measure
-from numpy import empty, sqrt, square, meshgrid, linspace, dot, argmax, argmin, reshape
+from numpy import empty, sqrt, square, meshgrid, linspace, dot, argmax, argmin, reshape, array
 from numpy.linalg import norm, pinv, lstsq
 from scipy.spatial import distance_matrix
-# from scipy.optimize import leastsq
+from scipy.optimize import leastsq
 from scipy.stats import pearsonr
 from dataclasses import dataclass
 from multiprocessing import Process, Queue, Array
@@ -56,7 +56,7 @@ class Vector:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.arr = np.array([x,y])
+        self.arr = array([x,y])
         self.norm = norm(self.arr)
         self.normed = self.arr/self.norm
 
@@ -67,7 +67,7 @@ class Vector:
         return Vector(self.x+other.x, self.y+other.y)
 
     def rot(self, th):
-        rmatrix = np.array([[np.cos(th), -np.sin(th)],[np.sin(th), np.cos(th)]])
+        rmatrix = array([[np.cos(th), -np.sin(th)],[np.sin(th), np.cos(th)]])
         return Vector(*dot(rmatrix,self.arr))
 
 @dataclass
@@ -127,39 +127,49 @@ class CircCorralData:
         # return centroids
 
     def remove_central_atom(self):
-        # this way does not work for the smallest corrals
+        # Check two ways
+        # 1:
         # get the distance matrix
-        # distmat = distance_matrix(self.centroids, self.centroids)
-        #
-        # # nearest neighbor distances for every centroid
-        # dists = np.ma.masked_equal(distmat,0).min(axis=1)
-        #
-        # # centroid w largest nearest neighbor distance is the central atom
-        # center_idx = np.argmax(dists)
-        #
+        distmat = distance_matrix(self.centroids, self.centroids)
+
+        # nearest neighbor distances for every centroid
+        dists = np.ma.masked_equal(distmat,0).min(axis=1)
+
+        # centroid w largest nearest neighbor distance is the central atom
+        center_idx_1 = np.argmax(dists)
+
         # # create a copy since we want to save central atom
 
         r, center = self.nsphere_fit(self.centroids)
-        center_idx = argmin([norm(center-o) for o in self.centroids])
-        ccopy = self.centroids.copy()
+        center_idx_2 = argmin([norm(center-o) for o in self.centroids])
 
-        # remove outlier
-        ccopy.pop(center_idx)
-        return ccopy
+        if center_idx_1==center_idx_2:
+            ccopy = self.centroids.copy()
+
+            # remove outlier
+            ccopy.pop(center_idx_1)
+            return ccopy
+        else:
+            raise Exception("Something went wrong in removing the central atom")
 
     def get_central_atom(self):
         # get the distance matrix
-        # distmat = distance_matrix(self.centroids, self.centroids)
-        #
-        # # nearest neighbor distances for every centroid
-        # dists = np.ma.masked_equal(distmat,0).min(axis=1)
-        # print(dists)
-        # # centroid w largest nearest neighbor distance is the central atom
-        # center_idx = np.argmax(dists)
+        distmat = distance_matrix(self.centroids, self.centroids)
+
+        # nearest neighbor distances for every centroid
+        dists = np.ma.masked_equal(distmat,0).min(axis=1)
+        print(dists)
+        # centroid w largest nearest neighbor distance is the central atom
+        center_idx_1 = np.argmax(dists)
+
         r, center = self.nsphere_fit(self.centroids)
-        center_idx = argmin([norm(center-o) for o in self.centroids])
-        # remove outlier
-        return self.centroids[center_idx]
+        center_idx_2 = argmin([norm(center-o) for o in self.centroids])
+
+        if center_idx_1 ==center_idx_2:
+            # remove outlier
+            return self.centroids[center_idx_1]
+        else:
+            raise Exception("Something went wrong ")
 
     def nsphere_fit(self, x, axis=-1, scaling=False):
         r"""
@@ -193,12 +203,12 @@ class CircCorralData:
         - [Coope]_ "\ :ref:`ref-cfblanls`\ "
         """
         # x = preprocess(x, float=True, axis=axis)
-        x = np.array(x)
+        x = array(x)
         n = x.shape[-1]
         x = x.reshape(-1, n)
         m = x.shape[0]
 
-        B = empty((m, n + 1), dtype=x.dtype)
+        B = np.empty((m, n + 1), dtype=x.dtype)
         X = B[:, :-1]
         X[:] = x
         B[:, -1] = 1
@@ -212,8 +222,8 @@ class CircCorralData:
             X /= scale
 
         d = square(X).sum(axis=-1)
-        pdb.set_trace()
-        y, *_ = lstsq(B, d, overwrite_a=True, overwrite_b=True)
+        # pdb.set_trace()
+        y, *_ = lstsq(B, d)#, overwrite_a=True, overwrite_b=True)
 
         c = 0.5 * y[:-1]
         r = sqrt(y[-1] + square(c).sum())
@@ -225,24 +235,24 @@ class CircCorralData:
         self.r, self.c = r, c
         return r, c
 
-    def circle(self, npoints=100):
+    def circle(self, r, c, npoints=100):
         theta = 2*np.pi*np.arange(0,1,1/npoints)
-        x = self.c[0] + self.r*np.cos(theta)
-        y = self.c[1] + self.r*np.sin(theta)
+        x = c[0] + r*np.cos(theta)
+        y = c[1] + r*np.sin(theta)
         return x, y
 
-    def plot_circle_fit(self):
-        xc, yc = self.circle(1000)
-        # plt.figure(figsize=(8,8))
-        plt.scatter(*np.array(self.centroids).T)
-        plt.scatter(xc, yc, alpha=0.5, s=5, label="circle fit")
-        plt.show()
+    def plot_circle_fit(self, points, radius, center, label):
+        xc, yc = self.circle(radius, center, npoints=1000)
+        pdb.set_trace()
+        plt.scatter(*array(points).T,label=label)
+        plt.scatter(xc, yc, alpha=0.5, s=5, label=label)
+        # plt.show()
 
     def bbox(self):
         """
         return (x0, y0, x1, y1) defined by the min and max x, y coords of atoms making up the corral
         """
-        xs, ys = np.array(self.remove_central_atom()).T
+        xs, ys = array(self.remove_central_atom()).T
         return [min(xs), min(ys), max(xs), max(ys)]
 
     def make_lattice(self, theta, offset=0):
@@ -261,87 +271,31 @@ class CircCorralData:
         for n in np.arange(-nrows/2,nrows/2+1, 1):
             for m in np.arange(-natoms_per_row/2,natoms_per_row/2+1, 1):
                 if n%2==0:
-                    ls.append(np.array([n*self.nm_to_pix(d), m*self.nm_to_pix(b)]))
+                    ls.append(array([n*self.nm_to_pix(d), m*self.nm_to_pix(b)]))
                 else:
-                    ls.append(np.array([n*self.nm_to_pix(d), (m*self.nm_to_pix(b) + self.nm_to_pix(b/2))]))
-        rot = np.array([[cos(theta), -sin(theta)], [sin(theta), cos(theta)]])
-        # plt.triplot(*np.array(ls).T)
+                    ls.append(array([n*self.nm_to_pix(d), (m*self.nm_to_pix(b) + self.nm_to_pix(b/2))]))
+        rot = array([[cos(theta), -sin(theta)], [sin(theta), cos(theta)]])
+        # plt.triplot(*array(ls).T)
 
         ls = dot(ls, rot)
         # ls += np.dot(rot, offset)
-        ls += np.array(origin)
+        ls += array(origin)
 
-        # plt.triplot(*np.array(ls).T)
+        # plt.triplot(*array(ls).T)
         return ls
 
-    # def get_lattice_pts_over_corral(self, theta_offset):
-    #     theta_offset*=-1
-    #     pdb.set_trace()
-    #
-    #     x1 = self.nm_to_pix(np.sqrt(2)*a/2*np.cos(0*2*np.pi/6-theta_offset))
-    #     y1 = self.nm_to_pix(np.sqrt(2)*a/2*np.sin(0*2*np.pi/6-theta_offset))
-    #     # x2 = self.nm_to_pix(np.sqrt(2)*a/2*np.cos(1*2*np.pi/6+theta_offset))
-    #     # y2 = self.nm_to_pix(np.sqrt(2)*a/2*np.sin(1*2*np.pi/6+theta_offset))
-    #
-    #     # first lattice vector
-    #     a1 = Vector(x1,y1)
-    #
-    #     # atom farthest left
-    #     l = sorted(self.remove_central_atom(), key=lambda x: x[0])[0]
-    #     others = self.remove_central_atom()
-    #     others.remove(l)
-    #
-    #     # largest dot product, giving "width" of lattice at this theta_offset
-    #     o = [np.dot(a1.normed, (Vector(*o)-Vector(*l)).normed) for o in others]
-    #     wmax = Vector(*others[np.argmax(o)])
-    #     wmin = Vector(*others[np.argmin(o)])
-    #
-    #     width = np.dot(a1.normed, wmax.arr-l)
-    #     a1perp = a1.rot(np.pi/2)
-    #
-    #     # largest & smallest dot product, giving 'height' for generating lattice
-    #     perps = [np.dot((Vector(*o)-Vector(*l)).arr, a1perp.arr) for o in others]
-    #     hmax = Vector(*others[np.argmax(perps)])
-    #     hmin = Vector(*others[np.argmin(perps)])
-    #     hma = np.dot(a1perp.normed, (hmax-Vector(*l)).arr)
-    #     hmi = np.dot(a1perp.normed, (hmin-Vector(*l)).arr)
-    #
-    #     """
-    #     - generate lattice over square defined by width, hmi and hma
-    #     - rotate the lattice by the defined angle
-    #     """
-    #     ls = []
-    #     natoms_per_row = int(np.ceil(c.pix_to_nm(width)/b)) + 2
-    #     nrows = int(np.ceil(c.pix_to_nm(hma-hmi)/d)) + 3
-    #     for n in range(nrows):
-    #         for m in range(natoms_per_row):
-    #             if n%2==0:
-    #                 ls.append([n*self.nm_to_pix(d), m*self.nm_to_pix(b)])
-    #             else:
-    #                 ls.append([n*self.nm_to_pix(d), (m*self.nm_to_pix(b) + self.nm_to_pix(b/2))])
-    #
-    #     rot = np.array([[cos(theta_offset), -sin(theta_offset)], [sin(theta_offset), cos(theta_offset)]])
-    #     # plt.triplot(*np.array(ls).T)
-    #     ret = np.array(np.dot(ls, rot))
-    #     ret += l
-    #     ret += [(-hmi)*sin(-theta_offset),-(-hmi)*cos(-theta_offset)]
-    #     # ret += l-[min([r[0] for r in ret])]
-    #     # ret += [l[0], hma+(hma-hmi)/2]#hma+3]
-    #     # pdb.set_trace()
-    #     plt.triplot(*ret.T)
-    #     # plt.show()
-    #     return ret
     def correlate_lattice_to_atom_positions(self, angle, spread):
         #return sum of Gaussians centered @ atoms evaluated at lattice vectors
         # g = meshgrid(linspace(0, self.xPix-1, self.xPix), linspace(0, self.yPix-1, self.yPix))
-        # m = np.sum([gaussian(3,*cen,14,14)(*np.array(g).reshape(2,256*256)) for cen in self.centroids], axis=0)
+        # m = np.sum([gaussian(3,*cen,14,14)(*array(g).reshape(2,256*256)) for cen in self.centroids], axis=0)
         # plt.imshow(m.reshape(256,256), alpha=0.4)
         # plt.figure()
         # plt.imshow(self.im)
         # plt.title("image")
         # plt.show()
         lat = self.make_lattice(angle)
-        g2d = np.sum([gaussian(1, *cen, 23, 23)(*np.array(lat).T) for cen in self.centroids], axis=0)
+        pdb.set_trace()
+        g2d = np.sum([gaussian(1, *cen, 23, 23)(*array(lat).T) for cen in self.centroids], axis=0)
         return sum(g2d)
 
     def get_im_square(self, x, y, sidelen):
@@ -357,7 +311,7 @@ class CircCorralData:
 
         plt.figure(figsize=(6,6))
         plt.imshow(self.im)
-        plt.triplot(*np.array(c.make_lattice(angs[np.argmax(corrs)])).T)
+        plt.triplot(*array(self.make_lattice(angs[np.argmax(corrs)])).T)
 
     def fit_atom_pos_gauss(self, box_size=40):
         """
@@ -367,11 +321,11 @@ class CircCorralData:
         of the original image using the Gaussian fit parameters for every atom
         and a list of the atoms and their fit parameters
         """
-        full_im = np.zeros(c.im.shape)
+        full_im = np.zeros(self.im.shape)
         fit_params = []
-        for cen in c.centroids:
-            # pdb.set_trace()
-            f = c.get_im_square(*cen, box_size)
+        for cen in self.centroids:
+            # Fit a Gaussian over the atom topopgraphy
+            f = self.get_im_square(*cen, box_size)
             params = fitgaussian(f)
             fitc = gaussian(*params)
             # plt.matshow(f);
@@ -382,14 +336,31 @@ class CircCorralData:
             # plt.show()
 
             # add the original 'box' back to the center
-            params[1] += cen[1] -box_size/2
-            params[2] += cen[0] -box_size/2
+            params[1] += cen[1] - box_size/2
+            params[2] += cen[0] - box_size/2
             fit_params.append(params)
-            full_im = full_im + gaussian(*params)(*np.indices(c.im.shape))
 
-        norm(c.pix_to_nm(np.array(c.centroids))-c.pix_to_nm(fp.T),axis=1)*10
+            # add the Gaussian fit to the 'reconstruction' image
+            full_im = full_im + gaussian(*params)(*np.indices(self.im.shape))
 
-        return full_im, fit_params
+        # we only really care about the locations
+        fp = array([array(fit_params).T[2],array(fit_params).T[1]])
+
+        #dist (Å) 'max height' guess is off from Gaussian fit
+        d = np.mean(norm(self.pix_to_nm(array(self.centroids))-self.pix_to_nm(fp.T),axis=1)*10)
+        print("Max height guess different from Gaussian fit on average by: %1.2lf Å" %(d))
+        self.gauss_fit_params = np.array(fit_params)
+        self.gauss_fit_locs = fp
+        return full_im, fp
+
+    def compare_fits(self):
+        plt.matshow(self.im)
+        self.plot_circle_fit(self.centroids, r_n, c_n, "naive")
+        self.plot_circle_fit(self.gauss_fit_locs.T, r_g, c_g, "Gaussian")
+        # plt.show()
+        # plt.scatter(*c.gauss_fit_locs, label="Gaussian fit points")
+        plt.legend()
+        plt.show()
 
 def round_to_even(n):
     # return n rounded up to the nearest even integer
@@ -438,212 +409,20 @@ if __name__=="__main__":
     c = CircCorralData(dpath + c4)
     c.subtract_plane()
     c.get_region_centroids()
-    radius, center = c.nsphere_fit(c.remove_central_atom())
-    c.plot_circle_fit()
 
-    c.fit_atom_pos_gauss()
+    # naive fit from maximum pointss
+    r_n, c_n = c.nsphere_fit(c.remove_central_atom())
 
-    plt.matshow(c.im-full_im); plt.colorbar(); plt.show()
+    # better fit from gaussian fits to atoms
+    full_im, fit_params = c.fit_atom_pos_gauss()
+    r_g, c_g = c.nsphere_fit(c.gauss_fit_locs.T)
 
-    #distance (angstroms) that 'max height' guess is off from Gaussian fit
-    fp.T
 
-    fp = np.array([np.array(fit_params).T[2],np.array(fit_params).T[1]])
-
-    plt.matshow(c.im)
-    plt.scatter(*fp, label="Gaussian fit points")
-    plt.legend()
-
-    c.plot_circle_fit()
+    c.compare_fits()
     plt.savefig(c.file+"_circle_fits.png")
-    #
-    # plt.imshow(full_im)
-    # plt.scatter(*fp)
-    #
-    # c.nsphere_fit(c.remove_central_atom())
-    # c.nsphere_fit(np.array(fp).T)
-    #
-    # plt.matshow((full_im))
-    # plt.scatter(np.array(fp[:,::-1]).T)
-    # # c.plot_circle_fit()
-    # theta = np.pi/2
-    # rot = np.array([[cos(theta), -sin(theta)], [sin(theta), cos(theta)]])
-    #
-    #
-    # plt.scatter(*fp[:,::-1])
-    # plt.scatter(  *np.dot(rot,fp) + np.array([c.im.shape[0],0]))
 
-
-
-    # c.plot_circle_fit()
     ##TO DO:
     """
-    - add another layer of refinement to fitting atom positions:
-        - get region around local maximum & fit 2D gaussian to that region
-    - look at Gaussians and see where it starts to resemble scan
-    - implement shift into fitting
+    - implement shift and Gaussian atom locs into fitting
     """
     exit(0)
-
-
-    # # breadth first search to create the lattice grid around an atom position
-    #
-    # # theta offset
-    # to = 0
-    #
-    # origin = c.centroids[0]
-    # # lattice_sites.append(origin)
-    # # queue.append(origin)
-    #
-    # pool = multiprocessing.Pool(processes=6)
-    # m = multiprocessing.Manager()
-    #
-    # # lattice sites
-    # ls = m.list()
-    # ls.append(origin)
-    # q = m.Queue()
-    # q.put(origin)
-    #
-    # bbox = c.bbox()
-    # while not q.empty():
-    #     v = q.get()
-    #     workers = [pool.apply_async(worker, (c, v, i, q, ls, to, bbox)) for i in range(6)]
-    #     [w.get() for w in workers]
-    # plt.triplot(*np.array(ls).T)
-    # plt.show()
-    exit(0)
-
-
-"""
-We want to only generate the lattice over the sites where we need
-to optimize the computation to solve for the best lattice fit over the sites
-"""
-##################################
-
-
-
-
-a1perp.normed
-
-
-s(Vector(*w)-Vector(*l))
-####################################
-
-
-
-
-
-
-
-# atom farthest from the left atom
-r = c.centroids[np.argmax(np.norm(np.array(c.centroids)-np.array(l), axis=1))]
-r = Vector(*r)
-
-n= Vector(*[xn, yn])
-(r-n).normed
-
-np.linalg.norm([xn, yn])
-
-    # exit(0)
-# breadth first search to create the lattice grid around an atom position
-theta_offset = 0
-lattice_sites = []
-queue = []
-origin = c.centroids[0]
-lattice_sites.append(origin)
-queue.append(origin)
-#plt.scatter(*np.array([[v[0] + np.sqrt(2)*a/2*np.cos(i*2*np.pi/6+theta_offset),v[1] + np.sqrt(2)*a/2*np.sin(i*2*np.pi/6+theta_offset)] for i in range(6)]).T)
-c.yPix
-
-np.any(np.allclose(lattice_sites[0], new_site))
-new_site
-while len(queue) !=0:
-    v = queue.pop(0)
-    for i in range(6): # each site has 6 nearest neighbors
-        xn = v[0] + c.nm_to_pix(np.sqrt(2)*a/2*np.cos(i*2*np.pi/6+theta_offset))
-        yn = v[1] + c.nm_to_pix(np.sqrt(2)*a/2*np.sin(i*2*np.pi/6+theta_offset))
-        if xn > 0 and yn > 0 and xn < c.xPix and yn < c.yPix:
-            new_site = [xn, yn]
-
-            # in lattice?
-            il = np.any([np.allclose(new_site, l, atol=1e-3) for l in lattice_sites])
-
-            #in queue?
-            # if len(queue)==0:
-            #     iq = False
-            # else:
-            # iq = np.any([np.allclose(new_site, l, atol=1e-3) for l in queue])
-            if not il:
-                lattice_sites.append(new_site)
-                queue.append(new_site)
-
-
-lattice_sites
-plt.triplot(*np.array(lattice_sites).T)
-[np.any(np.isclose(c, lattice_sites)) for c in centroids]
-queue
-new_site
-origin
-
-natoms_per_row = int(ang_ppx_x * xPixels/(b*10))
-nrows = int(ang_ppx_y * yPixels/(d*10))
-for n in range(nrows):
-    for m in range(natoms_per_row):
-        if n%2==0:
-            lattice_sites.append([n*d/ang_ppx_y*10, m*b/ang_ppx_x*10])
-        else:
-            lattice_sites.append([n*d/ang_ppx_y*10, (m*b + b/2)/ang_ppx_x*10])
-
-
-
-
-
-# ang_ppx_x
-# plt.figure(figsize=(10,10))
-# lines, markers = plt.triplot(*np.array(lattice_sites[:]).T)
-# lines.set_alpha(0.3)
-# lines.set_color("green")
-# plt.imshow(im)
-# plt.scatter(*np.array(centroids).T)
-#
-#
-# plt.imshow()
-# plt.imshow(morphology.diameter_closing(im,diameter_threshold=16, connectivity=10))
-# plt.imshow(cv2.dilate(cv2.erode(im, kernel, iterations=6), kernel, iterations=6))
-#
-# plt.imshow()
-
-def generate_lattice(image_shape, lattice_vectors) :
-    center_pix = np.array(image_shape) // 2
-    # Get the lower limit on the cell size.
-    dx_cell = max(abs(lattice_vectors[0][0]), abs(lattice_vectors[1][0]))
-    dy_cell = max(abs(lattice_vectors[0][1]), abs(lattice_vectors[1][1]))
-    # Get an over estimate of how many cells across and up.
-    nx = image_shape[0]//dx_cell
-    ny = image_shape[1]//dy_cell
-    # Generate a square lattice, with too many points.
-    # Here I generate a factor of 4 more points than I need, which ensures
-    # coverage for highly sheared lattices.  If your lattice is not highly
-    # sheared, than you can generate fewer points.
-    x_sq = np.arange(-nx, nx, dtype=float)
-    y_sq = np.arange(-ny, nx, dtype=float)
-    x_sq.shape = x_sq.shape + (1,)
-    y_sq.shape = (1,) + y_sq.shape
-    # Now shear the whole thing using the lattice vectors
-    x_lattice = lattice_vectors[0][0]*x_sq + lattice_vectors[1][0]*y_sq
-    y_lattice = lattice_vectors[0][1]*x_sq + lattice_vectors[1][1]*y_sq
-    # Trim to fit in box.
-    mask = ((x_lattice < image_shape[0]/2.0)
-             & (x_lattice > -image_shape[0]/2.0))
-    mask = mask & ((y_lattice < image_shape[1]/2.0)
-                    & (y_lattice > -image_shape[1]/2.0))
-    x_lattice = x_lattice[mask]
-    y_lattice = y_lattice[mask]
-    # Translate to the centre pix.
-    x_lattice += center_pix[0]
-    y_lattice += center_pix[1]
-    # Make output compatible with original version.
-    out = np.empty((len(x_lattice), 2), dtype=float)
-    out[:, 0] = y_lattice
-    out[:, 1] = x_lattice
-    return out
