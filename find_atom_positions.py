@@ -13,6 +13,7 @@ from multiprocessing import Process, Queue, Array
 import multiprocessing
 from sklearn.preprocessing import normalize
 from math import cos, sin
+import pandas as pd
 
 
 # DEFINING CONSTANTS
@@ -75,8 +76,9 @@ class Vector:
 @dataclass
 class CircCorralData:
     file: str
-    def __init__(self, file):
+    def __init__(self, file, label):
         self.file = file
+        self.label = label
         self.image_file = createc.DAT_IMG(self.file)
         # topography,
         self.im = self.image_file._crop_img(self.image_file.img_array_list[0][:][:])
@@ -119,6 +121,7 @@ class CircCorralData:
         regions = measure.regionprops(xim)
         plt.figure()
         plt.imshow(xim)
+        plt.show()
         regions_areas = [r.area for r in regions]
         regions_area_max = max(regions_areas)
 
@@ -128,8 +131,21 @@ class CircCorralData:
         # if we have the 'background' as a region, remove it
         # if not allsame:
         #     regions = [r for r in regions if (r.area != regions_area_max)]
-        self.centroids = [list(reversed(r.centroid)) for r in regions]
-        # return centroids
+        c = [list(reversed(r.centroid)) for r in regions]
+        def is_far_from_edge(c,p):
+            a = 0.5 #nanometers, distance from edge
+            x = (p[0]>c.nm_to_pix(a) and p[0]<c.imshape[0]-self.nm_to_pix(a))
+            y = (p[1]>c.nm_to_pix(a) and p[1]<c.imshape[1]-self.nm_to_pix(a))
+            return (x and y)
+        d = [is_far_from_edge(self,d) for d in c]
+        c = [d for d in c if is_far_from_edge(self,d)]
+        # pdb.set_trace()
+        #
+        # plt.scatter(c)
+        # plt.show()
+        # remove centroids close to the edge
+        self.centroids = c
+        print("%d centroids" %(len(self.centroids)))
 
     def remove_central_atom(self, data):
         # Check two ways
@@ -176,7 +192,7 @@ class CircCorralData:
         r, center = self.nsphere_fit(data)
         center_idx_2 = argmin([norm(center-o) for o in data])
 
-        if center_idx_1 ==center_idx_2:
+        if center_idx_1==center_idx_2:
             # remove outlier
             return data[center_idx_1]
         else:
@@ -262,7 +278,10 @@ class CircCorralData:
         """
         return (x0, y0, x1, y1) defined by the min and max x, y coords of atoms making up the corral
         """
-        xs, ys = array(self.remove_central_atom(self.centroids)).T
+        if self.occupied:
+            xs, ys = array(self.remove_central_atom(self.gauss_fit_locs)).T
+        else:
+            xs, ys = array(self.gauss_fit_locs)
         return [min(xs), min(ys), max(xs), max(ys)]
 
     def make_lattice(self, theta, offset=0):
@@ -273,7 +292,10 @@ class CircCorralData:
         The
         """
         theta = -theta
-        origin = self.get_central_atom(self.gauss_fit_locs.T)+offset
+        if self.occupied:
+            origin = self.get_central_atom(self.gauss_fit_locs.T)+offset
+        else:
+            origin = self.c + offset
         bbox = self.bbox()
 
         mult_factor = 2
@@ -293,14 +315,8 @@ class CircCorralData:
                     ls.append(array([n*self.nm_to_pix(d), (m*self.nm_to_pix(b) + self.nm_to_pix(b/2))]))
         ls = array(ls)
         rot = array([[cos(theta), -sin(theta)], [sin(theta), cos(theta)]])
-        # plt.triplot(*array(ls).T)
-
         ls = dot(ls, rot)
-        # ls += np.dot(rot, offset)
-        # pdb.set_trace()
         ls += array(origin)
-
-        # plt.triplot(*array(ls).T)
         return ls
 
     def correlate_lattice_to_atom_positions(self, angle, offset):
@@ -349,7 +365,6 @@ class CircCorralData:
         # maximum value of shift/offset of lattice
         m = self.nm_to_pix(b)
 
-        from scipy.optimize import basinhopping, minimize_scalar, brute, fmin
         # do fitting to find the best
         init = [0.6*np.pi/3,self.nm_to_pix(b/2)]
         bounds= ((0,0),(np.pi/3, self.nm_to_pix(b)))
@@ -357,22 +372,16 @@ class CircCorralData:
 
         #one way to do it
         # result = basinhopping(fix_self(self), init )
-
-        result = least_squares(fix_self(self), init, bounds= bounds,verbose=2, max_nfev=3000, method="dogbox", ftol=1e-11)
-
-
+        result = least_squares(fix_self(self), init, bounds= bounds,verbose=2, max_nfev=800, method="dogbox", ftol=1e-11)
         #,
                             #options={'disp':True, 'maxcor':30, 'maxls':100}, tol=0.1  )#, verbose=2)
 
         # result = brute(fix_self(self), bounds, Ns=50, full_output=True, disp=True, finish=fmin)#,workers=6)
 
         angle, offset = result.x
-        # success = result.success
         print("init:", init)
         print("angle, offset:", angle, offset)
-        # print("success: ", success)
-        # plt.plot(corrs)
-        # plt.show()
+
         from  scipy.stats import sigmaclip
         plt.figure(figsize=(6,6))
         new_im = self.im.copy()
@@ -385,8 +394,8 @@ class CircCorralData:
         plt.scatter(*self.gauss_fit_locs)
         bb = self.bbox()
         pad = int(self.nm_to_pix(1))
-        plt.xlim(bb[0]-pad, bb[2]+pad)
-        plt.ylim(bb[1]-pad,bb[3]+pad)
+        plt.xlim(max(0,bb[0]-pad), min(bb[2]+pad,self.imshape[0]))
+        plt.ylim(max(0,bb[1]-pad),min(self.imshape[1],bb[3]+pad))
         plt.title("Topography image, lattice fit, atom sites")
         plt.show()
 
@@ -435,12 +444,8 @@ class CircCorralData:
         plt.matshow(self.im)
         self.plot_circle_fit(self.centroids, r_n, c_n, "naive")
         self.plot_circle_fit(self.gauss_fit_locs.T, r_g, c_g, "Gaussian")
-        # plt.show()
-        # plt.scatter(*c.gauss_fit_locs, label="Gaussian fit points")
         plt.legend()
         plt.title("Comparing fits to circle from h_maxima vs. gaussian fit positions")
-
-        # plt.show()
 
 def round_to_even(n):
     # return n rounded up to the nearest even integer
@@ -460,16 +465,11 @@ def moments(data):
 
     first guess for fit parameters
     """
+    print(data.shape)
     total = data.sum()
     X, Y = np.indices(data.shape)
     x = (X*data).sum()/total
     y = (Y*data).sum()/total
-    # try:
-    #     col = data[:, int(y)]
-    #     width_x = np.sqrt(np.abs((np.arange(col.size)-x)**2*col).sum()/col.sum())
-    #     row = data[int(x), :]
-    #     width_y = np.sqrt(np.abs((np.arange(row.size)-y)**2*row).sum()/row.sum())
-    # except:
     width_x, width_y = [data.shape[0]/2,data.shape[1]/2]
     height = data.max()
     return height, x, y, width_x, width_y
@@ -485,29 +485,69 @@ def fitgaussian(data):
 
     s = data.shape
     #height, center_x, center_y, width_x, width_y
-    bounds = [[np.mean(data)-np.std(data), 0, 0, 0, 0],[np.inf, s[0],s[1],s[0]/2,s[1]/2]]
+    bounds = [[np.mean(data)-3*np.std(data), 0, 0, 0, 0],[np.inf, s[0],s[1],s[0],s[1]]]
     params = [data.max(),data.shape[0]/2,data.shape[1]/2,c.nm_to_pix(.5),c.nm_to_pix(.5)]
-    p = least_squares(errorfunction, params, bounds=bounds).x
+    try:
+        p = least_squares(errorfunction, params, bounds=bounds).x
+    except ValueError as e:
+        print(e)
+        print("Something went wrong, fix it!")
+        pdb.set_trace()
     return p
 
 if __name__=="__main__":
-    c = CircCorralData(dpath + c2)
-    c.subtract_plane()
-    c.get_region_centroids(diamond_size=10, sigmaclip=1.5)
+    # Clean excel spreadsheet to read .dat file locations and relevant params
+    inventory = "/Users/akipnis/Dropbox/papers-in-progress/Small Kondo corrals/Small Kondo corral inventory.xlsx"
+    inv = pd.read_excel(inventory, skip_header=3, header=2)
+    scans = inv['Scan file name & path']
+    inv = inv[scans.notnull()]
+    scans = scans[scans.notnull()]
+    scans = [s.replace('\\',"/") for s in scans]
+    inv.drop(labels="Scan file name & path", axis="columns", inplace=True)
+    inv['Scan file name & path'] = scans
+    inv = inv.reset_index()
 
-    # naive fit from maximum pointss
-    r_n, c_n = c.nsphere_fit(c.remove_central_atom(array(c.centroids)))
+    for n in inv.index.values:
+        s = inv.iloc[n]
+        p = s["Scan file name & path"]
+        c = CircCorralData(dpath + p, p)
+        c.occupied = s["occupied"]=="t"
 
-    # better fit from gaussian fits to atoms
-    full_im, fit_params = c.fit_atom_pos_gauss(box_size=int(c.nm_to_pix(1.5)))
-    r_g, c_g = c.nsphere_fit(c.remove_central_atom(c.gauss_fit_locs.T))
+        c.subtract_plane()
+        c.get_region_centroids(diamond_size=5, sigmaclip=1.5)
 
-    c.compare_fits()
-    plt.savefig(c.file+"_circle_fits.png")
+        # the box size to fit atom positions
+        box_size_nm = 1.5
+        box_size_pix = int(c.nm_to_pix(box_size_nm))
+        while True:
+            try:
+                full_im, fit_params = c.fit_atom_pos_gauss(box_size=box_size_pix)
+                break
+            except ValueError as e:
+                print(e)
+                print("trying with smaller box size")
+                box_size_nm-=0.1
+                box_size_pix = int(c.nm_to_pix(box_size_nm))
 
+        # if the corral is occupied, remove central atoms
+        if c.occupied:
+            atoms_n = c.remove_central_atom(array(c.centroids))
+            atoms_g = c.remove_central_atom(c.gauss_fit_locs.T)
+        else: # corral is unoccupied, don't try to remove central atom
+            atoms_n = array(c.centroids)
+            atoms_g = c.gauss_fit_locs.T
 
-    # pdb.set_trace()
-    c.fit_lattice()
+        # naive fit from maximum points
+        r_n, c_n = c.nsphere_fit(atoms_n)
+
+        # better fit from gaussian fits to atoms
+        r_g, c_g = c.nsphere_fit(atoms_g)
+
+        c.compare_fits()
+        plt.savefig(c.file+"_circle_fits.png")
+
+        # pdb.set_trace()
+        c.fit_lattice()
 
     ##TO DO:
     """
