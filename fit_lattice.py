@@ -1,4 +1,5 @@
 from find_atom_positions import CircCorralData
+from numpy import array
 
 c = CircCorralData("test/Createc2_210811.092547.dat","test/Createc2_210811.092547.dat")
 c.subtract_plane()
