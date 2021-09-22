@@ -18,7 +18,8 @@ scattering_model
 - for simulating LDOS rho(r, E) given a set of atom positions and a lattice
 
 Kondo data analysis: 
-fano_fit_line_spectrum
+read_vertfile
+- TKinter tool to select files
 - Read a spectrum (or a series of spectra) from a .VERT file output by the Createc software
 - Perform a fit of a Fano function over the Kondo resonance around a user-chosen range of values
 - Get extracted parameters for the Fano resonance
