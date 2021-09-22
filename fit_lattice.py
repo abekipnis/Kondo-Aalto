@@ -1,7 +1,11 @@
 from find_atom_positions import CircCorralData
 from numpy import array
-
+import pdb
 c = CircCorralData("test/Createc2_210811.092547.dat","test/Createc2_210811.092547.dat")
+c = CircCorralData("test/Createc2_210813.102220.dat","Createc2_210813.102220")
+
+print (c.pix_to_nm(c.xPix))
+
 c.subtract_plane()
 c.get_region_centroids(diamond_size=5, sigmaclip=2)
 
@@ -23,4 +27,5 @@ c.r_g, c.c_g = c.nsphere_fit(atoms_g)
 
 c.compare_fits()
 
-c.fit_lattice()
+c.fit_lattice(niter=20)
+pdb.set_trace()

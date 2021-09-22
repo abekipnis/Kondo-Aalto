@@ -7,6 +7,8 @@ from numpy import empty, sqrt, square, meshgrid, linspace, dot, argmax, argmin, 
 from numpy.linalg import norm, pinv, lstsq
 from scipy.spatial import distance_matrix
 from scipy.optimize import leastsq, least_squares, minimize
+from  scipy.stats import sigmaclip
+
 from dataclasses import dataclass
 from multiprocessing import Process, Queue, Array
 import multiprocessing
@@ -17,7 +19,6 @@ import pandas as pd
 
 # DEFINING CONSTANTS
 a = 0.409 # nm, lattice constant of silver
-
 d = np.sqrt(6)/4.*a # height of triangles
 b = np.sqrt(2)*a/2. # width of triangles in nm
 
@@ -62,11 +63,14 @@ class CircCorralData:
         self.file = file
         self.label = label
         self.image_file = createc.DAT_IMG(self.file)
-        # topography,
-        self.im = self.image_file._crop_img(self.image_file.img_array_list[0][:][:])
+
+        # topography, current, topography, current
+        self.im = self.image_file._crop_img(self.image_file.img_array_list[2][:][:])
         self.imshape = self.im.shape
         self.xPix = self.imshape[0]
         self.yPix = self.imshape[1]
+
+        # angstroms per pixel
         self.ang_ppx_x = self.image_file.nom_size.x / self.image_file.xPixel
         self.ang_ppx_y = self.image_file.nom_size.y / self.image_file.yPixel
         # nchannels = image_file.channels
@@ -90,7 +94,7 @@ class CircCorralData:
         self.im -= plane
         # return plane
 
-    def get_region_centroids(self, diamond_size=5, sigmaclip=1.5):
+    def get_region_centroids(self, diamond_size=5, sigmaclip=1.5, show=False):
         diamond = morphology.diamond(diamond_size)
         maxima = morphology.h_maxima(self.im, sigmaclip*np.std(self.im))
         r = morphology.binary_dilation(maxima, selem=diamond)
@@ -98,10 +102,11 @@ class CircCorralData:
         plt.title(self.label + "\nLocal maxima")
         xim = morphology.label(r)
         regions = measure.regionprops(xim)
-        plt.figure()
-        plt.imshow(xim)
-        plt.show()
-        plt.close()
+        if show:
+            plt.figure()
+            plt.imshow(xim)
+            plt.show()
+            plt.close()
         regions_areas = [r.area for r in regions]
         regions_area_max = max(regions_areas)
 
@@ -248,7 +253,6 @@ class CircCorralData:
         xc, yc = self.circle(radius, center, npoints=1000)
         plt.scatter(*array(points).T,label=label)
         plt.scatter(xc, yc, alpha=0.5, s=5, label=label)
-        # plt.show()
 
     def bbox(self):
         """
@@ -269,7 +273,7 @@ class CircCorralData:
         """
         theta = -theta
         rot = array([[cos(theta), -sin(theta)], [sin(theta), cos(theta)]])
-        offset = dot([0,offset], rot)
+        offset = dot([0,offset], rot); print(offset)
         if not self.corral:
             origin = array(self.imshape)/2 #the middle
         elif self.occupied:
@@ -285,12 +289,21 @@ class CircCorralData:
         natoms_per_row = round_to_even(self.pix_to_nm(width)/b)
         nrows = round_to_even(self.pix_to_nm(height)/d)
         ls = []
-        for n in np.arange(-nrows/2,nrows/2+1, 1):
+        for n in np.arange(-nrows/2, nrows/2+1, 1):
             for m in np.arange(-natoms_per_row/2,natoms_per_row/2+1, 1):
                 if n%2==0:
                     ls.append(array([n*self.nm_to_pix(d), m*self.nm_to_pix(b)]))
                 else:
                     ls.append(array([n*self.nm_to_pix(d), (m*self.nm_to_pix(b) + self.nm_to_pix(b/2))]))
+
+
+        for n in np.arange(-nrows/2, nrows/2+1, 1):
+            for m in np.arange(-natoms_per_row/2,natoms_per_row/2+1, 1):
+                if n%2==0:
+                    ls.append(array([n*self.nm_to_pix(d), m*self.nm_to_pix(b)])+self.nm_to_pix(array([np.sqrt(2)/2./np.sqrt(3)*a,0])))
+                else:
+                    ls.append(array([n*self.nm_to_pix(d), (m*self.nm_to_pix(b) + self.nm_to_pix(b/2))])+self.nm_to_pix(array([np.sqrt(2)/2/np.sqrt(3)*a, 0])))
+
         ls = array(ls)
         rot = array([[cos(theta), -sin(theta)], [sin(theta), cos(theta)]])
         ls = dot(ls, rot)
@@ -337,9 +350,9 @@ class CircCorralData:
         # return the image around x,y with sides sidelen
         return self.im[int(y)-sidelen//2:int(y)+sidelen//2,int(x)-sidelen//2:int(x)+sidelen//2]
 
-    def fit_lattice(self):
+    def fit_lattice(self, niter):
         """
-        Given a corral data set, fit the triangular lattice to the
+        Given a corral data set, fit the triangular (haxagonal!) lattice to the
         pre-solved Gaussian-fitted atom positions, return the optimal angle
         and lattice offset and plot the topo map, atom positions & lattice together
         """
@@ -356,7 +369,7 @@ class CircCorralData:
 
         #one way to do it
         # result = basinhopping(fix_self(self), init )
-        result = least_squares(fix_self(self), init, bounds= bounds,verbose=2, max_nfev=1600, method="dogbox", ftol=1e-11, xtol=1e-10)
+        result = least_squares(fix_self(self), init, bounds= bounds,verbose=2, max_nfev=niter)#s, method="dogbox", ftol=1e-11, xtol=1e-10)
 
         # def print_fun(x, f, accepted):
         #     print("at minimum, x: %1.2lf %1.2lf, %1.2lf accepted %d" %(*x, f, int(accepted)) )
@@ -382,12 +395,12 @@ class CircCorralData:
         print("init:", init)
         print("angle, offset:", angle, offset)
 
-        from  scipy.stats import sigmaclip
         plt.figure(figsize=(6,6))
         new_im = self.im.copy()
         new_im[self.im>np.mean(self.im)+3*np.std(self.im)] = np.inf
         plt.imshow(new_im)
-        plt.triplot(*array(self.make_lattice(angle,offset)).T)
+        # plt.triplot(*array(self.make_lattice(angle,offset)).T)
+        plt.scatter(*array(self.make_lattice(0,self.nm_to_pix(np.sqrt(2)/2/np.sqrt(3)*a))).T, s=5, c="black")
         plt.scatter(*self.gauss_fit_locs)
 
         bb = self.bbox()
@@ -400,10 +413,10 @@ class CircCorralData:
             "angle: %1.4lf degrees"
                 %(self.pix_to_nm(offset),angle*180/np.pi),
                 bbox={'facecolor':'w', 'alpha':0.5, 'pad':5})#,
-        plt.savefig(self.label.split("/")[-1] + "topography_fit.png")
+        plt.savefig(self.label.split("/")[-1].split(".dat")[0] + "topography_fit.png")
         plt.show()
 
-    def fit_atom_pos_gauss(self, box_size):
+    def fit_atom_pos_gauss(self, box_size, show=False):
         """
         Given a CircCorralData object with first-guess centroids,
         get square of side length box_size and fit 2D Gaussian to the atom shape
@@ -418,15 +431,17 @@ class CircCorralData:
             f = self.get_im_square(*cen, box_size)
             params = fitgaussian(f,self)
             fitc = gaussian(*params)
-            plt.matshow(f);
-            plt.contour(fitc(*np.indices(f.shape)), cmap=plt.cm.copper)
 
-            plt.scatter([params[2]], [params[1]], )
-            plt.scatter([box_size/2],[box_size/2],c="red")
-            plt.title("Fitting centroid %d" %(n))
-            plt.show()
-            plt.close()
-            # plt.show()
+            if show:
+                plt.matshow(f);
+                plt.contour(fitc(*np.indices(f.shape)), cmap=plt.cm.copper)
+
+                plt.scatter([params[2]], [params[1]], )
+                plt.scatter([box_size/2],[box_size/2],c="red")
+                plt.title("Fitting centroid %d" %(n))
+                plt.show()
+                plt.close()
+                # plt.show()
 
             # add the original 'box' back to the center
             params[1] += cen[1] - box_size/2
@@ -451,6 +466,10 @@ class CircCorralData:
         plt.imshow(self.im)#, extent=[0, self.pix_to_nm(self.xPix),0 ,self.pix_to_nm(self.yPix)])
         self.plot_circle_fit(self.centroids, self.r_n, self.c_n, "naive")
         self.plot_circle_fit(self.gauss_fit_locs.T, self.r_g, self.c_g, "Gaussian")
+        print(self.label)
+        print("Naive: \n", self.pix_to_nm(self.r_n), self.c_n)
+        print("Gauss: \n", self.pix_to_nm(self.r_g), self.c_g)
+
         plt.legend()
         plt.text(10,30,
             "r (naive): %1.2lf nm\n"
@@ -461,7 +480,8 @@ class CircCorralData:
                 self.pix_to_nm(self.r_g), *self.pix_to_nm(self.c_g)),
                 bbox={'facecolor':'w', 'alpha':0.5, 'pad':5})#,
         plt.title(self.label + "\nFits to circle, naive & gaussian fit positions")
-        plt.savefig(self.label.split("/")[-1] +"_circle_fits.png")
+        plt.savefig(self.label.split("/")[-1].split(".dat")[0] +"_circle_fits.png")
+
 def round_to_even(n):
     # return n rounded up to the nearest even integer
     return int(np.ceil(n/2.)*2)
@@ -480,7 +500,6 @@ def moments(data):
 
     first guess for fit parameters
     """
-    print(data.shape)
     total = data.sum()
     X, Y = np.indices(data.shape)
     x = (X*data).sum()/total
@@ -512,8 +531,6 @@ def fitgaussian(data, c):
 
 if __name__=="__main__":
     print("lattice spacing of 111 surface: %1.2lf Å" %(b*10))
-
-
     # Clean excel spreadsheet to read .dat file locations and relevant params
     inventory = "/Users/akipnis/Dropbox/papers-in-progress/Small Kondo corrals/Small Kondo corral inventory.xlsx"
     inv = pd.read_excel(inventory, header=2)
@@ -525,7 +542,7 @@ if __name__=="__main__":
     inv['Scan file name & path'] = scans
     inv = inv.reset_index()
 
-    for n in inv.index.values:
+    for n in inv.index.values[1:]:
         s = inv.iloc[n]
         p = s["Scan file name & path"]
         c = CircCorralData(dpath + p, p)
@@ -557,14 +574,13 @@ if __name__=="__main__":
 
         # naive fit from maximum points
         c.r_n, c.c_n = c.nsphere_fit(atoms_n)
-        pdb.set_trace()
 
         # better fit from gaussian fits to atoms
         c.r_g, c.c_g = c.nsphere_fit(atoms_g)
 
         c.compare_fits()
         plt.savefig(c.file+"_circle_fits.png")
-        c.fit_lattice()
+        # c.fit_lattice()
 
     ##TO DO:
     """
