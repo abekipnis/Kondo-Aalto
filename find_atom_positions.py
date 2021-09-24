@@ -264,7 +264,7 @@ class CircCorralData:
             xs, ys = array(self.gauss_fit_locs)
         return [min(xs), min(ys), max(xs), max(ys)]
 
-    def make_lattice(self, theta, offset=0):
+    def make_lattice(self, theta, offseta=0, offsetb=0):
         """
         Given a corrals data object, theta, and lattice vector offset value in pixels,
         return an array of shape (N,2) (where N is the # of lattice sites)
@@ -272,8 +272,9 @@ class CircCorralData:
         The
         """
         theta = -theta
-        rot = array([[cos(theta), -sin(theta)], [sin(theta), cos(theta)]])
-        offset = dot([0,offset], rot); print(offset)
+        offseta = dot(array([[cos(np.pi/6), -sin(np.pi/6)], [sin(np.pi/6), cos(np.pi/6)]]),[offseta,0]);
+        offsetb = dot(array([[cos(-np.pi/6), -sin(-np.pi/6)], [sin(-np.pi/6), cos(-np.pi/6)]]),[offsetb,0]);
+        offset = offseta + offsetb
         if not self.corral:
             origin = array(self.imshape)/2 #the middle
         elif self.occupied:
@@ -310,7 +311,7 @@ class CircCorralData:
         ls += array(origin)
         return ls
 
-    def correlate_lattice_to_atom_positions(self, angle, offset):
+    def correlate_lattice_to_atom_positions(self, angle, offseta, offsetb):
         """
         Given a set of atom positions in self.gauss_fit_locs and
         an angle and lattice offset for the triangular lattice,
@@ -319,7 +320,7 @@ class CircCorralData:
 
         In this case, return a vector showing the distances between each atom and its nearest lattice site
         """
-        lat = self.make_lattice(angle, offset)
+        lat = self.make_lattice(angle, offseta, offsetb)
         gloc = self.gauss_fit_locs
         mindists = np.min(distance_matrix(gloc.T, lat),axis=1)
         return np.mean(mindists) #np.sum()
@@ -360,16 +361,11 @@ class CircCorralData:
             return lambda args: s.correlate_lattice_to_atom_positions(*args)
 
         # maximum value of shift/offset of lattice
-        m = self.nm_to_pix(b)
+        m = self.nm_to_pix(np.sqrt(2)/2*a)
+        init = [0.5*np.pi/3, 0.5*m, 0.5*m]
+        bounds= ((0,0,0), (np.pi/3, m, m))
 
-        # do fitting to find the best
-        init = [0.5*np.pi/3,0.5*self.nm_to_pix(b)]
-        bounds= ((0,0),(np.pi/3, self.nm_to_pix(b)))
-        # ranges = (slice(0,np.pi/3), slice(0, self.nm_to_pix(b), self.nm_to_pix(b)/20))
-
-        #one way to do it
-        # result = basinhopping(fix_self(self), init )
-        result = least_squares(fix_self(self), init, bounds= bounds,verbose=2, max_nfev=niter)#s, method="dogbox", ftol=1e-11, xtol=1e-10)
+        result = least_squares(fix_self(self), init, bounds=bounds,verbose=2, max_nfev=niter)#s, method="dogbox", ftol=1e-11, xtol=1e-10)
 
         # def print_fun(x, f, accepted):
         #     print("at minimum, x: %1.2lf %1.2lf, %1.2lf accepted %d" %(*x, f, int(accepted)) )
@@ -391,16 +387,17 @@ class CircCorralData:
         #     niter=200, callback=print_fun, accept_test=mybounds,stepsize=0.05)
         # print(r.x)
 
-        angle, offset = result.x
+        angle, offseta, offsetb = result.x
         print("init:", init)
-        print("angle, offset:", angle, offset)
+        print("angle, offseta, offsetb:", angle, offseta, offsetb)
 
         plt.figure(figsize=(6,6))
         new_im = self.im.copy()
         new_im[self.im>np.mean(self.im)+3*np.std(self.im)] = np.inf
         plt.imshow(new_im)
-        # plt.triplot(*array(self.make_lattice(angle,offset)).T)
-        plt.scatter(*array(self.make_lattice(0,self.nm_to_pix(np.sqrt(2)/2/np.sqrt(3)*a))).T, s=5, c="black")
+        q = self.nm_to_pix(np.sqrt(2)/2*a)
+        plt.scatter(*array(self.make_lattice(0,q,q)).T, s=5, c="black")
+        #
         plt.scatter(*self.gauss_fit_locs)
 
         bb = self.bbox()
@@ -409,9 +406,9 @@ class CircCorralData:
         plt.ylim(max(0,bb[1]-pad),min(self.imshape[1],bb[3]+pad))
         plt.title(self.label+"\nTopography image, lattice fit, atom sites")
         plt.text(bb[0],bb[1],
-            "offset: %1.3lf nm\n"
+            "offset: a1: %1.3lf nm a2: %1.3lf\n"
             "angle: %1.4lf degrees"
-                %(self.pix_to_nm(offset),angle*180/np.pi),
+                %(self.pix_to_nm(offseta), self.pix_to_nm(offsetb), angle*180/np.pi),
                 bbox={'facecolor':'w', 'alpha':0.5, 'pad':5})#,
         plt.savefig(self.label.split("/")[-1].split(".dat")[0] + "topography_fit.png")
         plt.show()
