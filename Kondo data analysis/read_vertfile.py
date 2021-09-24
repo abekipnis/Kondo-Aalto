@@ -209,8 +209,8 @@ def plot_fano_fit_line(f):
 
     # if the markers are different
     for n, d in enumerate(d1["marker1"].values):
-        ax5.scatter(ns[0][n]-min(ns[0]), nbias-np.argmin(np.abs(biasdata-d1["marker2"].iloc[n])),color="r")
-        ax5.scatter(ns[0][n]-min(ns[0]), nbias-np.argmin(np.abs(biasdata-d)),color="r")
+        ax5.scatter(ns[0][n]-min(ns[0]), nbias-np.argmin(np.abs(biasdata-d1["marker2"].iloc[n])),color="r", s=10)
+        ax5.scatter(ns[0][n]-min(ns[0]), nbias-np.argmin(np.abs(biasdata-d)),color="r", s=10)
 
     im = ax5.get_images()
     extent =  im[0].get_extent()
@@ -221,20 +221,21 @@ def plot_fano_fit_line(f):
     ax7.scatter(dists, d1["resid"])
 
     a1, a2 = fs[0].split("/")[5:][1:3]
-    fig.suptitle("Fano fits to Kondo resonance on corral central atom: %s.%s" %(a1, a2))
+    fig.suptitle("Fano fits to Kondo resonance on corral central atom: %s\%s" %(a1, a2))
     # add red lines across where the fit happens
 
-    # ax2.set_ylim([0,20 ])
-    # ax3.set_ylim([0,20])
-    # ax4.set_ylim([0,20/kb*1e-3])
+    # may have to adjust axes limits if sigma blows up
+    # ax2.set_ylim([0, 15])
+    # ax3.set_ylim([0, 15])
+    # ax4.set_ylim([0, 15/kb*1e-3])
     # ax6.set_ylim([-0.5, 2])
 
     # set titles for the subplots
     ax1.set_title("Fano fit")
-    ax2.set_title(r"$E_0$ (eV)")
+    ax2.set_title(r"$\epsilon_0$ (eV)")
     ax3.set_title(r"Width, $T_K$")
     ax5.set_title("Raw data")
-    ax6.set_title("Q")
+    ax6.set_title("q")
     ax7.set_title("Residuals (au)")
 
     ax5.set_xlabel("Index")
@@ -314,7 +315,7 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
     bounds = np.array([[min(sb),max(sb)],                   # e0
                         [0,50],                             # w
                         [-np.inf,np.inf],                   # q
-                        [0, max(fit_dIdV)],     # a
+                        [0, max(fit_dIdV)],                 # a
                         [-np.inf,np.inf],                   # b
                         [-np.inf,np.inf]]).T                # c
     # fix temperature while still fitting other Fano parameters
@@ -324,11 +325,11 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
     try:
         # popt, pcov = optimize.curve_fit(fix_T(T), sb, fit_dIdV, p0=p0, bounds=bounds)
         popt, pcov = optimize.curve_fit(fano, sb, fit_dIdV, p0=p0, bounds=bounds)
-        popt1, _ = optimize.curve_fit(fano, sb, fit_dIdV, p0=p0, bounds=bounds)
+        # popt1, _ = optimize.curve_fit(fano, sb, fit_dIdV, p0=p0, bounds=bounds)
 
     except RuntimeError as e:
         print(e)
-        exit(0)
+        # exit(0)
 
     fig, ax = plt.subplots()
 
@@ -372,7 +373,7 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
     plt.plot(sb, f,'r--')
     # plt.plot(sb, fano(sb, *popt1),'go', markersize=2)
 
-    residY, residtot = residual(fit_dIdV, f)
+    residY, residtot = residual(fit_dIdV, f) #NORMALIZE THIS BY # OF FIT POINTS
 
     plt.subplots_adjust(left=0.4)
     plt.xlabel("Bias (mV)")
@@ -381,22 +382,28 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
     plt.title("\n".join(list(t1)))
     # plt.legend(["data",r'fit data',"model w thermal broadening", "model w/o thermal broadening"])
     plt.legend(["data",r'fit data',"model w/o thermal broadening"])
-
-    fig2, (a1, a2) = plt.subplots(2,1)
-    a1.plot(sb, residY)
-    a2.hist(residY)
-
     if savefig:
         plt.savefig(file.split(".VERT")[0]+"%s_fano_fit.png" %(t))
     if showfig:
         plt.show()
 
+    fig2, (a1, a2) = plt.subplots(2,1)
+    a1.plot(sb, residY)
+    a2.hist(residY)
+    if savefig:
+        plt.savefig(file.split(".VERT")[0]+"%s_fit_residual.png" %(t))
+    if showfig:
+        plt.show()
+
+
+
     plt.close()
     return [popt, pcov, marker1, marker2, xpos, ypos, residtot]
 
 def residual(data, fit):
-    r = [(data[i]-fit[i]) for i in range(len(data))]
-    return r, np.sqrt(sum([a*a for a in r]))
+    ld = len(data)
+    r = [(data[i]-fit[i]) for i in range(ld)]
+    return r, np.sqrt(sum([a*a for a in r]))/ld #normalized by # of data points
 
 def save_fano_fits(files: list, opts: list, covs: list, m1: list, m2: list, path: str, xs: list, ys: list, resid: list):
     with open(path, "w") as f:
@@ -537,7 +544,7 @@ class Application(tk.Frame):
             if self.var3.get():
                 path = asksaveasfile(parent=root,
                                      # defaultextension=["txt", "*.txt"],
-                                     initialfile="test.txt").name
+                                     initialfile=filenames[0]).name
                 self.update()
                 save_fano_fits(filenames, opts, covs, m1, m2, path, xs, ys, resids)
                 plot_fano_fit_line(path)
