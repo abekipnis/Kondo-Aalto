@@ -14,11 +14,6 @@ import gif
 import matplotlib.animation as animation
 from matplotlib.animation import FuncAnimation
 
-dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
-filename= dir +r"Ag 2021-08-13 2p5 nm radius/grid/Createc2_210814.214635.specgrid"
-# filename=r'/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/Ag 2021-08-16 2p5 nm radius empty/Createc2_210816.223358.specgrid'
-# filename = r'/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/Ag 2021-08-12 4p5 nm radius/grid/Createc2_210813.001749.specgrid'
-
 def animate_cube(cube_array, cut=True, mn=0, sd=0, interval=75, cmap='hot', ptx=0, pty=0, ptx2=0, pty2=0):
     '''
     animates a python cube for quick visualisation.
@@ -53,6 +48,8 @@ def animate_cube(cube_array, cut=True, mn=0, sd=0, interval=75, cmap='hot', ptx=
     sd = np.std(cube_array[-1][cut:-cut,cut:-cut])
     img = ax1.imshow(cube_array[-1][cut:-cut,cut:-cut], animated=True,  cmap=cmap, vmax=mn+3*sd, vmin=mn-3*sd)
 
+    # s1 and s2 are PathCollection objects
+    # can use s1.get_sizes() to look at the default size
     s1 = ax1.scatter([ptx],[pty], s=20)
     s2 = ax1.scatter([ptx2],[pty2], s=20) #default size is 36
     # pdb.set_trace()
@@ -100,7 +97,7 @@ def animate_cube(cube_array, cut=True, mn=0, sd=0, interval=75, cmap='hot', ptx=
         ax2.plot(specvz3[:,0][offset:-1],cube_array[:,ptx2, pty2][offset:-1])
 
         ax2.axvline(specvz3[i,0], c='r')
-        title2 = ax2.text(0.5,1.1, "dI/dV point spectrum at corral center", #bbox={'facecolor':'w', 'alpha':1, 'pad':5}
+        title2 = ax2.text(0.5,1.1, "dI/dV point spectra from grid", #bbox={'facecolor':'w', 'alpha':1, 'pad':5}
                      transform=ax2.transAxes, ha="center")
         ax2.set_xlabel("Bias (mV)")
         ax2.set_ylabel("dI/dV (a.u)")
@@ -115,9 +112,12 @@ def animate_cube(cube_array, cut=True, mn=0, sd=0, interval=75, cmap='hot', ptx=
 
 if __name__ == "__main__":
     # read size of image from /Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/Ag 2021-08-16 2p5 nm radius empty/Createc2_210816.223358.specgrid.dat
+    dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
+    filename= dir +r"Ag 2021-08-13 2p5 nm radius/grid/Createc2_210814.214635.specgrid"
+    # filename = dir +r'Ag 2021-08-16 2p5 nm radius empty/Createc2_210816.223358.specgrid'
+    # filename = dir+r'/Ag 2021-08-12 4p5 nm radius/grid/Createc2_210813.001749.specgrid'
 
     # In this section the specgrid parameters are loaded and printed below
-
     f = open(filename, "rb")
     a = np.fromfile(f, dtype=np.uint32,count=256)
     f.close
