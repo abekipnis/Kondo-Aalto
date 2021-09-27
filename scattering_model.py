@@ -4,6 +4,7 @@ from scipy.spatial import distance_matrix
 import pint
 import cmath
 import numpy as np
+from multiprocessing import Pool
 
 ureg = pint.UnitRegistry()
 Q_ = ureg.Quantity
@@ -82,10 +83,11 @@ def c_LDOS(atom_locs, latt_sites, k_tip):
     m = Q_(latt_sites,"nm")
     LDOS = np.zeros(len(latt_sites))
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
+
     for n in range(latt_sites):
-        LDOS[n] = LDOS_at_point(n[0],n[1], A, k_tip, atom_locs)
-    
-    # plt.imshow(LDOS)
+        LDOS[n] = LDOS_at_point(n[0], n[1], A, k_tip, atom_locs)
+
+    plt.scatter(latt_sites, c=LDOS)
     plt.colorbar()
     return LDOS
 

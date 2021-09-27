@@ -27,5 +27,9 @@ c.r_g, c.c_g = c.nsphere_fit(atoms_g)
 
 c.compare_fits()
 
-c.fit_lattice(niter=20)
+atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=20)
+erange = np.arange(-0.020, 0.020, 0.001)
+spectra = scattering_model.gs(atompoints, latt, erange)
+plt.plot(erange, spectra); plt.imshow()
+
 # pdb.set_trace()
