@@ -86,7 +86,6 @@ def c_LDOS(atom_locs, latt_sites, k_tip):
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
 
     for n0, n in enumerate(latt_sites):
-        pdb.set_trace()
         LDOS[n0] = LDOS_at_point(n[0], n[1], A, k_tip, atom_locs)
 
     plt.scatter(latt_sites, c=LDOS)
