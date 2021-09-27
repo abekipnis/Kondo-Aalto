@@ -395,9 +395,7 @@ class CircCorralData:
         new_im = self.im.copy()
         new_im[self.im>np.mean(self.im)+3*np.std(self.im)] = np.inf
         plt.imshow(new_im)
-        q = self.nm_to_pix(np.sqrt(2)/2*a)
-        plt.scatter(*array(self.make_lattice(0,q,q)).T, s=5, c="black")
-        #
+        plt.scatter(*array(self.make_lattice(angle,offseta,offsetb)).T, s=5, c="black")
         plt.scatter(*self.gauss_fit_locs)
 
         bb = self.bbox()
