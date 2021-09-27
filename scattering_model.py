@@ -88,6 +88,7 @@ def c_LDOS(atom_locs, latt_sites, k_tip):
     for n0, n in enumerate(latt_sites):
         LDOS[n0] = LDOS_at_point(n[0], n[1], A, k_tip, atom_locs)
 
+    pdb.set_trace()
     plt.scatter(np.array(latt_sites).T, c=LDOS)
     plt.colorbar()
     plt.show()
