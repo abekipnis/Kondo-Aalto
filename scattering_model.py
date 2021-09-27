@@ -84,7 +84,7 @@ def c_LDOS(atom_locs, latt_sites, k_tip):
     LDOS = np.zeros(len(latt_sites))
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
 
-    for n in range(latt_sites):
+    for n in latt_sites:
         LDOS[n] = LDOS_at_point(n[0], n[1], A, k_tip, atom_locs)
 
     plt.scatter(latt_sites, c=LDOS)
