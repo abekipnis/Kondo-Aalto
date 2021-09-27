@@ -371,7 +371,6 @@ class CircCorralData:
         plt.savefig(self.label.split("/")[-1].split(".dat")[0] + "topography_fit.png")
         plt.show()
 
-        pdb.set_trace()
         gloc = self.gauss_fit_locs
         mindists = np.argmin(distance_matrix(gloc.T, latt),axis=1)
         atompoints = latt[mindists]
