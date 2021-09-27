@@ -493,6 +493,7 @@ def fitgaussian(data, c):
     return p
 
 if __name__=="__main__":
+    import numpy as np
     print("lattice spacing of 111 surface: %1.2lf Å" %(b*10))
     # Clean excel spreadsheet to read .dat file locations and relevant params
     inventory = "/Users/akipnis/Dropbox/papers-in-progress/Small Kondo corrals/Small Kondo corral inventory.xlsx"
