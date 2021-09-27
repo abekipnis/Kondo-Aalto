@@ -2,6 +2,7 @@ from find_atom_positions import CircCorralData
 from numpy import array
 import pdb
 import numpy as np
+import scattering_model
 #c = CircCorralData("test/Createc2_210811.092547.dat","test/Createc2_210811.092547.dat")
 c = CircCorralData("test/Createc2_210813.102220.dat","Createc2_210813.102220")
 
