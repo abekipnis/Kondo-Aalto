@@ -28,4 +28,4 @@ c.r_g, c.c_g = c.nsphere_fit(atoms_g)
 c.compare_fits()
 
 c.fit_lattice(niter=20)
-pdb.set_trace()
+# pdb.set_trace()
