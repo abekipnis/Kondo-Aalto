@@ -105,14 +105,17 @@ def c_LDOS(atom_locs, latt_sites, k_tip):
 # LDOS = calc_LDOS(atom_locs, 31, radius, k_tip)
 # np.std(LDOS)
 
-def gs(atom_locs, latt_sites, erange):
+def gs(atom_locs, latt_sites, erange, spectrumpt):
     s = []
+    # where in the lattice array do we need to index into to get the
+    # spectrum at the point we want?
+    speclatidx = np.argmin([np.linalg.norm(spectrumpt-l) for l in latt_sites])
     atom_locs = Q_(atom_locs, "nm")
     for e in erange:
         E = Q_(e,"volt")*electron_charge
         k_tip = k(E, m_e, E_0)
         LDOS = c_LDOS(atom_locs, latt_sites, k_tip)
-        s.append(LDOS[0][0])
+        s.append(LDOS[speclatidx)
     return s
 
 def get_spectra(atom_locs, n_sites, radius):
