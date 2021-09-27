@@ -1,7 +1,7 @@
 from find_atom_positions import CircCorralData
 from numpy import array
 import pdb
-c = CircCorralData("test/Createc2_210811.092547.dat","test/Createc2_210811.092547.dat")
+#c = CircCorralData("test/Createc2_210811.092547.dat","test/Createc2_210811.092547.dat")
 c = CircCorralData("test/Createc2_210813.102220.dat","Createc2_210813.102220")
 
 print (c.pix_to_nm(c.xPix))
@@ -26,10 +26,8 @@ c.r_n, c.c_n = c.nsphere_fit(atoms_n)
 c.r_g, c.c_g = c.nsphere_fit(atoms_g)
 
 c.compare_fits()
-
 atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=20)
 erange = np.arange(-0.020, 0.020, 0.001)
 spectra = scattering_model.gs(atompoints, latt, erange)
 plt.plot(erange, spectra); plt.imshow()
 
-# pdb.set_trace()
