@@ -15,6 +15,7 @@ import multiprocessing
 from sklearn.preprocessing import normalize
 from math import cos, sin
 import pandas as pd
+import scattering_model
 
 
 # DEFINING CONSTANTS
@@ -325,35 +326,13 @@ class CircCorralData:
         mindists = np.min(distance_matrix(gloc.T, lat),axis=1)
         return np.mean(mindists) #np.sum()
 
-        # p = self.gauss_fit_params.T
-        # height = np.mean(p[0])
-        # width = np.mean(self.gauss_fit_params.T[-2:])
-        # p[0] = height
-        # p[-2] = width
-        # p[-1] = width
-        # l = [l(*array(lat).T) for l in list(map(gaussian, *p))]
-        # eval = np.sum(l, axis=0)
-        #
-        # def show():
-        #     # lines, markers = plt.triplot(*array(lat).T, label="lattice")#, s=np.sum(l,axis=0))
-        #     plt.scatter(*array(lat).T, s=np.sum(l,axis=0))
-        #     # markers.set_color("black")
-        #     plt.scatter(*self.gauss_fit_locs, label="gauss fit")
-        #     plt.scatter(*array(self.centroids).T, label ="max fit")
-        #     plt.title("Atom positions, potential lattice sites and Gaussians evaluated at lattice sites")
-        #     # g2d = np.sum([gaussian(1, *cen, 23, 23)(*array(lat).T) for cen in positions], axis=0)
-        #     plt.legend()
-        #     plt.show()
-        # # show()
-        # return -np.sum(eval)/height
-
     def get_im_square(self, x, y, sidelen):
         # return the image around x,y with sides sidelen
         return self.im[int(y)-sidelen//2:int(y)+sidelen//2,int(x)-sidelen//2:int(x)+sidelen//2]
 
     def fit_lattice(self, niter):
         """
-        Given a corral data set, fit the triangular (haxagonal!) lattice to the
+        Given a corral data set, fit the triangular (hexagonal!) lattice to the
         pre-solved Gaussian-fitted atom positions, return the optimal angle
         and lattice offset and plot the topo map, atom positions & lattice together
         """
@@ -367,26 +346,6 @@ class CircCorralData:
 
         result = least_squares(fix_self(self), init, bounds=bounds,verbose=2, max_nfev=niter)#s, method="dogbox", ftol=1e-11, xtol=1e-10)
 
-        # def print_fun(x, f, accepted):
-        #     print("at minimum, x: %1.2lf %1.2lf, %1.2lf accepted %d" %(*x, f, int(accepted)) )
-        #
-        # class MyBounds:
-        #     def __init__(self, xmax=[np.pi/3, self.nm_to_pix(b)], xmin=[0,0] ):
-        #         self.xmax = np.array(xmax)
-        #         self.xmin = np.array(xmin)
-        #
-        #     def __call__(self, **kwargs):
-        #         x = kwargs["x_new"]
-        #         tmax = bool(np.all(x <= self.xmax))
-        #         tmin = bool(np.all(x >= self.xmin))
-        #         return tmax and tmin
-        # mybounds = MyBounds()
-        # minimizer_kwargs = {"method": "BFGS"}
-        # from scipy.optimize import basinhopping
-        # r = basinhopping(fix_self(self), init, minimizer_kwargs=minimizer_kwargs,
-        #     niter=200, callback=print_fun, accept_test=mybounds,stepsize=0.05)
-        # print(r.x)
-
         angle, offseta, offsetb = result.x
         print("init:", init)
         print("angle, offseta, offsetb:", angle, offseta, offsetb)
@@ -395,7 +354,8 @@ class CircCorralData:
         new_im = self.im.copy()
         new_im[self.im>np.mean(self.im)+3*np.std(self.im)] = np.inf
         plt.imshow(new_im)
-        plt.scatter(*array(self.make_lattice(angle,offseta,offsetb)).T, s=5, c="black")
+        latt = self.make_lattice(angle,offseta,offsetb)
+        plt.scatter(*array(latt).T, s=5, c="black")
         plt.scatter(*self.gauss_fit_locs)
 
         bb = self.bbox()
@@ -410,6 +370,15 @@ class CircCorralData:
                 bbox={'facecolor':'w', 'alpha':0.5, 'pad':5})#,
         plt.savefig(self.label.split("/")[-1].split(".dat")[0] + "topography_fit.png")
         plt.show()
+
+        pdb.set_trace()
+        gloc = self.gauss_fit_locs
+        mindists = np.argmin(distance_matrix(gloc.T, latt),axis=1)
+        atompoints = latt[mindists]
+
+        # return lattice-matched atom locations, angle, offsets, and lattice points
+        return atompoints, angle, offseta, offsetb, latt
+
 
     def fit_atom_pos_gauss(self, box_size, show=False):
         """
@@ -549,7 +518,7 @@ if __name__=="__main__":
         # the box size to fit atom positions
         box_size_nm = 1.5
         box_size_pix = int(c.nm_to_pix(box_size_nm))
-        while True:
+        while True: # may have to iterate to make the box size smaller
             try:
                 full_im, fit_params = c.fit_atom_pos_gauss(box_size=box_size_pix)
                 break
@@ -575,7 +544,12 @@ if __name__=="__main__":
 
         c.compare_fits()
         plt.savefig(c.file+"_circle_fits.png")
-        # c.fit_lattice()
+
+        atompoints, angle, offseta, offsetb, latt = c.fit_lattice(50)
+        erange = np.arange(-0.020, 0.020, 0.001)
+        spectra = scattering_model.gs(atompoints, latt, erange)
+        plt.plot(erange, spectra); plt.imshow()
+        pdb.set_trace()
 
     ##TO DO:
     """
