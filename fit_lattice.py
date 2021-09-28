@@ -36,5 +36,6 @@ erange = np.arange(-0.020, 0.020, 0.001)
 #spectra = scattering_model.gs(atompoints, latt, erange, c.c_g)
 #plt.plot(erange, spectra); plt.imshow()
 
-spectrum = scattering_model.get_spectra(atompoints, 100, 4) #radius doesn't matter much here, just has to be larger than the radius of the actual atoms (can hard code this, given we have c.r)
+spectrum = scattering_model.get_spectra(atompoints, 30, 4) #radius doesn't matter much here, just has to be larger than the radius of the actual atoms (can hard code this, given we have c.r)
+pdb.set_trace()
 plt.plot(erange, spectra); plt.savefig("spectrum_test.png")
