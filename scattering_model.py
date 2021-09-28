@@ -64,7 +64,7 @@ def calc_LDOS(atom_locs, n_sites, radius, k_tip):
     n_atoms = len(atom_locs)
     a0 = np.zeros(n_atoms)
     aT = np.zeros(n_atoms)
-    m = Q_(np.asarray(np.linspace(-1.5*radius, 1.5*radius, n_sites)),"nm")
+    m = Q_(np.asarray(np.linspace(0, 3*radius, n_sites)),"nm")
     X, Y = np.meshgrid(m, m)
     LDOS = np.zeros((n_sites,n_sites))
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
@@ -93,7 +93,6 @@ def c_LDOS(atom_locs, latt_sites, k_tip):
     plt.colorbar()
     plt.show()
     return LDOS
-
 
 # n_atoms = 8
 # radius = 2.5
