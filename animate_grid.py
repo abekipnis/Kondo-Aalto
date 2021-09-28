@@ -1,16 +1,9 @@
 
 import numpy as np
-
-import numpy as np
 import matplotlib.pyplot as plt
-import plotly.express as px
 from pdb import set_trace
 import scipy.signal
-import plotly.offline
-# %pylab inline
-import plotly.graph_objects as go
 import pandas as pd
-import gif
 import matplotlib.animation as animation
 from matplotlib.animation import FuncAnimation
 import createc
