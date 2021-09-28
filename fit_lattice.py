@@ -31,11 +31,11 @@ c.compare_fits()
 atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=20)
 erange = np.arange(-0.020, 0.020, 0.001)
 
-# this takes way too long if using the generated lattice from the fit 
+# this takes way too long if using the generated lattice from the fit
 # better to use lattice generated from numpy mesh
 #spectra = scattering_model.gs(atompoints, latt, erange, c.c_g)
 #plt.plot(erange, spectra); plt.imshow()
 
-spectrum = scattering_model.get_spectra(atompoints, 30, 4) #radius doesn't matter much here, just has to be larger than the radius of the actual atoms (can hard code this, given we have c.r)
+spectrum = scattering_model.get_spectra(atompoints/100, 30, 4) #radius doesn't matter much here, just has to be larger than the radius of the actual atoms (can hard code this, given we have c.r)
 pdb.set_trace()
 plt.plot(erange, spectra); plt.savefig("spectrum_test.png")
