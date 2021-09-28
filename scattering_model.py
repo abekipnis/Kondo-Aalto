@@ -118,14 +118,14 @@ def gs(atom_locs, latt_sites, erange, spectrumpt):
         s.append(LDOS[speclatidx])
     return s
 
-def get_spectra(atom_locs, n_sites, radius):
+def get_spectra(atom_locs, n_sites, radius, erange):
     atom_locs = Q_(atom_locs, "nm")
     s = []
-    for e in np.arange(-0.067, 0.067, 0.01):
+    for e in erange:
         E = Q_(e,"volt")*electron_charge
         k_tip = k(E, m_e, E_0)
         LDOS = calc_LDOS(atom_locs, n_sites, radius, k_tip)
-        s.append(LDOS[0][0])
+        s.append(LDOS)
     return s
 
 # s = get_spectra(atom_locs, 32, radius)
