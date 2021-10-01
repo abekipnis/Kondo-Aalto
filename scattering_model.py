@@ -62,6 +62,8 @@ def create_A_matrix(n_atoms, atom_locs, k_tip):
 
 def calc_LDOS(atom_locs, n_sites, radius, k_tip):
     n_atoms = len(atom_locs)
+    pdb.set_trace()
+    atom_locs -= np.mean(atom_locs, axis=-1)
     a0 = np.zeros(n_atoms)
     aT = np.zeros(n_atoms)
     m = Q_(np.asarray(np.linspace(0, 3*radius, n_sites)),"nm")
@@ -70,8 +72,7 @@ def calc_LDOS(atom_locs, n_sites, radius, k_tip):
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
     for n in range(n_sites):
         for m in range(n_sites):
-            LDOS[n][m] = LDOS_at_point(X[n][m].magnitude,Y[n][m].magnitude,A, k_tip, atom_locs)
-    #
+            LDOS[n][m] = LDOS_at_point(X[n][m].magnitude, Y[n][m].magnitude,A, k_tip, atom_locs)
     plt.imshow(LDOS)
     plt.colorbar()
     return LDOS
