@@ -177,8 +177,6 @@ def plot_fano_fit_line(f):
     ax1.set_xticklabels(["%d" %(int(d[0])) for d in np.array(ns)[0::3]])
 
     ax1.tick_params(axis="x", bottom=False, top=True, labelbottom=False, labeltop=True)
-    # [tick.set_label1("a") for tick in ax1.xaxis.get_major_ticks()]
-    # [tick.set_label1("a") for tick in ax1.xaxis.get_major_ticks()]
 
     ax2.errorbar(dists, d1["e0"], yerr=covs["e0"], fmt='o')
     ax2.set_xlim([0,len_nm])
@@ -192,6 +190,7 @@ def plot_fano_fit_line(f):
     ax4 = ax3.twinx()
     ax4.errorbar(dists, d1["w"]/kb*1e-3, yerr=covs["w"]/kb*1e-3, fmt='o')
     # expected Kondo temperature for Co on Ag111 is 92K
+    # where is this from?
     # width = 2k_BT_K
 
     ax5.matshow(specdata)
@@ -224,7 +223,7 @@ def plot_fano_fit_line(f):
     fig.suptitle("Fano fits to Kondo resonance on corral central atom: %s\%s" %(a1, a2))
     # add red lines across where the fit happens
 
-    # may have to adjust axes limits if sigma blows up
+    # have to adjust axes limits since sigma blows up
     # ax2.set_ylim([0, 15])
     # ax3.set_ylim([0, 15])
     # ax4.set_ylim([0, 15/kb*1e-3])
@@ -256,7 +255,7 @@ def fano(V, e0, w, q, a, b, c):
     fit_func = a*((q + eps(V, e0, w))**2/(1+eps(V, e0, w)**2))+ b*np.array(V) + c
     return fit_func
 
-def fano_w_therm_broadening(T, V, e0, w, q, a, b, c):
+def fano_t_broad(T, V, e0, w, q, a, b, c):
     # padding so there are no edge effects from convolution included in fit
     dV = np.abs(V[0] - V[1])
     padmVs = np.abs(V[0]-V[-1])/2 # padding (in mV) on either side of fit range
@@ -273,34 +272,7 @@ def fano_w_therm_broadening(T, V, e0, w, q, a, b, c):
     # function over the space, including thermal broadening, w/no edge effects
     return np.convolve(fit, conv, mode="same")[pad_idcs:-pad_idcs]
 
-def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
-             savefig: bool = True, showfig: bool = True) -> list:
-    bias, dIdV, current, a, xpos, ypos, T = get_spec_data(file)
-
-    # implement thermal broadening integral here?
-    if marker1==0 and marker2==0: # then create / get new markers
-        fig , ax = plt.subplots()
-        line = plt.plot(bias, dIdV)
-        lines = [line]
-        markers = []
-        for n, l in enumerate(lines):
-            c = "black" #l[0].get_color()
-            # initialize the markers at the following two locations
-            for b in [-20, 20]:
-                mini = np.argmin(np.abs(np.array(bias)-b))
-                ix = l[0].get_xdata()[mini]
-                iy = l[0].get_ydata()[mini]
-                d = DraggableMarker(ax=ax, lines=l,
-                                    initx=ix, inity=iy, color=c,
-                                    marker=">", dir=dir)
-                markers.append(d)
-        plt.title(os.path.split(file)[-1])
-        plt.show()
-
-        marker_vals = sorted([m.marker[0].get_xydata()[0] for m in markers], key=lambda x: x[0])
-        marker1 = marker_vals[0][0]
-        marker2 = marker_vals[1][0]
-
+def fit_data(bias, dIdV, marker1, marker2):
     # data for which we are fitting the Fano function
     smallbias = [(n,b) for (n,b) in enumerate(bias) if b>=marker1 and b<=marker2]
     nsb, sb = np.array(smallbias).T
@@ -318,18 +290,48 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
                         [0, max(fit_dIdV)],                 # a
                         [-np.inf,np.inf],                   # b
                         [-np.inf,np.inf]]).T                # c
-    # fix temperature while still fitting other Fano parameters
+    # fix temperature while fitting other Fano parameters
     def fix_T(T):
-        return lambda V, e0, w, q, a, b, c: fano_w_therm_broadening(T, V, e0, w, q, a, b, c)
+        return lambda V, e0, w, q, a, b, c: fano_t_broad(T, V, e0, w, q, a, b, c)
 
     try:
         # popt, pcov = optimize.curve_fit(fix_T(T), sb, fit_dIdV, p0=p0, bounds=bounds)
         popt, pcov = optimize.curve_fit(fano, sb, fit_dIdV, p0=p0, bounds=bounds)
-        # popt1, _ = optimize.curve_fit(fano, sb, fit_dIdV, p0=p0, bounds=bounds)
+        return popt, pcov, sb, fit_dIdV
 
     except RuntimeError as e:
         print(e)
-        # exit(0)
+        n = np.ones((len(p0)))*np.nan
+        return n, n, sb, fit_dIdV
+
+def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
+             savefig: bool = True, showfig: bool = True) -> list:
+    bias, dIdV, current, a, xpos, ypos, T = get_spec_data(file)
+    if marker1==0 and marker2==0: # then create / get new markers
+        fig , ax = plt.subplots()
+        line = plt.plot(bias, dIdV)
+        lines = [line]
+        markers = []
+        for n, l in enumerate(lines):
+            c = "black" #l[0].get_color()
+            # initialize markers at the following two locations
+            for b in [-20, 20]:
+                mini = np.argmin(np.abs(np.array(bias)-b))
+                ix = l[0].get_xdata()[mini]
+                iy = l[0].get_ydata()[mini]
+                d = DraggableMarker(ax=ax, lines=l,
+                                    initx=ix, inity=iy, color=c,
+                                    marker=">", dir=dir)
+                markers.append(d)
+        plt.title(os.path.split(file)[-1])
+        plt.show()
+
+        marker_vals = sorted([m.marker[0].get_xydata()[0] for m in markers],
+                             key=lambda x: x[0])
+        marker1 = marker_vals[0][0]
+        marker2 = marker_vals[1][0]
+
+    popt, pcov, sb, fit_dIdV = fit_data(bias, dIdV, marker1, marker2)
 
     fig, ax = plt.subplots()
 
@@ -342,7 +344,6 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
     # l = list(sorted(y, key=lambda x: residual(fit_dIdV, fano(sb, *x))))[-2:]
 
     # plt.fill_between(sb, fano(sb, *l[0]), fano(sb, *l[1]))
-
 
     # trans = transforms.blended_transform_factory(
     #     ax.transAxes, ax.transAxes) #ax.transData
@@ -366,11 +367,11 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
 
     plt.plot(bias, dIdV)
     plt.plot(sb, fit_dIdV,"b-")
-    f = fano(sb, *popt)
+    # f = fano(sb, *popt)
 
     # f = fix_T(T)(sb, *popt)
     # plt.plot(bias, fix_T(T)(bias, *popt), "black")
-    plt.plot(sb, f,'r--')
+    plt.plot(sb, fano(sb, *popt),'r--')
     # plt.plot(sb, fano(sb, *popt1),'go', markersize=2)
 
     residY, residtot = residual(fit_dIdV, f) #NORMALIZE THIS BY # OF FIT POINTS
@@ -380,7 +381,6 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
     t1 = os.path.split(file.split(dpath)[-1])
     t = t1[-1]
     plt.title("\n".join(list(t1)))
-    # plt.legend(["data",r'fit data',"model w thermal broadening", "model w/o thermal broadening"])
     plt.legend(["data",r'fit data',"model w/o thermal broadening"])
     if savefig:
         plt.savefig(file.split(".VERT")[0]+"%s_fano_fit.png" %(t))
@@ -394,8 +394,6 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
         plt.savefig(file.split(".VERT")[0]+"%s_fit_residual.png" %(t))
     if showfig:
         plt.show()
-
-
 
     plt.close()
     return [popt, pcov, marker1, marker2, xpos, ypos, residtot]
@@ -544,7 +542,7 @@ class Application(tk.Frame):
             if self.var3.get():
                 path = asksaveasfile(parent=root,
                                      # defaultextension=["txt", "*.txt"],
-                                     initialfile=filenames[0]).name
+                                     initialfile=filenames[0].split("/")[-1][0:-9]+".txt").name
                 self.update()
                 save_fano_fits(filenames, opts, covs, m1, m2, path, xs, ys, resids)
                 plot_fano_fit_line(path)
