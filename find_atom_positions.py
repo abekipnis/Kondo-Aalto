@@ -515,7 +515,7 @@ if __name__=="__main__":
         c.subtract_plane()
         c.get_region_centroids(diamond_size=5, sigmaclip=2)
 
-        # the box size to fit atom positions
+        # box size to fit atom positions
         box_size_nm = 1.5
         box_size_pix = int(c.nm_to_pix(box_size_nm))
         while True: # may have to iterate to make the box size smaller
@@ -528,7 +528,7 @@ if __name__=="__main__":
                 box_size_nm-=0.1
                 box_size_pix = int(c.nm_to_pix(box_size_nm))
 
-        # if the corral is occupied, remove central atoms
+        # if corral is occupied, remove central atoms
         if c.occupied:
             atoms_n = c.remove_central_atom(array(c.centroids))
             atoms_g = c.remove_central_atom(c.gauss_fit_locs.T)
