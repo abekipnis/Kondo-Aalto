@@ -62,7 +62,6 @@ def create_A_matrix(n_atoms, atom_locs, k_tip):
 
 def calc_LDOS(atom_locs, n_sites, radius, k_tip):
     n_atoms = len(atom_locs)
-    pdb.set_trace()
     atom_locs -= np.mean(atom_locs, axis=0)
     a0 = np.zeros(n_atoms)
     aT = np.zeros(n_atoms)
