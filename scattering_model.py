@@ -4,9 +4,12 @@ from scipy.spatial import distance_matrix
 import pint
 import cmath
 import numpy as np
+import multiprocessing
 from multiprocessing import Pool
 import pdb
-
+from time import time
+from multiprocessing import Pool, freeze_support
+import matplotlib.pyplot as plt
 ureg = pint.UnitRegistry()
 Q_ = ureg.Quantity
 
@@ -117,16 +120,37 @@ def gs(atom_locs, latt_sites, erange, spectrumpt):
         s.append(LDOS[speclatidx])
     return s
 
+def get_LDOS(e, atom_locs, n_sites, radius):
+    ts = time()
+    print(multiprocessing.current_process())
+    E = Q_(e,"volt")*electron_charge
+    k_tip = k(E, m_e, E_0)
+    LDOS = calc_LDOS(atom_locs, n_sites, radius, k_tip)
+    print(time()-ts)
+    return LDOS
+
 def get_spectra(atom_locs, n_sites, radius, erange):
     atom_locs = Q_(atom_locs, "nm")
     s = []
+    print(multiprocessing.cpu_count()) 
+
+    p = [(e, atom_locs, n_sites, radius) for e in erange]
+    with Pool(5) as pool:
+    #    pdb.set_trace()
+        s = pool.starmap(get_LDOS, p)
+    return s
+    """ 
     for e in erange:
-        E = Q_(e,"volt")*electron_charge
+        ts = time()
+        
+	E = Q_(e,"volt")*electron_charge
         k_tip = k(E, m_e, E_0)
         LDOS = calc_LDOS(atom_locs, n_sites, radius, k_tip)
         s.append(LDOS)
+        te = time()
+        print(te-ts)
     return s
-
+"""
 # s = get_spectra(atom_locs, 32, radius)
 #
 # LDOS = calc_LDOS(atom_locs, n_sites, radius, k_tip)
