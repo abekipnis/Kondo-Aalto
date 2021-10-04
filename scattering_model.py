@@ -63,12 +63,12 @@ def create_A_matrix(n_atoms, atom_locs, k_tip):
                     alpha0) # a0
     return A
 
-def calc_LDOS(atom_locs, n_sites, radius, k_tip):
+def calc_LDOS(atom_locs, n_sites, nmxyrange, k_tip):
     n_atoms = len(atom_locs)
     atom_locs -= np.mean(atom_locs, axis=0)
     a0 = np.zeros(n_atoms)
     aT = np.zeros(n_atoms)
-    m = Q_(np.asarray(np.linspace(-1.5*radius, 1.5*radius, n_sites)),"nm")
+    m = Q_(np.asarray(nmxyrange),"nm")
     X, Y = np.meshgrid(m, m)
     LDOS = np.zeros((n_sites,n_sites))
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
@@ -97,16 +97,6 @@ def c_LDOS(atom_locs, latt_sites, k_tip):
     plt.show()
     return LDOS
 
-# n_atoms = 8
-# radius = 2.5
-
-# atom_locs = get_atom_locs(n_atoms, radius)
-# e = 0.06
-# E = Q_(e,"volt")*electron_charge
-# k_tip = k(E, m_e, E_0)
-# LDOS = calc_LDOS(atom_locs, 31, radius, k_tip)
-# np.std(LDOS)
-
 def gs(atom_locs, latt_sites, erange, spectrumpt):
     s = []
     # where in the lattice array do we need to index into to get the
@@ -120,45 +110,22 @@ def gs(atom_locs, latt_sites, erange, spectrumpt):
         s.append(LDOS[speclatidx])
     return s
 
-def get_LDOS(e, atom_locs, n_sites, radius):
+def get_LDOS(e, atom_locs, nmxyrange, radius):
     ts = time()
     print(multiprocessing.current_process())
     E = Q_(e,"volt")*electron_charge
     k_tip = k(E, m_e, E_0)
-    LDOS = calc_LDOS(atom_locs, n_sites, radius, k_tip)
+    LDOS = calc_LDOS(atom_locs, n_sites, nmxyrange, k_tip)
     print(time()-ts)
     return LDOS
 
-def get_spectra(atom_locs, n_sites, radius, erange):
+def get_spectra(atom_locs, n_sites, nmxyrange, erange):
     atom_locs = Q_(atom_locs, "nm")
     s = []
-    print(multiprocessing.cpu_count()) 
+    print(multiprocessing.cpu_count())
 
-    p = [(e, atom_locs, n_sites, radius) for e in erange]
+    p = [(e, atom_locs, n_sites, nmxyrange) for e in erange]
     with Pool(5) as pool:
     #    pdb.set_trace()
         s = pool.starmap(get_LDOS, p)
     return s
-    """ 
-    for e in erange:
-        ts = time()
-        
-	E = Q_(e,"volt")*electron_charge
-        k_tip = k(E, m_e, E_0)
-        LDOS = calc_LDOS(atom_locs, n_sites, radius, k_tip)
-        s.append(LDOS)
-        te = time()
-        print(te-ts)
-    return s
-"""
-# s = get_spectra(atom_locs, 32, radius)
-#
-# LDOS = calc_LDOS(atom_locs, n_sites, radius, k_tip)
-#
-#
-# plt.plot(np.arange(-0.067, 0.067, 0.01),s)
-#
-#
-#
-#
-# (delayed(LDOS_at_point)(X[n][m].magnitude, Y[n][m].magnitude) )
