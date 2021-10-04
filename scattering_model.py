@@ -76,9 +76,9 @@ def calc_LDOS(atom_locs, nmxyrange, k_tip):
     for n in range(n_sites):
         for m in range(n_sites):
             LDOS[n][m] = LDOS_at_point(X[n][m].magnitude, Y[n][m].magnitude,A, k_tip, atom_locs)
-    plt.imshow(LDOS)
-    plt.colorbar()
-    plt.show()
+    # plt.imshow(LDOS)
+    # plt.colorbar()
+    # plt.show()
     return LDOS
 
 
