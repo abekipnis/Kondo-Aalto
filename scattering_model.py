@@ -70,15 +70,13 @@ def calc_LDOS(atom_locs, nmxyrange, k_tip):
     aT = np.zeros(n_atoms)
     m = Q_(np.asarray(nmxyrange),"nm")
     n_sites = len(nmxyrange)
+    print(n_sites)
     X, Y = np.meshgrid(m, m)
     LDOS = np.zeros((n_sites,n_sites))
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
     for n in range(n_sites):
         for m in range(n_sites):
             LDOS[n][m] = LDOS_at_point(X[n][m].magnitude, Y[n][m].magnitude,A, k_tip, atom_locs)
-    # plt.imshow(LDOS)
-    # plt.colorbar()
-    # plt.show()
     return LDOS
 
 
