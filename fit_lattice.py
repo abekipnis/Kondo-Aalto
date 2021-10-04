@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 import argparse
 if __name__=="__main__":
 	parser = argparse.ArgumentParser()
-	parser.add_argument("emin", type=float, action="store_const")
-	parser.add_argument("emax", type=float, action="store_const")
-	parser.add_arguemtn("n_es", type=int, actions="store_const")
+	parser.add_argument("emin", action="store_const")
+	parser.add_argument("emax", action="store_const")
+	parser.add_arguemtn("n_es", actions="store_const")
 	args = parser.parse_args()
 
 	#c = CircCorralData("test/Createc2_210811.092547.dat","test/Createc2_210811.092547.dat")
