@@ -69,6 +69,7 @@ def calc_LDOS(atom_locs, nmxyrange, k_tip):
     a0 = np.zeros(n_atoms)
     aT = np.zeros(n_atoms)
     m = Q_(np.asarray(nmxyrange),"nm")
+    pdb.set_trace()
     n_sites = len(nmxyrange)
     X, Y = np.meshgrid(m, m)
     LDOS = np.zeros((n_sites,n_sites))
@@ -78,6 +79,7 @@ def calc_LDOS(atom_locs, nmxyrange, k_tip):
             LDOS[n][m] = LDOS_at_point(X[n][m].magnitude, Y[n][m].magnitude,A, k_tip, atom_locs)
     plt.imshow(LDOS)
     plt.colorbar()
+    plt.show()
     return LDOS
 
 
@@ -127,6 +129,5 @@ def get_spectra(atom_locs, nmxyrange, erange):
 
     p = [(e, atom_locs, nmxyrange) for e in erange]
     with Pool(5) as pool:
-    #    pdb.set_trace()
         s = pool.starmap(get_LDOS, p)
     return s
