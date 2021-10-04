@@ -111,7 +111,7 @@ def gs(atom_locs, latt_sites, erange, spectrumpt):
         s.append(LDOS[speclatidx])
     return s
 
-def get_LDOS(e, atom_locs, nmxyrange, radius):
+def get_LDOS(e, atom_locs, nmxyrange):
     ts = time()
     print(multiprocessing.current_process())
     E = Q_(e,"volt")*electron_charge
