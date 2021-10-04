@@ -125,7 +125,7 @@ def get_spectra(atom_locs, n_sites, nmxyrange, erange):
     s = []
     print(multiprocessing.cpu_count())
 
-    p = [(e, atom_locs, n_sites, nmxyrange) for e in erange]
+    p = [(e, atom_locs, nmxyrange) for e in erange]
     with Pool(5) as pool:
     #    pdb.set_trace()
         s = pool.starmap(get_LDOS, p)

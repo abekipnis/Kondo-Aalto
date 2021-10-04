@@ -40,7 +40,7 @@ nmxyrange = c.pix_to_nm(np.arange(-c.xPix/2,c.xPix/2))
 #spectra = scattering_model.gs(atompoints, latt, erange, c.c_g)
 #plt.plot(erange, spectra); plt.imshow()
 #get_spectra(atom_locs (in nm), n_sites (i.e. box size in pixels), r (radius in nm), erange)
-spectrum = scattering_model.get_spectra(atompoints/100, 10, nmxyrange, erange) #radius doesn't matter much here, just has to be larger than the radius of the actual atoms (can hard code this, given we have c.r)
+spectrum = scattering_model.get_spectra(atompoints/100, nmxyrange, erange) #radius doesn't matter much here, just has to be larger than the radius of the actual atoms (can hard code this, given we have c.r)
 spectrum = np.array(spectrum)
 for i, e in enumerate(erange):
 	plt.close(); plt.imshow(spectrum[i,:,:]); plt.savefig("spectrum_testi_%1.2lf.png" %(e))
