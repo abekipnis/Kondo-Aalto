@@ -69,7 +69,6 @@ def calc_LDOS(atom_locs, nmxyrange, k_tip):
     a0 = np.zeros(n_atoms)
     aT = np.zeros(n_atoms)
     m = Q_(np.asarray(nmxyrange),"nm")
-    pdb.set_trace()
     n_sites = len(nmxyrange)
     X, Y = np.meshgrid(m, m)
     LDOS = np.zeros((n_sites,n_sites))
