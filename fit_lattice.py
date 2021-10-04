@@ -33,8 +33,7 @@ atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=5)
 erange = np.arange(-0.020, 0.020, 0.005)
 
 lpoints = 20
-nmxyrange = np.arange(c.pix_to_nm(np.arange(-c.xPix/2,c.xPix/2)))
-
+nmxyrange = c.pix_to_nm(np.arange(-c.xPix/2,c.xPix/2))
 
 # this takes too long if using the generated lattice from the fit
 # better to use lattice generated from numpy mesh
