@@ -4,7 +4,7 @@ from pdb import set_trace
 import scipy.signal
 import pandas as pd
 import matplotlib.animation as animation
-from matplotlib.animation import FuncAnimation
+# from matplotlib.animation import FuncAnimation
 import importlib
 read_vertfile = importlib.import_module("Kondo data analysis.read_vertfile")
 import createc
@@ -72,7 +72,6 @@ class Grid:
 
         _, self.xpix, self.ypix = self.cube_array.shape
         self.nmx, self.nmy = self.get_im_size()
-
 
     def get_im_size(self):
         f = open(self.file+".dat","rb")
@@ -142,7 +141,7 @@ class Grid:
         assert self.xpix==self.ypix and self.nmx==self.nmy
         return nm*self.xpix/self.nmx*10
 
-    def animate_cube(self, cut=True, mn=0, sd=0, interval=75, cmap='hot', ptx=0, pty=0, ptx2=0, pty2=0):
+    def animate_cube(self, mn=0, sd=0, interval=75, cmap='hot', plotpoints=[[0,0],[0,0]]):
         '''
         animates a cube for visualisation.
 
@@ -154,100 +153,117 @@ class Grid:
             sd          : std of the cube  | Used for contrast
             interval    : #of ms between each frame.
             cmap        : colormap. Default='hot'
+            plotpoints  : [[x1,y1], [x2,y2]]
 
         OUTPUT:
             animated window going through the cube.
 
         '''
-        offset = 20 # because first N (20) points of spectrum are at 20mV
+        class PauseAnimation:
+            def __init__(self, g, plotpoints):
+                self.g = g
+                gsk = {'width_ratios': [2, 1]}
+                self.pts = plotpoints
+                self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, gridspec_kw=gsk)
 
 
-        # defining range of pixels over which to plot Fano fit in grid
-        # xpixmin = ypixmin = 30
-        # xpixmax = ypixmax = 70
-        # self.fit_Fano_to_grid_data(xpixmin, xpixmax, ypixmin, ypixmax, offset)
+                offset = 20 # because first N (20) points of spectrum are at 20mV
 
-        #for the 2.5nm radius empty corral these are at the middle / node
-        # ptx, pty = 40, 40 # plot the LDOS from this pixel on the right
-        # ptx2, pty2 = 30, 30
+                # range of pixels over which to plot Fano fit in grid
+                # xpixmin = ypixmin = 30
+                # xpixmax = ypixmax = 70
+                # self.fit_Fano_to_grid_data(xpixmin, xpixmax, ypixmin, ypixmax, offset)
+                mn = np.mean(self.g.cube_array[-1])
+                sd = np.std(self.g.cube_array[-1])
+                self.img = self.ax1.imshow(self.g.cube_array[-1],
+                                animated=True,
+                                cmap=cmap,
+                                vmax=mn+3*sd,
+                                vmin=mn-3*sd,
+                                extent=[0, g.nmx/10.,0, g.nmy/10.])
+                self.ax1.set_xlabel("nm")
+                self.ax1.set_ylabel("nm")
 
-        cut = 3 # cut these points out from the beginning and end of the pixel array
+                # s is a PathCollection object
+                # s.get_sizes() looks at default size (36)
+                for p in plotpoints:
+                    s = self.ax1.scatter([p[0]],[p[1]], s=15)
+                self.cbar = self.fig.colorbar(self.img, ax=self.ax1, shrink=0.6)
 
-        fig, (ax1, ax2) = plt.subplots(1, 2, gridspec_kw={'width_ratios': [2, 1]})
-        mn = np.mean(self.cube_array[-1][cut:-cut,cut:-cut])
-        sd = np.std(self.cube_array[-1][cut:-cut,cut:-cut])
-        img = ax1.imshow(self.cube_array[-1][cut:-cut,cut:-cut],
-                        animated=True,
-                        cmap=cmap,
-                        vmax=mn+3*sd,
-                        vmin=mn-3*sd,
-                        extent=[0, self.nmx/10.,0, self.nmy/10.])
-        ax1.set_xlabel("nm")
-        ax1.set_ylabel("nm")
+                self.title = self.ax1.text(0.5,0.85, 'V= %1.2lf mV' %(self.g.specvz3[0,0]),
+                            bbox={'facecolor':'w', 'alpha':0.5, 'pad':5},
+                            transform=self.ax1.transAxes, ha="center")
 
-        # s1 and s2 are PathCollection objects
-        # s1.get_sizes() looks at default s (default size is 36)
-        s1 = ax1.scatter([ptx],[pty], s=20)
-        s2 = ax1.scatter([ptx2],[pty2], s=20)
-        cbar = fig.colorbar(img, ax=ax1, shrink=0.6)
+                # cut off points from end of spectra because dIdV saturates at end
+                # probably due to not setting bias to the starting point of spectra
+                # or some other effect
+                # makes it hard to see the details in the spectrum
+                # we have to either manually change the axes limits or just cut off part of the data in the visualisation
 
-        title = ax1.text(0.5,0.85, 'V= %1.2lf mV' %(self.specvz3[0,0]),
-                    bbox={'facecolor':'w', 'alpha':0.5, 'pad':5},
-                    transform=ax1.transAxes, ha="center")
+                self.offset = 10
 
-        # cut off some points from end of spectra because dIdV saturates at the end
-        # probably due to not setting the bias to the starting point of the spectra
-        # or some other effect
-        # makes it hard to see the details in the spectrum
-        # we have to either manually change the axes limits or just cut off part of the data in the visualisation
+                self.pts = np.array(list(map(int,map(self.g.nm_to_pix, np.array(plotpoints).flatten())))).reshape(len(plotpoints),2)
+                # pdb.set_trace()
+                self.pts[:,0] = self.g.xpix-self.pts[:,0]
+                self.pts[:,1] = self.g.ypix-self.pts[:,1]
+                for p in self.pts:
+                    self.ax2.plot(self.g.specvz3[:,-1][offset:-1], self.g.cube_array[:, p[1], p[0]][offset:-1])
 
-        offset = 10
+                self.ax2.yaxis.tick_right()
+                self.ax2.set_xlabel("Bias (mV)")
+                self.ax2.set_ylabel("dI/dV (a.u)")
+                self.ax1.set_title("LDOS(V,r)")
+                self.cbar.set_ticks([])
+                self.ax2.set_adjustable('box')
+                self.ax2.set_aspect(0.1)
+                self.paused = False
 
-        px, py, px2, py2 = map(int,map(self.nm_to_pix,[ptx, pty, ptx2, pty2]))
-        ax2.plot(self.specvz3[:,-1][offset:-1], self.cube_array[:,px, py][offset:-1])
-        ax2.plot(self.specvz3[:,-1][offset:-1], self.cube_array[:,px2, py2][offset:-1])
 
-        ax2.yaxis.tick_right()
-        ax2.set_xlabel("Bias (mV)")
-        ax2.set_ylabel("dI/dV (a.u)")
-        ax1.set_title("LDOS(V,r)")
-        cbar.set_ticks([])
-        ax2.set_adjustable('box')
-        ax2.set_aspect(0.1)
-        def updatefig(i):
-            i = 520-i #to do it in reverse
-            d = self.cube_array[i][cut:-cut,cut:-cut]
+                plt.suptitle("2.5 nm radius occupied corral", y=0.95)
 
-            title.set_text('V= %1.2lf mV' %(self.specvz3[i,0]))
-            mn = np.mean(d)
-            sd = np.std(d)
-            ax1.images[0].colorbar.remove()
-            img.set_array(d)#, )
-            img.set_clim(vmax=mn+3*sd, vmin=mn-3*sd)
-            #
-            cbar = fig.colorbar(img, ax=ax1, shrink=0.6)
-            cbar.set_ticks([])
-            cbar.update_normal(img)
-            # cbar.clim(vmin=d.min(),vmax=d.max())
-            # cbar.draw_all()
-            # ax2.remove()
-            ax2.clear()
-            ax2.plot(self.specvz3[:,0][offset:-1], self.cube_array[:,px, py][offset:-1])
-            ax2.plot(self.specvz3[:,0][offset:-1], self.cube_array[:,px2, py2][offset:-1])
+                self.animation = animation.FuncAnimation(self.fig, self.updatefig, frames=g.cube_array.shape[0], interval=interval, blit=True)
+                self.fig.canvas.mpl_connect('button_press_event', self.toggle_pausefig)
 
-            ax2.axvline(self.specvz3[i,0], c='r')
-            title2 = ax2.text(0.5,1.1, "dI/dV point spectra from grid", #bbox={'facecolor':'w', 'alpha':1, 'pad':5}
-                         transform=ax2.transAxes, ha="center")
-            ax2.set_xlabel("Bias (mV)")
-            ax2.set_ylabel("dI/dV (a.u)")
-            ax2.set_yticks([])
-            return img,
-        plt.suptitle("2.5 nm radius occupied corral", y=0.95)
+                self.animation.save(g.file+'_cube_movie.mp4', writer="ffmpeg", fps=28)
 
-        ani = animation.FuncAnimation(fig, updatefig, frames=self.cube_array.shape[0], interval=interval, blit=True)
-        plt.show()
-        ani.save(self.file+'_cube_movie.mp4', writer="ffmpeg", fps=28)
+            def toggle_pausefig(self, *args, **kwargs):
+                if self.paused:
+                    self.animation.resume()
+                else:
+                    self.animation.pause()
+                self.paused = not self.paused
 
+            def updatefig(self, i):
+                i = len(self.g.specvz3)-1-i #to do it in reverse
+                d = self.g.cube_array[i]
+
+                self.title.set_text('V= %1.2lf mV' %(self.g.specvz3[i,0]))
+                mn = np.mean(d)
+                sd = np.std(d)
+                self.ax1.images[0].colorbar.remove()
+                self.img.set_array(d)
+                self.img.set_clim(vmax=mn+6*sd, vmin=mn-3*sd)
+
+
+                self.cbar = self.fig.colorbar(self.img, ax=self.ax1, shrink=0.6)
+                self.cbar.set_ticks([])
+                self.cbar.update_normal(self.img)
+
+                self.ax2.clear()
+                for p in self.pts:
+                    self.ax2.plot(self.g.specvz3[:,0][self.offset:-1], self.g.cube_array[:,p[1], p[0]][self.offset:-1])
+
+                self.ax2.axvline(self.g.specvz3[i,0], c='r')
+                self.title2 = self.ax2.text(
+                0.5,1.1, "dI/dV point spectra from grid",
+                             transform=self.ax2.transAxes, ha="center")
+                             #bbox={'facecolor':'w', 'alpha':1, 'pad':5}
+                self.ax2.set_xlabel("Bias (mV)")
+                self.ax2.set_ylabel("dI/dV (a.u)")
+                self.ax2.set_yticks([])
+                return self.img,
+
+        P = PauseAnimation(self, plotpoints)
 
 
 if __name__ == "__main__":
@@ -259,6 +275,6 @@ if __name__ == "__main__":
     # filename = dir +r'Ag 2021-08-16 2p5 nm radius empty/Createc2_210816.223358.specgrid'
     # filename = dir+r'/Ag 2021-08-12 4p5 nm radius/grid/Createc2_210813.001749.specgrid'
 
-
     freeze_support()
-    g.animate_cube(cut=False, ptx=3.3, pty=3.6, ptx2=3.3, pty2=4)
+    g.animate_cube(plotpoints=[[3.3, 3.6],[3.3, 3.8], [3.3, 4.0], [3.3, 4.2], [3.3, 4.4], [3.3, 4.6], [3.3, 4.8]])
+    # plt.show()
