@@ -64,7 +64,7 @@ class Grid:
 
         self.a, self.b = int(self.nx/self.specgriddx), int(self.ny/self.specgriddy)
         try:
-            self.specdata = data.reshape(self.a,self.b,len(self.specvz3),int(len(self.data)/self.a/self.b/len(self.specvz3)))
+            self.specdata = self.data.reshape(self.a,self.b,len(self.specvz3),int(len(self.data)/self.a/self.b/len(self.specvz3)))
         except:
             self.a, self.b = self.xend, self.yend
             self.specdata = self.data.reshape(self.a,self.b,len(self.specvz3),int(len(self.data)/self.a/self.b/len(self.specvz3)))
@@ -224,7 +224,7 @@ class Grid:
                 self.animation = animation.FuncAnimation(self.fig, self.updatefig, frames=g.cube_array.shape[0], interval=interval, blit=True)
                 self.fig.canvas.mpl_connect('button_press_event', self.toggle_pausefig)
 
-                self.animation.save(g.file+'_cube_movie.mp4', writer="ffmpeg", fps=28)
+                # self.animation.save(g.file+'_cube_movie.mp4', writer="ffmpeg", fps=28)
 
             def toggle_pausefig(self, *args, **kwargs):
                 if self.paused:
@@ -269,12 +269,19 @@ class Grid:
 if __name__ == "__main__":
     # read size of image from .specgrid.dat file
     dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
-    filename= dir +r"Ag 2021-08-13 2p5 nm radius/grid/Createc2_210814.214635.specgrid"
 
+    # there are three successful grids from the first data set 
+
+    # filename= dir +r"Ag 2021-08-13 2p5 nm radius/grid/Createc2_210814.214635.specgrid"
+    # g = Grid(filename)
+    # g.animate_cube(plotpoints=[[3.3, 3.6],[3.3, 3.8], [3.3, 4.0], [3.3, 4.2], [3.3, 4.4], [3.3, 4.6], [3.3, 4.8]])
+    # plt.show()
+
+    filename = dir +r'Ag 2021-08-16 2p5 nm radius empty/Createc2_210816.223358.specgrid'
     g = Grid(filename)
-    # filename = dir +r'Ag 2021-08-16 2p5 nm radius empty/Createc2_210816.223358.specgrid'
+    g.animate_cube(plotpoints=[[4.58, 4.36],[4.58, 4.86], [4.58, 5.36],[4.58,5.86],[4.58, 6.36],[4.58, 6.86]])
+    plt.show()
+
     # filename = dir+r'/Ag 2021-08-12 4p5 nm radius/grid/Createc2_210813.001749.specgrid'
 
     freeze_support()
-    g.animate_cube(plotpoints=[[3.3, 3.6],[3.3, 3.8], [3.3, 4.0], [3.3, 4.2], [3.3, 4.4], [3.3, 4.6], [3.3, 4.8]])
-    # plt.show()
