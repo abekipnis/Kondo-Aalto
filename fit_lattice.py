@@ -5,14 +5,16 @@ import numpy as np
 import scattering_model
 import matplotlib.pyplot as plt
 import argparse
+import multiprocessing
 if __name__=="__main__":
 	parser = argparse.ArgumentParser()
-	parser.add_argument("--emin", type=float)#, action="store_const")
-	parser.add_argument("--emax", type=float)#, action="store_const")
-	parser.add_argument("--n_es", type=int)#, actions="store_const")
+	parser.add_argument("--emin", type=float)
+	parser.add_argument("--emax", type=float)
+	parser.add_argument("--n_es", type=int)
+	parser.add_argument("--ngridpoints", type=int)
 	args = parser.parse_args()
 	""" for example, run from the command line like:
-	python3 fit_lattice.py --emin=-0.02 --emax=0.02 --n_es=5
+	python3 fit_lattice.py --emin=-0.02 --emax=0.02 --n_es=5 --ngridpoints=100
 	"""
 
 	#c = CircCorralData("test/Createc2_210811.092547.dat","test/Createc2_210811.092547.dat")
@@ -43,18 +45,18 @@ if __name__=="__main__":
 	atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=5)
 	erange = np.arange(args.emin, args.emax, (args.emax-args.emin)/args.n_es)
 
-	nmxyrange = c.pix_to_nm(np.arange(-c.xPix/2,c.xPix/2, 20))
-	pdb.set_trace()
+	nmxyrange = c.pix_to_nm(np.arange(0,c.xPix, c.xPix/20))
 	# this takes too long if using the generated lattice from the fit
 	# better to use lattice generated from numpy mesh
 	#spectra = scattering_model.gs(atompoints, latt, erange, c.c_g)
 	#plt.plot(erange, spectra); plt.imshow()
 	#get_spectra(atom_locs (in nm), n_sites (i.e. box size in pixels), r (radius in nm), erange)
-	spectrum = scattering_model.get_spectra(atompoints/100, nmxyrange, erange)
+	plt.close()
+	spectrum = scattering_model.get_spectra(c.pix_to_nm(atompoints), nmxyrange, erange)
 	spectrum = np.array(spectrum)
 	for i, e in enumerate(erange):
 		plt.close();
-		plt.imshow(spectrum[i,:,:]);
+		plt.imshow(spectrum[i,:,:], extent=[0,c.pix_to_nm(c.xPix),0,c.pix_to_nm(c.xPix)]);
 		plt.savefig("spectrum_testi_%1.2lf.png" %(e))
 	plt.close();
 
