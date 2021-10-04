@@ -29,17 +29,20 @@ c.r_n, c.c_n = c.nsphere_fit(atoms_n)
 c.r_g, c.c_g = c.nsphere_fit(atoms_g)
 
 c.compare_fits()
-atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=20)
+atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=5)
 erange = np.arange(-0.020, 0.020, 0.005)
 
-# this takes way too long if using the generated lattice from the fit
+lpoints = 20
+nmxyrange = np.arange(c.pix_to_nm(np.arange(-c.xPix/2,c.xPix/2)))
+
+
+# this takes too long if using the generated lattice from the fit
 # better to use lattice generated from numpy mesh
 #spectra = scattering_model.gs(atompoints, latt, erange, c.c_g)
 #plt.plot(erange, spectra); plt.imshow()
 #get_spectra(atom_locs (in nm), n_sites (i.e. box size in pixels), r (radius in nm), erange)
-spectrum = scattering_model.get_spectra(atompoints/100, 10, 4, erange) #radius doesn't matter much here, just has to be larger than the radius of the actual atoms (can hard code this, given we have c.r)
+spectrum = scattering_model.get_spectra(atompoints/100, 10, nmxyrange, erange) #radius doesn't matter much here, just has to be larger than the radius of the actual atoms (can hard code this, given we have c.r)
 spectrum = np.array(spectrum)
 for i, e in enumerate(erange):
 	plt.close(); plt.imshow(spectrum[i,:,:]); plt.savefig("spectrum_testi_%1.2lf.png" %(e))
 plt.close(); plt.plot(erange, spectrum[:,5,5]); plt.savefig("spectrum_test.png")
-
