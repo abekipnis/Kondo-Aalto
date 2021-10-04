@@ -63,12 +63,13 @@ def create_A_matrix(n_atoms, atom_locs, k_tip):
                     alpha0) # a0
     return A
 
-def calc_LDOS(atom_locs, n_sites, nmxyrange, k_tip):
+def calc_LDOS(atom_locs, nmxyrange, k_tip):
     n_atoms = len(atom_locs)
     atom_locs -= np.mean(atom_locs, axis=0)
     a0 = np.zeros(n_atoms)
     aT = np.zeros(n_atoms)
     m = Q_(np.asarray(nmxyrange),"nm")
+    n_sites = len(nmxyrange)
     X, Y = np.meshgrid(m, m)
     LDOS = np.zeros((n_sites,n_sites))
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
@@ -115,7 +116,7 @@ def get_LDOS(e, atom_locs, nmxyrange, radius):
     print(multiprocessing.current_process())
     E = Q_(e,"volt")*electron_charge
     k_tip = k(E, m_e, E_0)
-    LDOS = calc_LDOS(atom_locs, n_sites, nmxyrange, k_tip)
+    LDOS = calc_LDOS(atom_locs, nmxyrange, k_tip)
     print(time()-ts)
     return LDOS
 
