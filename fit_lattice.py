@@ -45,7 +45,7 @@ if __name__=="__main__":
 	atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=5)
 	erange = np.arange(args.emin, args.emax, (args.emax-args.emin)/args.n_es)
 
-	nmxyrange = c.pix_to_nm(np.arange(0,c.xPix, c.xPix/20))
+	nmxyrange = c.pix_to_nm(np.arange(0,c.xPix, c.xPix/args.ngridpoints))
 	# this takes too long if using the generated lattice from the fit
 	# better to use lattice generated from numpy mesh
 	#spectra = scattering_model.gs(atompoints, latt, erange, c.c_g)
