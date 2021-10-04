@@ -15,7 +15,7 @@ from matplotlib.widgets import Slider, Button
 from multiprocessing import Pool, freeze_support
 from find_atom_positions import CircCorralData
 class Grid:
-    __init__(self, file):
+    def __init__(self, file):
         self.file = file
         # Specgrid parameters are loaded and printed below
         f = open(file, "rb")
@@ -42,7 +42,7 @@ class Grid:
         self.specgridchan=a[14]
         self.specgridchannelselectval=a[15]
         self.specgriddatasize64=np.int64(a[17])
-        self.specgriddatasize64=(specgriddatasize64 << 32) + a[16]
+        self.specgriddatasize64=(self.specgriddatasize64 << 32) + a[16]
         self.xstart=a[18]
         self.xend=a[19]
         self.ystart=a[20]
@@ -55,19 +55,24 @@ class Grid:
         self.specgridcenterx=a[27]
         self.specgridcentery = a[28]
 
-        self.count3=vertpoints*3
+        self.count3=self.vertpoints*3
 
-        self.specvz = np.fromfile(f, dtype=np.float32,count=count3)
-        self.specvz3 = specvz.reshape(vertpoints,3)
+        self.specvz = np.fromfile(f, dtype=np.float32,count=self.count3)
+        self.specvz3 = self.specvz.reshape(self.vertpoints,3)
         self.data = np.fromfile(f, dtype=np.float32)
         f.close
 
-        self.a, self.b = int(self.nx/self.specgriddx), int(self.y/self.specgriddy)
+        self.a, self.b = int(self.nx/self.specgriddx), int(self.ny/self.specgriddy)
         try:
             self.specdata = data.reshape(self.a,self.b,len(self.specvz3),int(len(self.data)/self.a/self.b/len(self.specvz3)))
         except:
             self.a, self.b = self.xend, self.yend
-            self.specdata = data.reshape(self.a,self.b,len(self.specvz3),int(len(self.data)/self.a/self.b/len(self.specvz3)))
+            self.specdata = self.data.reshape(self.a,self.b,len(self.specvz3),int(len(self.data)/self.a/self.b/len(self.specvz3)))
+        self.cube_array = self.specdata[:,:,:,1].T
+
+        _, self.xpix, self.ypix = self.cube_array.shape
+        self.nmx, self.nmy = self.get_im_size()
+
 
     def get_im_size(self):
         f = open(self.file+".dat","rb")
@@ -77,11 +82,11 @@ class Grid:
         return ls #in angstroms
 
     def fit_Fano_to_grid_data(self, xpixmin, xpixmax, ypixmin,ypixmax, offset):
-        cube_array = self.specdata[:,:,:,1].T
-        xpmx_nm = pix_to_nm(xpixmax)
-        xpmn_nm = pix_to_nm(xpixmin)
+
+        xpmx_nm = self.pix_to_nm(xpixmax)
+        xpmn_nm = self.pix_to_nm(xpixmin)
         p = np.concatenate([    [   (self.specvz3[:,0][offset:-1],
-                                    cube_array[:,i,j][offset:-1],
+                                    self.cube_array[:,i,j][offset:-1],
                                     -15,20)
                                     for i in range(xpixmin,xpixmax)]
                             for j in range(ypixmin,ypixmax)])
@@ -129,6 +134,14 @@ class Grid:
 
             plt.savefig(l+".png")
 
+    def pix_to_nm(self, pix):
+        assert self.xpix==self.ypix and self.nmx==self.nmy
+        return pix * self.nmx/self.xpix
+
+    def nm_to_pix(self, nm):
+        assert self.xpix==self.ypix and self.nmx==self.nmy
+        return nm*self.xpix/self.nmx*10
+
     def animate_cube(self, cut=True, mn=0, sd=0, interval=75, cmap='hot', ptx=0, pty=0, ptx2=0, pty2=0):
         '''
         animates a cube for visualisation.
@@ -146,24 +159,13 @@ class Grid:
             animated window going through the cube.
 
         '''
-        cube_array = self.specdata[:,:,:,1].T
-        _, xpix, ypix = cube_array.shape
-
-        def pix_to_nm(pix):
-            assert xpix==ypix and nmx==nmy
-            return pix * nmx/xpix
-
-        def nm_to_pix(nm):
-            assert xpix==ypix and nmx==nmy
-            return nm*xpix/nmx*10
-        nmx, nmy = self.get_im_size()
         offset = 20 # because first N (20) points of spectrum are at 20mV
 
 
         # defining range of pixels over which to plot Fano fit in grid
-        xpixmin = ypixmin = 30
-        xpixmax = ypixmax = 70
-        fit_Fano_to_grid_data(xpixmin, xpixmax, ypixmin, ypixmax, offset)
+        # xpixmin = ypixmin = 30
+        # xpixmax = ypixmax = 70
+        # self.fit_Fano_to_grid_data(xpixmin, xpixmax, ypixmin, ypixmax, offset)
 
         #for the 2.5nm radius empty corral these are at the middle / node
         # ptx, pty = 40, 40 # plot the LDOS from this pixel on the right
@@ -172,14 +174,14 @@ class Grid:
         cut = 3 # cut these points out from the beginning and end of the pixel array
 
         fig, (ax1, ax2) = plt.subplots(1, 2, gridspec_kw={'width_ratios': [2, 1]})
-        mn = np.mean(cube_array[-1][cut:-cut,cut:-cut])
-        sd = np.std(cube_array[-1][cut:-cut,cut:-cut])
-        img = ax1.imshow(cube_array[-1][cut:-cut,cut:-cut],
+        mn = np.mean(self.cube_array[-1][cut:-cut,cut:-cut])
+        sd = np.std(self.cube_array[-1][cut:-cut,cut:-cut])
+        img = ax1.imshow(self.cube_array[-1][cut:-cut,cut:-cut],
                         animated=True,
                         cmap=cmap,
                         vmax=mn+3*sd,
                         vmin=mn-3*sd,
-                        extent=[0, nmx/10.,0, nmy/10.])
+                        extent=[0, self.nmx/10.,0, self.nmy/10.])
         ax1.set_xlabel("nm")
         ax1.set_ylabel("nm")
 
@@ -201,9 +203,9 @@ class Grid:
 
         offset = 10
 
-        px, py, px2, py2 = map(int,map(nm_to_pix,[ptx, pty, ptx2, pty2]))
-        ax2.plot(self.specvz3[:,-1][offset:-1], cube_array[:,px, py][offset:-1])
-        ax2.plot(self.specvz3[:,-1][offset:-1], cube_array[:,px2, py2][offset:-1])
+        px, py, px2, py2 = map(int,map(self.nm_to_pix,[ptx, pty, ptx2, pty2]))
+        ax2.plot(self.specvz3[:,-1][offset:-1], self.cube_array[:,px, py][offset:-1])
+        ax2.plot(self.specvz3[:,-1][offset:-1], self.cube_array[:,px2, py2][offset:-1])
 
         ax2.yaxis.tick_right()
         ax2.set_xlabel("Bias (mV)")
@@ -214,7 +216,7 @@ class Grid:
         ax2.set_aspect(0.1)
         def updatefig(i):
             i = 520-i #to do it in reverse
-            d = cube_array[i][cut:-cut,cut:-cut]
+            d = self.cube_array[i][cut:-cut,cut:-cut]
 
             title.set_text('V= %1.2lf mV' %(self.specvz3[i,0]))
             mn = np.mean(d)
@@ -230,8 +232,8 @@ class Grid:
             # cbar.draw_all()
             # ax2.remove()
             ax2.clear()
-            ax2.plot(self.specvz3[:,0][offset:-1],cube_array[:,px, py][offset:-1])
-            ax2.plot(self.specvz3[:,0][offset:-1],cube_array[:,px2, py2][offset:-1])
+            ax2.plot(self.specvz3[:,0][offset:-1], self.cube_array[:,px, py][offset:-1])
+            ax2.plot(self.specvz3[:,0][offset:-1], self.cube_array[:,px2, py2][offset:-1])
 
             ax2.axvline(self.specvz3[i,0], c='r')
             title2 = ax2.text(0.5,1.1, "dI/dV point spectra from grid", #bbox={'facecolor':'w', 'alpha':1, 'pad':5}
@@ -242,7 +244,7 @@ class Grid:
             return img,
         plt.suptitle("2.5 nm radius occupied corral", y=0.95)
 
-        ani = animation.FuncAnimation(fig, updatefig, frames=cube_array.shape[0], interval=interval, blit=True)
+        ani = animation.FuncAnimation(fig, updatefig, frames=self.cube_array.shape[0], interval=interval, blit=True)
         plt.show()
         ani.save(self.file+'_cube_movie.mp4', writer="ffmpeg", fps=28)
 
