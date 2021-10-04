@@ -120,7 +120,7 @@ def get_LDOS(e, atom_locs, nmxyrange, radius):
     print(time()-ts)
     return LDOS
 
-def get_spectra(atom_locs, n_sites, nmxyrange, erange):
+def get_spectra(atom_locs, nmxyrange, erange):
     atom_locs = Q_(atom_locs, "nm")
     s = []
     print(multiprocessing.cpu_count())
