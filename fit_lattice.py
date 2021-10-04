@@ -7,10 +7,13 @@ import matplotlib.pyplot as plt
 import argparse
 if __name__=="__main__":
 	parser = argparse.ArgumentParser()
-	parser.add_argument("emin", action="store_const")
-	parser.add_argument("emax", action="store_const")
-	parser.add_arguemtn("n_es", actions="store_const")
+	parser.add_argument("--emin", type=float)#, action="store_const")
+	parser.add_argument("--emax", type=float)#, action="store_const")
+	parser.add_argument("--n_es", type=int)#, actions="store_const")
 	args = parser.parse_args()
+	""" for example, run from the command line like:
+	python3 fit_lattice.py --emin=-0.02 --emax=0.02 --n_es=5
+	"""
 
 	#c = CircCorralData("test/Createc2_210811.092547.dat","test/Createc2_210811.092547.dat")
 	c = CircCorralData("test/Createc2_210813.102220.dat","Createc2_210813.102220")
@@ -38,11 +41,10 @@ if __name__=="__main__":
 
 	c.compare_fits()
 	atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=5)
-	erange = np.arange(emin, emax, (emax-emin)/n_es)
+	erange = np.arange(args.emin, args.emax, (args.emax-args.emin)/args.n_es)
 
-	nmxyrange = c.pix_to_nm(np.arange(-c.xPix/2,c.xPix/2,lpoints = 20))
+	nmxyrange = c.pix_to_nm(np.arange(-c.xPix/2,c.xPix/2, 20))
 	pdb.set_trace()
-
 	# this takes too long if using the generated lattice from the fit
 	# better to use lattice generated from numpy mesh
 	#spectra = scattering_model.gs(atompoints, latt, erange, c.c_g)
