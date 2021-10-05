@@ -65,9 +65,8 @@ if __name__=="__main__":
 	plt.savefig("spectrum_test.png")
 	plt.show()
 
-	pdb.set_trace()
-
 	l = scattering_model.spectrum_along_line(c.pix_to_nm(atompoints), erange)
+	pdb.set_trace()
 
 	spectrum = scattering_model.get_spectra(c.pix_to_nm(atompoints), nmxyrange, erange)
 	spectrum = np.array(spectrum)

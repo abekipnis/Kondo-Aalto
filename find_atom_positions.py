@@ -106,7 +106,7 @@ class CircCorralData:
         if show:
             plt.figure()
             plt.imshow(xim)
-            plt.show()
+            # plt.show()
             plt.close()
         regions_areas = [r.area for r in regions]
         regions_area_max = max(regions_areas)
@@ -129,6 +129,7 @@ class CircCorralData:
         c = [d for d in c if is_far_from_edge(self,d)]
         self.centroids = c
         print("%d centroids" %(len(self.centroids)))
+        plt.close()
 
     def remove_central_atom(self, data):
         # Check two ways
@@ -369,7 +370,7 @@ class CircCorralData:
                 %(self.pix_to_nm(offseta), self.pix_to_nm(offsetb), angle*180/np.pi),
                 bbox={'facecolor':'w', 'alpha':0.5, 'pad':5})#,
         plt.savefig(self.label.split("/")[-1].split(".dat")[0] + "topography_fit.png")
-        plt.show()
+        # plt.show()
 
         gloc = self.gauss_fit_locs
         mindists = np.argmin(distance_matrix(gloc.T, latt),axis=1)
@@ -402,7 +403,7 @@ class CircCorralData:
                 plt.scatter([params[2]], [params[1]], )
                 plt.scatter([box_size/2],[box_size/2],c="red")
                 plt.title("Fitting centroid %d" %(n))
-                plt.show()
+                # plt.show()
                 plt.close()
                 # plt.show()
 
@@ -444,7 +445,7 @@ class CircCorralData:
                 bbox={'facecolor':'w', 'alpha':0.5, 'pad':5})#,
         plt.title(self.label + "\nFits to circle, naive & gaussian fit positions")
         plt.savefig(self.label.split("/")[-1].split(".dat")[0] +"_circle_fits.png")
-
+        plt.close()
 def round_to_even(n):
     # return n rounded up to the nearest even integer
     return int(np.ceil(n/2.)*2)

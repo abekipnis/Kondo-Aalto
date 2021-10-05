@@ -150,7 +150,8 @@ def spectrum_along_line(atom_locs, erange):
     minx = min([a[0] for a in atom_locs])
     maxx = max([a[0] for a in atom_locs])
     line_spectrum = []
-    for l in np.arange(minx, maxx, (maxx-minx)/20):
+    pdb.set_trace()
+    for l in np.arange(minx.magnitude,maxx.magnitude,(maxx.magnitude-minx.magnitude)/100):
         spectrum = []
         for e in erange:
             E = Q_(e,"volt")*electron_charge
