@@ -67,7 +67,7 @@ if __name__=="__main__":
 
 	l = scattering_model.spectrum_along_line(c.pix_to_nm(atompoints), erange)
 	plt.imshow(np.rot90(np.array(l)));
-	plt.savefig("line_spectrum_test_%s.png" %(args.path))
+	plt.savefig("line_spectrum_test_%s.png" %(args.path.split("/")[-1]))
 
 	pdb.set_trace()
 
