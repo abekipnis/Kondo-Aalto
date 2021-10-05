@@ -1,8 +1,12 @@
 # Small Kondo Corrals data analysis
+These scripts are for analyzing Createc STM/SPS data files containing topographies / LDOS maps / spectra over quantum corrals on Ag111
+
+
 Several scripts within: 
 
 animate_grid
 - for reading grid spectra and saving movie file
+- also takes fit_fano functions from read_vertfile to fit Fano resonance to grid spectra over occupied corrals
 
 find_atom_positions
 - contains CircCorralData class, main function that analyzes all .dat files in data inventory Excel sheet 

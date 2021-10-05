@@ -147,12 +147,17 @@ get spectrum_along_line(atom_locs, erange):
     atom_locs -= np.mean(atom_locs, axis=0)
     atom_locs = Q_(atom_locs, "nm")
 
+    minx = min([a[0] for a in atom_locs])
+    maxx = max([a[0] for a in atom_locs])
     line_spectrum = []
-    for e in erange:
-        E = Q_(e,"volt")*electron_charge
-        k_tip = k(E, m_e, E_0)
-        A = create_A_matrix(n_atoms, atom_locs, k_tip)
-        line_spectrum.append(LDOS_at_point(0, 0, A, k_tip, atom_locs, n_atoms))
+    for l in np.arange(minx, maxx, (maxx-minx)/20):
+        spectrum = []
+        for e in erange:
+            E = Q_(e,"volt")*electron_charge
+            k_tip = k(E, m_e, E_0)
+            A = create_A_matrix(n_atoms, atom_locs, k_tip)
+            spectrum.append(LDOS_at_point(l, 0, A, k_tip, atom_locs, n_atoms))
+        line_spectrum.append(spectrum)
     return line_spectrum
 
 def get_spectra(atom_locs, nmxyrange, erange):
