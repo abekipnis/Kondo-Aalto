@@ -24,7 +24,7 @@ if __name__=="__main__":
 
 	#c = CircCorralData("test/Createc2_210811.092547.dat","test/Createc2_210811.092547.dat")
 	print(args.path)
-	c = CircCorralData(args.path, "Createc2_210812.165018.dat")
+	c = CircCorralData(args.path, args.path.split("/")[-1])
 
 	c.subtract_plane()
 	c.get_region_centroids(diamond_size=5, sigmaclip=2)
@@ -62,10 +62,13 @@ if __name__=="__main__":
 	s = scattering_model.get_spectrum_at_middle(c.pix_to_nm(atompoints), erange)
 	print("it took %1.2lf seconds to get point spectrum" %(time()-t))
 	plt.plot(erange, s);
-	plt.savefig("spectrum_test.png")
+	plt.savefig("point_spectrum_test.png")
 	plt.show()
 
 	l = scattering_model.spectrum_along_line(c.pix_to_nm(atompoints), erange)
+	plt.imshow(np.rot90(np.array(l)));
+	plt.savefig("line_spectrum_test_%s.png" %(args.path))
+
 	pdb.set_trace()
 
 	spectrum = scattering_model.get_spectra(c.pix_to_nm(atompoints), nmxyrange, erange)
