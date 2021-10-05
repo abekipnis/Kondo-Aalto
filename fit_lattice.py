@@ -62,6 +62,7 @@ if __name__=="__main__":
 	s = scattering_model.get_spectrum_at_middle(c.pix_to_nm(atompoints), erange)
 	print("it took %1.2lf seconds to get point spectrum" %(time()-t))
 	plt.plot(erange, s);
+	plt.savefig("spectrum_test.png")
 	plt.show()
 
 	pdb.set_trace()
