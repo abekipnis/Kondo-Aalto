@@ -69,8 +69,6 @@ if __name__=="__main__":
 	plt.imshow(np.rot90(np.array(l)));
 	plt.savefig("line_spectrum_test_%s.png" %(args.path.split("/")[-1]))
 
-	pdb.set_trace()
-
 	spectrum = scattering_model.get_spectra(c.pix_to_nm(atompoints), nmxyrange, erange)
 	spectrum = np.array(spectrum)
 	plt.plot(erange, s); plt.show()
