@@ -367,11 +367,11 @@ def fit_fano(file: str, marker1: float = 0, marker2: float = 0,
 
     plt.plot(bias, dIdV)
     plt.plot(sb, fit_dIdV,"b-")
-    # f = fano(sb, *popt)
+    f = fano(sb, *popt)
 
     # f = fix_T(T)(sb, *popt)
     # plt.plot(bias, fix_T(T)(bias, *popt), "black")
-    plt.plot(sb, fano(sb, *popt),'r--')
+    plt.plot(sb, f,'r--')
     # plt.plot(sb, fano(sb, *popt1),'go', markersize=2)
 
     residY, residtot = residual(fit_dIdV, f) #NORMALIZE THIS BY # OF FIT POINTS
