@@ -83,7 +83,7 @@ def calc_LDOS(atom_locs, nmxyrange, k_tip, n_atoms):
     LDOS = np.zeros((n_sites,n_sites))
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
 
-    p = np.array([[(X[n][m].magnitude, Y[n][m].magnitude, A, k_tip , atom_locs,n_atoms) for n in range(n_sites)] for m in range(n_sites)]).reshape(n_sites*n_sites,6)
+    p = np.array([[(X[n][m].magnitude, Y[n][m].magnitude, A, k_tip , atom_locs, n_atoms) for n in range(n_sites)] for m in range(n_sites)]).reshape(n_sites*n_sites,6)
     with Pool(5) as pool:
         LDOS = pool.starmap(LDOS_at_point,p)
 
@@ -123,9 +123,37 @@ def get_LDOS(e, atom_locs, nmxyrange,n_atoms):
     print(multiprocessing.current_process())
     E = Q_(e,"volt")*electron_charge
     k_tip = k(E, m_e, E_0)
-    LDOS = calc_LDOS(atom_locs, nmxyrange, k_tip,n_atoms)
+    LDOS = calc_LDOS(atom_locs, nmxyrange, k_tip, n_atoms)
     print("time to get LDOS map:", time()-ts)
     return np.array(LDOS).reshape(len(nmxyrange),len(nmxyrange))
+
+def get_spectrum_at_middle(atom_locs, erange):
+    n_atoms = len(atom_locs)
+
+    atom_locs -= np.mean(atom_locs, axis=0)
+    atom_locs = Q_(atom_locs, "nm")
+
+    LDOS_spectrum = []
+    for e in erange:
+        E = Q_(e,"volt")*electron_charge
+        k_tip = k(E, m_e, E_0)
+        A = create_A_matrix(n_atoms, atom_locs, k_tip)
+        LDOS_spectrum.append(LDOS_at_point(0, 0, A, k_tip, atom_locs, n_atoms))
+    return LDOS_spectrum
+
+get spectrum_along_line(atom_locs, erange):
+    n_atoms = len(atom_locs)
+
+    atom_locs -= np.mean(atom_locs, axis=0)
+    atom_locs = Q_(atom_locs, "nm")
+
+    line_spectrum = []
+    for e in erange:
+        E = Q_(e,"volt")*electron_charge
+        k_tip = k(E, m_e, E_0)
+        A = create_A_matrix(n_atoms, atom_locs, k_tip)
+        line_spectrum.append(LDOS_at_point(0, 0, A, k_tip, atom_locs, n_atoms))
+    return line_spectrum
 
 def get_spectra(atom_locs, nmxyrange, erange):
     s = []

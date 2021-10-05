@@ -106,7 +106,7 @@ class CircCorralData:
         if show:
             plt.figure()
             plt.imshow(xim)
-            # plt.show()
+            plt.show()
             plt.close()
         regions_areas = [r.area for r in regions]
         regions_area_max = max(regions_areas)
@@ -347,7 +347,7 @@ class CircCorralData:
         result = least_squares(fix_self(self), init, bounds=bounds,verbose=2, max_nfev=niter)#s, method="dogbox", ftol=1e-11, xtol=1e-10)
 
         angle, offseta, offsetb = result.x
-        print("init:", init)
+        print("initial angle & offset for lattice fit:", init)
         print("angle, offseta, offsetb:", angle, offseta, offsetb)
 
         plt.figure(figsize=(6,6))
@@ -369,7 +369,7 @@ class CircCorralData:
                 %(self.pix_to_nm(offseta), self.pix_to_nm(offsetb), angle*180/np.pi),
                 bbox={'facecolor':'w', 'alpha':0.5, 'pad':5})#,
         plt.savefig(self.label.split("/")[-1].split(".dat")[0] + "topography_fit.png")
-        # plt.show()
+        plt.show()
 
         gloc = self.gauss_fit_locs
         mindists = np.argmin(distance_matrix(gloc.T, latt),axis=1)
@@ -402,7 +402,7 @@ class CircCorralData:
                 plt.scatter([params[2]], [params[1]], )
                 plt.scatter([box_size/2],[box_size/2],c="red")
                 plt.title("Fitting centroid %d" %(n))
-                # plt.show()
+                plt.show()
                 plt.close()
                 # plt.show()
 
@@ -430,8 +430,8 @@ class CircCorralData:
         self.plot_circle_fit(self.centroids, self.r_n, self.c_n, "naive")
         self.plot_circle_fit(self.gauss_fit_locs.T, self.r_g, self.c_g, "Gaussian")
         print(self.label)
-        print("Naive: \n", self.pix_to_nm(self.r_n), self.c_n)
-        print("Gauss: \n", self.pix_to_nm(self.r_g), self.c_g)
+        print("Central atom from Naive fit: \n", self.pix_to_nm(self.r_n), self.c_n)
+        print("Central atom from Gauss fit: \n", self.pix_to_nm(self.r_g), self.c_g)
 
         plt.legend()
         plt.text(10,30,
@@ -513,7 +513,7 @@ if __name__=="__main__":
         c.occupied = s["occupied"]=="t"
         c.corral = True
         c.subtract_plane()
-        c.get_region_centroids(diamond_size=5, sigmaclip=2)
+        c.get_region_centroids(diamond_size=5, sigmaclip=2, show=True)
 
         # box size to fit atom positions
         box_size_nm = 1.5
