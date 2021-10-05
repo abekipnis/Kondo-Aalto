@@ -141,7 +141,7 @@ def get_spectrum_at_middle(atom_locs, erange):
         LDOS_spectrum.append(LDOS_at_point(0, 0, A, k_tip, atom_locs, n_atoms))
     return LDOS_spectrum
 
-get spectrum_along_line(atom_locs, erange):
+def spectrum_along_line(atom_locs, erange):
     n_atoms = len(atom_locs)
 
     atom_locs -= np.mean(atom_locs, axis=0)
