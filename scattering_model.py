@@ -10,10 +10,14 @@ import pdb
 from time import time
 from multiprocessing import Pool, freeze_support
 from multiprocessing.pool import ThreadPool
-
-
 import multiprocessing.pool
 
+# TODO: create main function
+# TODO: create class and methods, refactor
+# TODO: read from line spectra, location of spectra & .dat file etc.
+# TODO: save line spectra data
+# TODO: adjust line spectra colorbar limits
+# TODO: parallelize line spectra calculation
 
 ureg = pint.UnitRegistry()
 set_application_registry(ureg)
@@ -169,3 +173,8 @@ def get_spectra(atom_locs, nmxyrange, erange):
     with ThreadPool(5) as pool:
         s = pool.starmap(get_LDOS, p)
     return s
+
+# TODO: put this all into a class (scattering model)
+# TODO: try to simulate real line spectra data (i.e. get real spectra positions in x,y)
+# TODO: enable ability to adjust colorscale in simulated line spectra data
+# TODO: create line spectrum class object

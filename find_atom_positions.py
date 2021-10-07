@@ -446,6 +446,8 @@ class CircCorralData:
         plt.title(self.label + "\nFits to circle, naive & gaussian fit positions")
         plt.savefig(self.label.split("/")[-1].split(".dat")[0] +"_circle_fits.png")
         plt.close()
+
+    # TODO: write function to get average radius from all lines 
 def round_to_even(n):
     # return n rounded up to the nearest even integer
     return int(np.ceil(n/2.)*2)
