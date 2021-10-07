@@ -18,8 +18,7 @@ if __name__=="__main__":
 
 	# "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/Ag 2021-08-12 4p5 nm radius/Createc2_210812.165018.dat"
 
-	"""
-	for example, run from the command line like:
+	""" for example, run from the command line like:
 	python3 fit_lattice.py --emin=-0.02 --emax=0.02 --n_es=5 --ngridpoints=100
 	"""
 
@@ -48,3 +47,37 @@ if __name__=="__main__":
 
 	c.compare_fits()
 	atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=5)
+
+	atompoints = atoms_g
+	erange = np.arange(args.emin, args.emax, (args.emax-args.emin)/args.n_es)
+
+	nmxyrange = c.pix_to_nm(np.arange(0,c.xPix, c.xPix/args.ngridpoints))
+	# this takes too long if using the generated lattice from the fit
+	# better to use lattice generated from numpy mesh
+	#spectra = scattering_model.gs(atompoints, latt, erange, c.c_g)
+	#plt.plot(erange, spectra); plt.imshow()
+	#get_spectra(atom_locs (in nm), n_sites (i.e. box size in pixels), r (radius in nm), erange)
+	plt.close()
+
+	t = time()
+	s = scattering_model.get_spectrum_at_middle(c.pix_to_nm(atompoints), erange)
+	print("it took %1.2lf seconds to get point spectrum" %(time()-t))
+	plt.plot(erange, s);
+	plt.savefig("point_spectrum_test.png")
+	plt.show()
+
+	l = scattering_model.spectrum_along_line(c.pix_to_nm(atompoints), erange)
+	plt.imshow(np.rot90(np.array(l)));
+	plt.savefig("line_spectrum_test_%s.png" %(args.path.split("/")[-1]))
+
+	spectrum = scattering_model.get_spectra(c.pix_to_nm(atompoints), nmxyrange, erange)
+	spectrum = np.array(spectrum)
+	plt.plot(erange, s); plt.show()
+	for i, e in enumerate(erange):
+		plt.close();
+		plt.imshow(spectrum[i,:,:], extent=[0,c.pix_to_nm(c.xPix),0,c.pix_to_nm(c.xPix)]);
+		plt.savefig("spectrum_testi_%1.2lf.png" %(e))
+	plt.close();
+
+	plt.plot(erange, spectrum[:,5,5]);
+	plt.savefig("spectrum_test.png")
