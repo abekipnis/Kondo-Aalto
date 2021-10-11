@@ -72,6 +72,7 @@ class Grid:
 
         _, self.xpix, self.ypix = self.cube_array.shape
         self.nmx, self.nmy = self.get_im_size()
+        self.offset = 20 # because first N (20) points of spectrum are at 20mV
 
     def get_im_size(self):
         f = open(self.file+".dat","rb")
@@ -80,18 +81,34 @@ class Grid:
         ls = [float(b.split("=")[-1].rstrip(" \\r\\n'")) for b in np.array(a[0:600]).T[0] if "Length" in b]
         return ls #in angstroms
 
-    def fit_Fano_to_grid_data(self, xpixmin, xpixmax, ypixmin,ypixmax, offset):
+    def fit_Fano_to_grid_data(self, xpixmin, xpixmax, ypixmin, ypixmax):
 
         xpmx_nm = self.pix_to_nm(xpixmax)
         xpmn_nm = self.pix_to_nm(xpixmin)
-        p = np.concatenate([    [   (self.specvz3[:,0][offset:-1],
-                                    self.cube_array[:,i,j][offset:-1],
-                                    -15,20)
+
+        # fitting the "normal" way, with no parameters fixed (only bounded)
+        # p = np.concatenate([    [   (self.specvz3[:,0][offset:-1],
+        #                             self.cube_array[:,i,j][offset:-1],
+        #                             -15,20)
+        #                             for i in range(xpixmin,xpixmax)]
+        #                     for j in range(ypixmin,ypixmax)])
+        # with Pool() as pool:
+        #     L = pool.starmap(read_vertfile.fit_data, p)
+
+        # fitting with params fixed. np.nan means 'unfixed', otherwise fixed at given value
+        # [e0, w, q, a, b, c]
+
+        p_fixed = [8.3, 5, np.nan, np.nan, np.nan, np.nan] #fix e0 at 8.3 mV
+        pe0 = np.concatenate([    [   (self.specvz3[:,0][self.offset:-1],
+                                    self.cube_array[:,i,j][self.offset:-1],
+                                    -15, 20, p_fixed)
                                     for i in range(xpixmin,xpixmax)]
                             for j in range(ypixmin,ypixmax)])
 
+        # print(read_vertfile.fit_data_fixed_vals(*pe0[int((xpixmax-xpixmin)/2)+(xpixmax-xpixmin)*int((ypixmax-ypixmin)/2)]))
+
         with Pool() as pool:
-            L = pool.starmap(read_vertfile.fit_data, p)
+            L = pool.starmap(read_vertfile.fit_data_fixed_vals, pe0)
 
         nx = xpixmax - xpixmin
         ny = ypixmax - ypixmin
@@ -103,7 +120,7 @@ class Grid:
             ax = plt.subplot(111)
             plt.subplots_adjust(left=0.25, bottom=0.25)
             dat = np.concatenate(m.data.flatten()).reshape(nx,ny,6)[:,:,n]
-            pdb.set_trace()
+            # pdb.set_trace()
             img = ax.imshow(dat,
                        extent=[xpmn_nm/10., xpmx_nm/10.,xpmn_nm/10., xpmx_nm/10.,]);
             plt.title(l)
@@ -131,7 +148,7 @@ class Grid:
 
             plt.show()
 
-            plt.savefig(l+".png")
+            # plt.savefig(l+".png")
 
     def pix_to_nm(self, pix):
         assert self.xpix==self.ypix and self.nmx==self.nmy
@@ -167,12 +184,7 @@ class Grid:
                 self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, gridspec_kw=gsk)
 
 
-                offset = 20 # because first N (20) points of spectrum are at 20mV
 
-                # range of pixels over which to plot Fano fit in grid
-                # xpixmin = ypixmin = 30
-                # xpixmax = ypixmax = 70
-                # self.fit_Fano_to_grid_data(xpixmin, xpixmax, ypixmin, ypixmax, offset)
                 mn = np.mean(self.g.cube_array[-1])
                 sd = np.std(self.g.cube_array[-1])
                 self.img = self.ax1.imshow(self.g.cube_array[-1],
@@ -200,14 +212,12 @@ class Grid:
                 # makes it hard to see the details in the spectrum
                 # we have to either manually change the axes limits or just cut off part of the data in the visualisation
 
-                self.offset = 10
-
                 self.pts = np.array(list(map(int,map(self.g.nm_to_pix, np.array(plotpoints).flatten())))).reshape(len(plotpoints),2)
                 # pdb.set_trace()
                 self.pts[:,0] = self.g.xpix-self.pts[:,0]
                 self.pts[:,1] = self.g.ypix-self.pts[:,1]
                 for p in self.pts:
-                    self.ax2.plot(self.g.specvz3[:,-1][offset:-1], self.g.cube_array[:, p[1], p[0]][offset:-1])
+                    self.ax2.plot(self.g.specvz3[:,-1][self.g.offset:-1], self.g.cube_array[:, p[1], p[0]][self.g.offset:-1])
 
                 self.ax2.yaxis.tick_right()
                 self.ax2.set_xlabel("Bias (mV)")
@@ -251,7 +261,7 @@ class Grid:
 
                 self.ax2.clear()
                 for p in self.pts:
-                    self.ax2.plot(self.g.specvz3[:,0][self.offset:-1], self.g.cube_array[:,p[1], p[0]][self.offset:-1])
+                    self.ax2.plot(self.g.specvz3[:,0][self.g.offset:-1], self.g.cube_array[:,p[1], p[0]][self.g.offset:-1])
 
                 self.ax2.axvline(self.g.specvz3[i,0], c='r')
                 self.title2 = self.ax2.text(
@@ -270,18 +280,34 @@ if __name__ == "__main__":
     # read size of image from .specgrid.dat file
     dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
 
-    # there are three successful grids from the first data set 
+    # there are three successful grids from the first data set
 
-    # filename= dir +r"Ag 2021-08-13 2p5 nm radius/grid/Createc2_210814.214635.specgrid"
-    # g = Grid(filename)
-    # g.animate_cube(plotpoints=[[3.3, 3.6],[3.3, 3.8], [3.3, 4.0], [3.3, 4.2], [3.3, 4.4], [3.3, 4.6], [3.3, 4.8]])
-    # plt.show()
-
-    filename = dir +r'Ag 2021-08-16 2p5 nm radius empty/Createc2_210816.223358.specgrid'
+    #this is the grid with a Cobalt in the center
+    filename= dir +r"Ag 2021-08-13 2p5 nm radius/grid/Createc2_210814.214635.specgrid"
     g = Grid(filename)
-    g.animate_cube(plotpoints=[[4.58, 4.36],[4.58, 4.86], [4.58, 5.36],[4.58,5.86],[4.58, 6.36],[4.58, 6.86]])
+    # range of pixels over which to plot Fano fit in grid
+    xpixmin = ypixmin = 30
+    xpixmax = ypixmax = 70
+
+    # TODO: turn this into nm to more easily change
+
+    g.fit_Fano_to_grid_data(xpixmin, xpixmax, ypixmin, ypixmax)
+
+    g.animate_cube(plotpoints=[[3.3, 3.6],[3.3, 3.8], [3.3, 4.0], [3.3, 4.2], [3.3, 4.4], [3.3, 4.6], [3.3, 4.8]])
     plt.show()
 
-    # filename = dir+r'/Ag 2021-08-12 4p5 nm radius/grid/Createc2_210813.001749.specgrid'
+
+    # filename = dir +r'Ag 2021-08-16 2p5 nm radius empty/Createc2_210816.223358.specgrid'
+    # g = Grid(filename)
+    # g.animate_cube(plotpoints=[[4.58, 4.36],[4.58, 4.86], [4.58, 5.36],[4.58,5.86],[4.58, 6.36],[4.58, 6.86]])
+    # plt.show()
+
+    #not sure whats happening with this grid - can't see the data when this code runs
+    filename = dir+r'/Ag 2021-08-12 4p5 nm radius/grid/Createc2_210813.001749.specgrid'
+    g = Grid(filename)
+
+    g.animate_cube(plotpoints=[[1.58, 1.36]])
+
+    plt.show()
 
     freeze_support()
