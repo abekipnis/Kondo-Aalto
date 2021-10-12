@@ -98,14 +98,14 @@ class Grid:
         # fitting with params fixed. np.nan means 'unfixed', otherwise fixed at given value
         # [e0, w, q, a, b, c]
 
-        p_fixed = [8.3, 5, np.nan, np.nan, np.nan, np.nan] #fix e0 at 8.3 mV
+        p_fixed = [8.3, np.nan, np.nan, np.nan, -50, np.nan] #fix e0 at 8.3 mV
         pe0 = np.concatenate([    [   (self.specvz3[:,0][self.offset:-1],
                                     self.cube_array[:,i,j][self.offset:-1],
                                     -15, 20, p_fixed)
                                     for i in range(xpixmin,xpixmax)]
                             for j in range(ypixmin,ypixmax)])
 
-        # print(read_vertfile.fit_data_fixed_vals(*pe0[int((xpixmax-xpixmin)/2)+(xpixmax-xpixmin)*int((ypixmax-ypixmin)/2)]))
+        print(read_vertfile.fit_data_fixed_vals(*pe0[int((xpixmax-xpixmin)/2)+(xpixmax-xpixmin)*int((ypixmax-ypixmin)/2)]))
 
         with Pool() as pool:
             L = pool.starmap(read_vertfile.fit_data_fixed_vals, pe0)
@@ -145,6 +145,12 @@ class Grid:
                 plt.draw()
             s_cmax.on_changed(update)
             s_cmin.on_changed(update)
+
+            # save the data
+            f = datetime.today().strftime('%Y-%m-%d') + "_" + l + ".dat"
+            d = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/grid analysis"
+            f = os.path.join(d,f)
+            np.savetxt(data, f)
 
             plt.show()
 
