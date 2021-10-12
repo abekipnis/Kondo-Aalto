@@ -6,6 +6,7 @@ import matplotlib.transforms as transforms
 from matplotlib.pyplot import figure
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from scipy import optimize
 import scipy.signal
@@ -94,7 +95,7 @@ class Spec(metaclass=LoadTimeMeta):
         self.bias_mv -= self.bias_offset
 
     def fit_fano(self, marker1: float = 0, marker2: float = 0,
-                 savefig: bool = True, showfig: bool = True) -> list:
+                 savefig: bool = True, showfig: bool = True, e0 = np.nan, w = np.nan) -> list:
         app.update()
 
         # TODO: implement a 'quit' function i.e. if we want to stop in the middle
@@ -122,7 +123,9 @@ class Spec(metaclass=LoadTimeMeta):
             marker1 = marker_vals[0][0]
             marker2 = marker_vals[1][0]
 
-        popt, pcov, sb, fit_dIdV = fit_data(self.bias_mv, self.dIdV, marker1, marker2)
+        # e0, w, q, a, b, c
+        fixed_vals = [e0, w, np.nan, np.nan, np.nan, np.nan]
+        popt, pcov, sb, fit_dIdV = fit_data_fixed_vals(self.bias_mv, self.dIdV, marker1, marker2, fixed_vals)
         try:
             fig = figure(figsize=(8.5,6.6)) #width, height (inches)
             a1 = plt.subplot(2,1,1)
@@ -288,7 +291,7 @@ def plot_fano_fit_line(f):
     ns = fs.str.extract(r"L([0-9]*).VERT").astype(float)
     d = np.array(d1[["e0","w","q","a","b","c"]])
     im = np.array([fano(biasdata,*n) for n in d]).T
-    fig, ((ax1, ax2, ax3), (ax5, ax6, ax7)) = plt.subplots(2,3,figsize=(16,6), sharex="col")
+    fig, ((ax1, ax2, ax3, ax8), (ax5, ax6, ax7, ax9 )) = plt.subplots(2,4,figsize=(16,6), sharex="col")
     cax = ax1.matshow(np.flipud(im)) #aspect=1/len(d),]extent=[0, len_nm, -100,100]
     # fig.colorbar(cax)
     im = ax1.get_images()
@@ -305,6 +308,9 @@ def plot_fano_fit_line(f):
     ax1.set_yticklabels(["%1.2lf" %(b) for b in bias_labels])
 
     ax1.set_xticks(np.arange(0, len(ns), 3))
+    # ax1.set_xticks(dists)
+
+
     # TODO: Fix labeling of indexing (check 2.5nm pm 20mV line spectra in presentation)
     # TODO: account for if there are some data where fit doesn't work
     # TODO: make one of the x axis labels in nanometers
@@ -363,11 +369,13 @@ def plot_fano_fit_line(f):
     ax6.set_ylim([min(d1["q"]) - q10pct, max(d1["q"]) + q10pct])
     ax7.scatter(dists, d1["resid"])
 
-    # pdb.set_trace()
     a1, a2 = fs[0].split(os.path.sep)[-3:-1]
     fig.suptitle("Fano fits to Kondo resonance on corral central atom: %s\%s" %(a1, a2))
     # add red lines across where the fit happens
 
+    ax8.scatter(dists,d1["a"])
+    ax9.scatter(dists,d1["b"])
+    plt.subplots_adjust(wspace=0.345)
     # have to adjust axes limits since sigma blows up
     # ax2.set_ylim([0, 15])
     # ax3.set_ylim([0, 15])
@@ -381,6 +389,10 @@ def plot_fano_fit_line(f):
     ax5.set_title("Raw data")
     ax6.set_title("q")
     ax7.set_title("Residuals (au)")
+    ax9.set_title("b")
+    ax8.set_title("a")
+
+
 
     ax5.set_xlabel("Index")
     ax5.set_ylabel("bias (mV)")
@@ -443,7 +455,6 @@ def fit_data_fixed_vals(bias, dIdV, marker1, marker2, fixed_vals):
     bounds = np.array([b for n,b in enumerate(bounds.T) if np.isnan(fixed_vals[n])]).T
 
     # https://stackoverflow.com/questions/31705327/scipy-optimize-curve-fit-setting-a-fixed-parameter
-
     def wrapper(V, *args):
         wrapperName = 'fano(V,'
         for i in range(0,len(hold)):
@@ -459,18 +470,17 @@ def fit_data_fixed_vals(bias, dIdV, marker1, marker2, fixed_vals):
         wrapperName+=')'
         # print(wrapperName)
         return eval(wrapperName)
-
     # fix some while fitting other Fano parameters
     # def fix_e(e):
     #     return lambda V, w, q, a, b, c: fano(V, e, w, q, a, b, c)
         # return lambda **args: fano(args[0], [f if not np.isnan(f) else args[1:][n-sum(np.isnan(fixed_vals[:n]))] for n, f in enumerate(fixed_vals)])
-    # pdb.set_trace()
     try:
         # popt, pcov = optimize.curve_fit(fix_T(T), sb, fit_dIdV, p0=p0, bounds=bounds)
         popt, pcov = optimize.curve_fit(wrapper, sb, fit_dIdV, p0=p0, bounds=bounds)
         for i in range(0,len(hold)):
             if hold[i]:
-                popt = np.insert(popt, i, p0[i])
+                popt = np.insert(popt, i, p1[i])
+                pcov = np.insert(np.insert(pcov, i, 0, axis=1), i, 0, axis=0)
         return popt, pcov, sb, fit_dIdV
 
     except RuntimeError as e:
@@ -626,6 +636,8 @@ class Application(tk.Frame):
         Emax = id["Emax"].values[0]
         Emin = id["Emin"].values[0]
 
+        E0f = id["E0_fixed"].values[0]
+
         Lrange = list(range(Lmin,Lmax+1)) #inclusive
 
         p = id["First spectrum filename & path"]
@@ -638,13 +650,12 @@ class Application(tk.Frame):
         d = []
         for s in specs:
             d.append(s.fit_fano(savefig=self.save_figures.get(),
-                                        marker1=Emin, marker2=Emax))
+                                        marker1=Emin, marker2=Emax, e0=E0f))
             self.update()
 
         opts, covs, m1, m2, xs, ys, resids = np.array(d).T
         path = asksaveasfile(parent=root,
                              initialfile=files[0].split("/")[-1][0:-9]+".txt").name
-        pdb.set_trace()
         save_fano_fits(files, opts, covs, m1, m2, path, xs, ys, resids)
         self.update()
 
