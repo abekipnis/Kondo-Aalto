@@ -292,30 +292,37 @@ def plot_fano_fit_line(f):
     d = np.array(d1[["e0","w","q","a","b","c"]])
     im = np.array([fano(biasdata,*n) for n in d]).T
     fig, ((ax1, ax2, ax3, ax8), (ax5, ax6, ax7, ax9 )) = plt.subplots(2,4,figsize=(16,6), sharex="col")
-    cax = ax1.matshow(np.flipud(im)) #aspect=1/len(d),]extent=[0, len_nm, -100,100]
-    # fig.colorbar(cax)
+    cax = ax1.matshow(np.flipud(im))
     im = ax1.get_images()
     extent =  im[0].get_extent()
     aspect = 1
     ax1.set_aspect(abs((extent[1]-extent[0])/(extent[3]-extent[2]))/aspect)
 
     nbias = np.array(biasdata).shape[0]
-    no_labels = 7 # how many labels to see on axis 5
+    no_labels = 5 # how many labels to see on axis 5
     step_bias = int(nbias / (no_labels - 1)) # step between consecutive labels
     bias_positions = np.arange(0,nbias,step_bias)
-    bias_labels = list(reversed(biasdata[::step_bias]))
+    bias_labels = list(map(round,list(reversed(biasdata[::step_bias]))))
+    # pdb.set_trace()
     ax1.set_yticks(bias_positions)
-    ax1.set_yticklabels(["%1.2lf" %(b) for b in bias_labels])
+    ax1.set_yticklabels(["%d" %(int(b)) for b in bias_labels])
 
-    ax1.set_xticks(np.arange(0, len(ns), 3))
-    # ax1.set_xticks(dists)
+    # ax1.set_xticks(np.arange(0, len(ns), 3))
+    pdb.set_trace()
+    nlabels = 6
+    step_nm = int(len(dists)/(nlabels-1))
+    step_positions = np.arange(0, len(dists), step_nm)
+    pos_labels = list(reversed(np.array(dists)[::step_nm]))
+    pos_labels = ["%1.1lf" %(p) for p in pos_labels]
+    ax1.set_xticks(step_positions)
+    ax1.set_xticklabels(pos_labels)
 
 
     # TODO: Fix labeling of indexing (check 2.5nm pm 20mV line spectra in presentation)
     # TODO: account for if there are some data where fit doesn't work
     # TODO: make one of the x axis labels in nanometers
 
-    ax1.set_xticklabels(["%d" %(int(d[0])) for d in np.array(ns)[0::3]])
+    # ax1.set_xticklabels(["%d" %(int(d[0])) for d in np.array(ns)[0::3]])
 
     ax1.tick_params(axis="x", bottom=False, top=True, labelbottom=False, labeltop=True)
 
@@ -338,23 +345,23 @@ def plot_fano_fit_line(f):
     ax4.set_ylim((min(d1["w"])-w_10pct)/kb*1e-3, (max(d1["w"]+w_10pct))/kb*1e-3)
 
     # expected Kondo temperature for Co on Ag111 is 92K
-    # where is this from?
     # width = 2k_BT_K
 
     ax5.matshow(specdata)
     nbias = len(biasdata)
-    no_labels = 7 # how many labels to see on axis 5
+    no_labels = 5 # how many labels to see on axis 5
     step_bias = int(nbias / (no_labels - 1)) # step between consecutive labels
     bias_positions = np.arange(0,nbias,step_bias)
-    bias_labels = list(reversed(biasdata[::step_bias]))
+    bias_labels = list(map(round,list(reversed(biasdata[::step_bias]))))
     ax5.set_yticks(bias_positions)
-    ax5.set_yticklabels(["%1.2lf" %(b) for b in bias_labels])
+    ax5.set_yticklabels(["%d" %(int(b)) for b in bias_labels])
 
-    # if all the markers are the same
+    # ax5.set_xticklabels(np.array(['']+dists).astype(s tr))
+    # if all markers are the same
     ax5.axhline(y=nbias-np.argmin(np.abs(biasdata-d1["marker1"].iloc[0])), color="r")
     ax5.axhline(y=nbias-np.argmin(np.abs(biasdata-d1["marker2"].iloc[0])), color="r")
 
-    # if the markers are different
+    # if markers are different
     for n, d in enumerate(d1["marker1"].values):
         ax5.scatter(ns[0][n]-min(ns[0]), nbias-np.argmin(np.abs(biasdata-d1["marker2"].iloc[n])),color="r", s=10)
         ax5.scatter(ns[0][n]-min(ns[0]), nbias-np.argmin(np.abs(biasdata-d)),color="r", s=10)
@@ -391,8 +398,6 @@ def plot_fano_fit_line(f):
     ax7.set_title("Residuals (au)")
     ax9.set_title("b")
     ax8.set_title("a")
-
-
 
     ax5.set_xlabel("Index")
     ax5.set_ylabel("bias (mV)")
@@ -650,7 +655,7 @@ class Application(tk.Frame):
         d = []
         for s in specs:
             d.append(s.fit_fano(savefig=self.save_figures.get(),
-                                        marker1=Emin, marker2=Emax, e0=E0f))
+                                        marker1=Emin, marker2=Emax, e0=E0f, showfig=False))
             self.update()
 
         opts, covs, m1, m2, xs, ys, resids = np.array(d).T
