@@ -9,9 +9,10 @@ import importlib
 read_vertfile = importlib.import_module("Kondo data analysis.read_vertfile")
 import createc
 import pdb
+import os
 import numpy.ma as ma
 from matplotlib.widgets import Slider, Button
-
+from datetime import datetime
 from multiprocessing import Pool, freeze_support
 from find_atom_positions import CircCorralData
 class Grid:
@@ -98,7 +99,7 @@ class Grid:
         # fitting with params fixed. np.nan means 'unfixed', otherwise fixed at given value
         # [e0, w, q, a, b, c]
 
-        p_fixed = [8.3, np.nan, np.nan, np.nan, -50, np.nan] #fix e0 at 8.3 mV
+        p_fixed = [8.3, np.nan, np.nan, np.nan, np.nan, np.nan] #fix e0 at 8.3 mV
         pe0 = np.concatenate([    [   (self.specvz3[:,0][self.offset:-1],
                                     self.cube_array[:,i,j][self.offset:-1],
                                     -15, 20, p_fixed)
@@ -147,10 +148,10 @@ class Grid:
             s_cmin.on_changed(update)
 
             # save the data
-            f = datetime.today().strftime('%Y-%m-%d') + "_" + l + ".dat"
+            f = datetime.today().strftime('%Y-%m-%d') + "_" + l + ".txt"
             d = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/grid analysis"
             f = os.path.join(d,f)
-            np.savetxt(data, f)
+            np.savetxt(f, dat)
 
             plt.show()
 

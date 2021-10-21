@@ -266,7 +266,7 @@ class CircCorralData:
             xs, ys = array(self.gauss_fit_locs)
         return [min(xs), min(ys), max(xs), max(ys)]
 
-    def make_lattice(self, theta, offseta=0, offsetb=0):
+    def make_hex_lattice(self, theta, offseta=0, offsetb=0):
         """
         Given a corrals data object, theta, and lattice vector offset value in pixels,
         return an array of shape (N,2) (where N is the # of lattice sites)
@@ -313,12 +313,49 @@ class CircCorralData:
         ls += array(origin)
         return ls
 
+
+    def make_tri_lattice(self, theta, offseta=0):
+        """
+        Given a corrals data object, theta, and lattice vector offset value in pixels,
+        return an array of shape (N,2) (where N is the # of lattice sites)
+        with the locations of the lattice points for that theta, lattice vector offset.
+        """
+        theta = -theta
+        offseta = dot(array([[cos(np.pi/6), -sin(np.pi/6)], [sin(np.pi/6), cos(np.pi/6)]]),[offseta,0]);
+        if not self.corral:
+            origin = array(self.imshape)/2 #the middle
+        elif self.occupied:
+            origin = self.get_central_atom(self.gauss_fit_locs.T)+offset
+        elif not self.occupied:
+            origin = self.c + offset
+        bbox = self.bbox()
+
+        mult_factor = 2
+        width = mult_factor*(bbox[2] - bbox[0])
+        height = mult_factor*(bbox[3] - bbox [1])
+
+        natoms_per_row = round_to_even(self.pix_to_nm(width)/b)
+        nrows = round_to_even(self.pix_to_nm(height)/d)
+        ls = []
+        for n in np.arange(-nrows/2, nrows/2+1, 1):
+            for m in np.arange(-natoms_per_row/2,natoms_per_row/2+1, 1):
+                if n%2==0:
+                    ls.append(array([n*self.nm_to_pix(d), m*self.nm_to_pix(b)]))
+                else:
+                    ls.append(array([n*self.nm_to_pix(d), (m*self.nm_to_pix(b) + self.nm_to_pix(b/2))]))
+
+        ls = array(ls)
+        rot = array([[cos(theta), -sin(theta)], [sin(theta), cos(theta)]])
+        ls = dot(ls, rot)
+        ls += array(origin)
+        return ls
+
     def correlate_lattice_to_atom_positions(self, angle, offseta, offsetb):
         """
-        Given a set of atom positions in self.gauss_fit_locs and
-        an angle and lattice offset for the triangular lattice,
-        return a value that represents the fit between the simulated lattice points and
-        the fit locations of the atom. This value should be minimized.
+        Given set of atom positions in self.gauss_fit_locs and
+        an angle and lattice offset for triangular lattice,
+        return value representing fit between simulated lattice points and
+        fit locations of atom. This value should be be minimized.
 
         In this case, return a vector showing the distances between each atom and its nearest lattice site
         """
@@ -378,7 +415,6 @@ class CircCorralData:
 
         # return lattice-matched atom locations, angle, offsets, and lattice points
         return atompoints, angle, offseta, offsetb, latt
-
 
     def fit_atom_pos_gauss(self, box_size, show=False):
         """
@@ -447,7 +483,7 @@ class CircCorralData:
         plt.savefig(self.label.split("/")[-1].split(".dat")[0] +"_circle_fits.png")
         plt.close()
 
-    # TODO: write function to get average radius from all lines 
+    # TODO: write function to get average radius from all lines
 def round_to_even(n):
     # return n rounded up to the nearest even integer
     return int(np.ceil(n/2.)*2)
@@ -548,20 +584,13 @@ if __name__=="__main__":
         c.compare_fits()
         plt.savefig(c.file+"_circle_fits.png")
 
+        # try to use the scattering model
         atompoints, angle, offseta, offsetb, latt = c.fit_lattice(50)
         erange = np.arange(-0.020, 0.020, 0.001)
         spectra = scattering_model.gs(atompoints, latt, erange)
         plt.plot(erange, spectra); plt.imshow()
         pdb.set_trace()
 
-    ##TO DO:
-    """
-    - save circle sizes to excel sheet.
-    - calculate mean of radii
-    - put file title on top of plots
-    - save figures to files
-    - put the circle fit data (radius, center) to the plot
-    - put the code and data to Triton
-    - push like hell !
-    """
+    # TODO: save circle sizes to excel
+    # TODO: calculate mean of radii 
     exit(0)
