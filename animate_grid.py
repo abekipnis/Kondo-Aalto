@@ -194,7 +194,7 @@ class Grid:
 
                 mn = np.mean(self.g.cube_array[-1])
                 sd = np.std(self.g.cube_array[-1])
-                self.img = self.ax1.imshow(self.g.cube_array[-1],
+                self.img = self.ax1.imshow(np.flipud(np.rot90(self.g.cube_array[-1])),
                                 animated=True,
                                 cmap=cmap,
                                 vmax=mn+3*sd,
@@ -236,12 +236,12 @@ class Grid:
                 self.paused = False
 
 
-                plt.suptitle("2.5 nm radius occupied corral", y=0.95)
+                plt.suptitle("Reconstructed Au on Nb110", y=0.95)
 
                 self.animation = animation.FuncAnimation(self.fig, self.updatefig, frames=g.cube_array.shape[0], interval=interval, blit=True)
                 self.fig.canvas.mpl_connect('button_press_event', self.toggle_pausefig)
 
-                # self.animation.save(g.file+'_cube_movie.mp4', writer="ffmpeg", fps=28)
+                self.animation.save(g.file+'_cube_movie.gif', writer="ffmpeg", fps=28)
 
             def toggle_pausefig(self, *args, **kwargs):
                 if self.paused:
@@ -258,7 +258,7 @@ class Grid:
                 mn = np.mean(d)
                 sd = np.std(d)
                 self.ax1.images[0].colorbar.remove()
-                self.img.set_array(d)
+                self.img.set_array(np.flipud(np.rot90(d)))
                 self.img.set_clim(vmax=mn+6*sd, vmin=mn-3*sd)
 
 
@@ -285,36 +285,39 @@ class Grid:
 
 if __name__ == "__main__":
     # read size of image from .specgrid.dat file
-    dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
+    # dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
 
+    g = Grid("H:\\Createc\\STMDATA\\Nb(110)\\dep10 annealed 650 1 hr\\A211102.190005.specgrid")
+    g.animate_cube(plotpoints=[[3.3, 3.6]])
+    #plt.show()
     # there are three successful grids from the first data set
 
     #this is the grid with a Cobalt in the center
-    filename= dir +r"Ag 2021-08-13 2p5 nm radius/grid/Createc2_210814.214635.specgrid"
-    g = Grid(filename)
-    # range of pixels over which to plot Fano fit in grid
-    xpixmin = ypixmin = 30
-    xpixmax = ypixmax = 70
-
-    # TODO: turn this into nm to more easily change
-
-    g.fit_Fano_to_grid_data(xpixmin, xpixmax, ypixmin, ypixmax)
-
-    g.animate_cube(plotpoints=[[3.3, 3.6],[3.3, 3.8], [3.3, 4.0], [3.3, 4.2], [3.3, 4.4], [3.3, 4.6], [3.3, 4.8]])
-    plt.show()
-
-
-    # filename = dir +r'Ag 2021-08-16 2p5 nm radius empty/Createc2_210816.223358.specgrid'
+    # filename= dir +r"Ag 2021-08-13 2p5 nm radius/grid/Createc2_210814.214635.specgrid"
     # g = Grid(filename)
-    # g.animate_cube(plotpoints=[[4.58, 4.36],[4.58, 4.86], [4.58, 5.36],[4.58,5.86],[4.58, 6.36],[4.58, 6.86]])
+    # # range of pixels over which to plot Fano fit in grid
+    # xpixmin = ypixmin = 30
+    # xpixmax = ypixmax = 70
+
+    # # TODO: turn this into nm to more easily change
+
+    # g.fit_Fano_to_grid_data(xpixmin, xpixmax, ypixmin, ypixmax)
+
+    # g.animate_cube(plotpoints=[[3.3, 3.6],[3.3, 3.8], [3.3, 4.0], [3.3, 4.2], [3.3, 4.4], [3.3, 4.6], [3.3, 4.8]])
     # plt.show()
 
-    #not sure whats happening with this grid - can't see the data when this code runs
-    filename = dir+r'/Ag 2021-08-12 4p5 nm radius/grid/Createc2_210813.001749.specgrid'
-    g = Grid(filename)
 
-    g.animate_cube(plotpoints=[[1.58, 1.36]])
+    # # filename = dir +r'Ag 2021-08-16 2p5 nm radius empty/Createc2_210816.223358.specgrid'
+    # # g = Grid(filename)
+    # # g.animate_cube(plotpoints=[[4.58, 4.36],[4.58, 4.86], [4.58, 5.36],[4.58,5.86],[4.58, 6.36],[4.58, 6.86]])
+    # # plt.show()
 
-    plt.show()
+    # #not sure whats happening with this grid - can't see the data when this code runs
+    # filename = dir+r'/Ag 2021-08-12 4p5 nm radius/grid/Createc2_210813.001749.specgrid'
+    # g = Grid(filename)
 
-    freeze_support()
+    # g.animate_cube(plotpoints=[[1.58, 1.36]])
+
+    # plt.show()
+
+    # freeze_support()
