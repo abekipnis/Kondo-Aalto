@@ -95,7 +95,7 @@ class Spec(metaclass=LoadTimeMeta):
         self.bias_mv -= self.bias_offset
 
     def fit_fano(self, marker1: float = 0, marker2: float = 0,
-                 savefig: bool = True, showfig: bool = True, e0 = np.nan, w = np.nan) -> list:
+                 savefig: bool = True, showfig: bool = True, e0_fixed_val = np.nan, w = np.nan, type_fit: str = "default") -> list:
         app.update()
 
         # TODO: implement a 'quit' function i.e. if we want to stop in the middle
@@ -124,10 +124,10 @@ class Spec(metaclass=LoadTimeMeta):
             marker2 = marker_vals[1][0]
 
         # e0, w, q, a, b, c
-        fixed_vals = [7.2, np.nan, np.nan, np.nan, np.nan, np.nan]
-        if type == 'default':
+        fixed_vals = [e0_fixed_val, np.nan, np.nan, np.nan, np.nan, np.nan]
+        if type_fit == 'default':
             popt, pcov, sb, fit_dIdV = fit_data_fixed_vals(self.bias_mv, self.dIdV, marker1, marker2, fixed_vals)
-        elif type == 'wtimes': #using the width*residual as thing to minimize
+        elif type_fit == 'wtimes': #using the width*residual as thing to minimize
             popt, pcov, sb, fit_dIdV = fit_data_w_times_residual(self.bias_mv, self.dIdV, marker1,marker2, fixed_vals)
         try:
             fig = figure(figsize=(8.5,6.6)) #width, height (inches)
@@ -194,7 +194,7 @@ class Spec(metaclass=LoadTimeMeta):
             if savefig:
                 plt.savefig(file.split(".VERT")[0]+"%s_fit_residual.png" %(t))
             # if showfig:
-            plt.show()
+            # plt.show()
 
             # plt.close()
         except Exception:
@@ -580,7 +580,7 @@ def fit_data_w_times_residual(bias, dIdV, marker1, marker2, fixed_vals):
     def objective_function(p, bias, dIdV):
         # pdb.set_trace()
         of = residual(dIdV, wrapper(bias, *p))[1]*p[1]
-        return of#*p[3] #residual(data, fit)
+        return of*p[3] #residual(data, fit)
 
     try:
         res = optimize.least_squares(objective_function, x0=p0, args=([b[1] for b in smallbias], fit_dIdV,), bounds=bounds, max_nfev=2000, x_scale=[2,1,200,1,200])#, ftol=3e-16, xtol=3e-16, gtol=3e-16)
@@ -726,15 +726,18 @@ class Application(tk.Frame):
         d_d = [] #default fitting
         for s in specs:
             d_w.append(s.fit_fano(savefig=self.save_figures.get(),
-                                        marker1=Emin, marker2=Emax, e0=E0f, showfig=False, type="wtimes"))
+                                        marker1=Emin, marker2=Emax, e0_fixed_val=E0f, showfig=False, type_fit="wtimes"))
             d_d.append(s.fit_fano(savefig=self.save_figures.get(),
-                                        marker1=Emin, marker2=Emax, e0=E0f, showfig=False))
+                                        marker1=Emin, marker2=Emax, e0_fixed_val=E0f, showfig=False))
             self.update()
-        pdb.set_trace()
-        for d in [d_w, d_d]:
-            opts, covs, m1, m2, xs, ys, resids = np.array(d).T
-            path = asksaveasfile(parent=root,
-                                 initialfile=files[0].split("/")[-1][0:-9]+".txt").name
+        # pdb.set_trace()
+        for d in [[d_w,"width"], [d_d,"default"]]:
+            opts, covs, m1, m2, xs, ys, resids = np.array(d[0]).T
+            # path = asksaveasfile(parent=root,
+            #                      initialfile=files[0].split("/")[-1][0:-9]+"_kondo_fit_param_%s.txt" %(d[1])).name
+            bpath = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/spatial extent Kondo plots/width comparison/"
+            p = files[0].split("/")[-1][0:-9]+"_kondo_fit_param_%s.txt" %(d[1])
+            path = bpath+p
             save_fano_fits(files, opts, covs, m1, m2, path, xs, ys, resids)
             self.update()
 
