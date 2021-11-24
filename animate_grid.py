@@ -241,7 +241,7 @@ class Grid:
                 self.animation = animation.FuncAnimation(self.fig, self.updatefig, frames=g.cube_array.shape[0], interval=interval, blit=True)
                 self.fig.canvas.mpl_connect('button_press_event', self.toggle_pausefig)
 
-                self.animation.save(g.file+'_cube_movie.gif', writer="ffmpeg", fps=28)
+                self.animation.save(g.file+'_cube_movie.mp4', writer="ffmpeg", fps=28)
 
             def toggle_pausefig(self, *args, **kwargs):
                 if self.paused:
@@ -287,7 +287,7 @@ if __name__ == "__main__":
     # read size of image from .specgrid.dat file
     # dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
 
-    g = Grid("H:\\Createc\\STMDATA\\Nb(110)\\dep10 annealed 650 1 hr\\A211102.190005.specgrid")
+    g = Grid("/Users/akipnis/Dropbox/personal-folders/Abe/A211102.190005.specgrid")
     g.animate_cube(plotpoints=[[3.3, 3.6]])
     #plt.show()
     # there are three successful grids from the first data set
