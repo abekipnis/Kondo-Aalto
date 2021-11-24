@@ -124,13 +124,18 @@ class Spec(metaclass=LoadTimeMeta):
             marker2 = marker_vals[1][0]
 
         # e0, w, q, a, b, c
-        fixed_vals = [e0, w, np.nan, np.nan, np.nan, np.nan]
-        popt, pcov, sb, fit_dIdV = fit_data_fixed_vals(self.bias_mv, self.dIdV, marker1, marker2, fixed_vals)
+        fixed_vals = [7.2, np.nan, np.nan, np.nan, np.nan, np.nan]
+        if type == 'default':
+            popt, pcov, sb, fit_dIdV = fit_data_fixed_vals(self.bias_mv, self.dIdV, marker1, marker2, fixed_vals)
+        elif type == 'wtimes': #using the width*residual as thing to minimize
+            popt, pcov, sb, fit_dIdV = fit_data_w_times_residual(self.bias_mv, self.dIdV, marker1,marker2, fixed_vals)
         try:
             fig = figure(figsize=(8.5,6.6)) #width, height (inches)
             a1 = plt.subplot(2,1,1)
             trans = plt.gcf().transFigure
             c = tuple(np.array(list(zip(popt,pcov.diagonal()))).flatten())
+            c = tuple(np.array(list(zip(popt, np.zeros(len(popt))))).flatten())
+            # pdb.set_trace()
             plt.text(0.05,0.2,
                 r"$\frac{dI}{dV}\sim a\frac{(q+\epsilon)^2}{1+\epsilon^2} + bV + c$"+"\n"
                 r"$\epsilon = \frac{V-\epsilon_0}{w}$"+"\n"
@@ -188,10 +193,10 @@ class Spec(metaclass=LoadTimeMeta):
             # plt.tight_layout()
             if savefig:
                 plt.savefig(file.split(".VERT")[0]+"%s_fit_residual.png" %(t))
-            if showfig:
-                plt.show()
+            # if showfig:
+            plt.show()
 
-            plt.close()
+            # plt.close()
         except Exception:
             plt.close()
             app.update()
@@ -303,7 +308,7 @@ def plot_fano_fit_line(f):
     step_bias = int(nbias / (no_labels - 1)) # step between consecutive labels
     bias_positions = np.arange(0,nbias,step_bias)
     bias_labels = list(map(round,list(reversed(biasdata[::step_bias]))))
-    # pdb.set_trace()
+
     ax1.set_yticks(bias_positions)
     ax1.set_yticklabels(["%d" %(int(b)) for b in bias_labels])
 
@@ -433,6 +438,11 @@ def fano_t_broad(T, V, e0, w, q, a, b, c):
     # function over the space, including thermal broadening, w/no edge effects
     return np.convolve(fit, conv, mode="same")[pad_idcs:-pad_idcs]
 
+def residual(data, fit):
+    ld = len(data)
+    r = [(data[i]-fit[i]) for i in range(ld)]
+    # pdb.set_trace()
+    return r, np.sqrt(sum([a*a for a in r]))/ld #normalized by # of data points
 
 def fit_data_fixed_vals(bias, dIdV, marker1, marker2, fixed_vals):
     # data for which we are fitting the Fano function
@@ -525,10 +535,70 @@ def fit_data(bias, dIdV, marker1, marker2):
         n = np.ones((len(p0)))*np.nan
         return n, n, sb, fit_dIdV
 
-def residual(data, fit):
-    ld = len(data)
-    r = [(data[i]-fit[i]) for i in range(ld)]
-    return r, np.sqrt(sum([a*a for a in r]))/ld #normalized by # of data points
+def fit_data_w_times_residual(bias, dIdV, marker1, marker2, fixed_vals):
+    # data for which we are fitting the Fano function
+    smallbias = [(n,b) for (n,b) in enumerate(bias) if b>=marker1 and b<=marker2]
+    nsb, sb = np.array(smallbias).T
+    fit_dIdV = np.array(dIdV)[[int(n) for n in nsb]]
+
+    # initial guess for e0, w, q, a, b, c,
+    b0 = (fit_dIdV[-1]-fit_dIdV[0])/(sb[-1]-sb[0])
+    e00 = sb[np.argmin(scipy.signal.detrend(fit_dIdV))]
+
+    p0 = [e00, 4, 1, 1, b0, np.mean(fit_dIdV)]
+    hold = [0 if np.isnan(fixed_vals[n]) else 1 for n in range(len(p0)) ]
+
+    p1 = [p if np.isnan(fixed_vals[n]) else fixed_vals[n] for n,p in enumerate(p0) ]
+    p0 = [p for n,p in enumerate(p0) if np.isnan(fixed_vals[n]) ]
+
+    # bounds for e0, w, q, a, b, c
+    bounds = np.array([ [min(sb),max(sb)],     #none                  # e0
+                        [2, 20],                             # w
+                        [-np.inf,np.inf],                   # q
+                        [0, max(fit_dIdV)],                 # a
+                        [-np.inf,np.inf],                   # b
+                        [-np.inf,np.inf]]).T                # c
+    bounds = np.array([b for n,b in enumerate(bounds.T) if np.isnan(fixed_vals[n])]).T
+    # bounds = [(b[0], b[1]) for b in bounds.T]
+    # https://stackoverflow.com/questions/31705327/scipy-optimize-curve-fit-setting-a-fixed-parameter
+    def wrapper(V, *args):
+        wrapperName = 'fano(V,'
+        for i in range(0,len(hold)):
+            if hold[i]:
+                wrapperName +=str(p1[i])
+            else:
+                if i%2==0:
+                    wrapperName += 'args['+str(i-sum(hold))+']'
+                else:
+                    wrapperName+='args['+str(i-sum(hold))+']'
+            if i<len(hold):
+                wrapperName+=','
+        wrapperName+=')'
+        # print(wrapperName)
+        return eval(wrapperName)
+
+    def objective_function(p, bias, dIdV):
+        # pdb.set_trace()
+        of = residual(dIdV, wrapper(bias, *p))[1]*p[1]
+        return of#*p[3] #residual(data, fit)
+
+    try:
+        res = optimize.least_squares(objective_function, x0=p0, args=([b[1] for b in smallbias], fit_dIdV,), bounds=bounds, max_nfev=2000, x_scale=[2,1,200,1,200])#, ftol=3e-16, xtol=3e-16, gtol=3e-16)
+        print(res)
+        popt = res.x
+        pcov = res.jac
+        # pdb.set_trace()
+
+        for i in range(0,len(hold)):
+            if hold[i]:
+                popt = np.insert(popt, i, p1[i])
+                pcov = np.insert(np.insert(pcov, i, 0, axis=1), i, 0, axis=0)
+        return popt, pcov, sb, fit_dIdV
+
+    except RuntimeError as e:
+        print(e)
+        n = np.ones((len(p0)))*np.nan
+        return n, n, sb, fit_dIdV
 
 def save_fano_fits(files: list, opts: list, covs: list, m1: list, m2: list, path: str, xs: list, ys: list, resid: list):
     with open(path, "w") as f:
@@ -652,21 +722,24 @@ class Application(tk.Frame):
         files = [f.replace("\\","*").replace("*",os.path.sep) for f in files]
 
         specs = [Spec(os.path.join(dpath,f)) for f in files]
-        d = []
+        d_w = [] #with width*residual
+        d_d = [] #default fitting
         for s in specs:
-            d.append(s.fit_fano(savefig=self.save_figures.get(),
+            d_w.append(s.fit_fano(savefig=self.save_figures.get(),
+                                        marker1=Emin, marker2=Emax, e0=E0f, showfig=False, type="wtimes"))
+            d_d.append(s.fit_fano(savefig=self.save_figures.get(),
                                         marker1=Emin, marker2=Emax, e0=E0f, showfig=False))
             self.update()
+        pdb.set_trace()
+        for d in [d_w, d_d]:
+            opts, covs, m1, m2, xs, ys, resids = np.array(d).T
+            path = asksaveasfile(parent=root,
+                                 initialfile=files[0].split("/")[-1][0:-9]+".txt").name
+            save_fano_fits(files, opts, covs, m1, m2, path, xs, ys, resids)
+            self.update()
 
-        opts, covs, m1, m2, xs, ys, resids = np.array(d).T
-        path = asksaveasfile(parent=root,
-                             initialfile=files[0].split("/")[-1][0:-9]+".txt").name
-        save_fano_fits(files, opts, covs, m1, m2, path, xs, ys, resids)
-        self.update()
-
-        plot_fano_fit_line(path)
-        self.update()
-
+            plot_fano_fit_line(path)
+            self.update()
 
     def analyze_files(self, files):
         opts = []; covs = []; m1s = []; m2s = []; xs = []; ys = []; resids = []
