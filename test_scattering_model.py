@@ -95,7 +95,7 @@ if __name__=="__main__":
 		plt.imshow(spectrum_data, extent=[0,c.pix_to_nm(c.xPix),0,c.pix_to_nm(c.xPix)]);
 		plt.savefig("%s_spectrum_%1.2lf.png" %(fname_head,e))
 	plt.close();
-	pdb.set_trace()
+#	pdb.set_trace()
 	fig, (ax1) = plt.subplots(1, 1)
 
 	img = ax1.imshow(np.flipud(np.rot90(spectrum[0,:,:])),
@@ -115,7 +115,7 @@ if __name__=="__main__":
 		return img,
 	animation = animation.FuncAnimation(fig, updatefig, frames=len(erange), interval=50, blit=True) #interval in ms
 	animation.save('%s_cube_movie.mp4' %(fname_head), writer="ffmpeg", fps=28)
-	plt.show()
+#	plt.show()
 
 	plt.plot(erange, spectrum[:,5,5]);
 	plt.savefig("spectrum_test.png")
