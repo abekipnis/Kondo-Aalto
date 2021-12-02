@@ -8,6 +8,7 @@ from numpy.linalg import norm, pinv, lstsq
 from scipy.spatial import distance_matrix
 from scipy.optimize import leastsq, least_squares, minimize
 from  scipy.stats import sigmaclip
+import matplotlib.animation as animation
 
 from dataclasses import dataclass
 from multiprocessing import Process, Queue, Array
@@ -314,14 +315,14 @@ class CircCorralData:
         return ls
 
 
-    def make_tri_lattice(self, theta, offseta=0):
+    def make_tri_lattice(self, theta, offset=0):
         """
         Given a corrals data object, theta, and lattice vector offset value in pixels,
         return an array of shape (N,2) (where N is the # of lattice sites)
         with the locations of the lattice points for that theta, lattice vector offset.
         """
         theta = -theta
-        offseta = dot(array([[cos(np.pi/6), -sin(np.pi/6)], [sin(np.pi/6), cos(np.pi/6)]]),[offseta,0]);
+        offset = dot(array([[cos(np.pi/6), -sin(np.pi/6)], [sin(np.pi/6), cos(np.pi/6)]]),[offset,0]);
         if not self.corral:
             origin = array(self.imshape)/2 #the middle
         elif self.occupied:
@@ -359,7 +360,7 @@ class CircCorralData:
 
         In this case, return a vector showing the distances between each atom and its nearest lattice site
         """
-        lat = self.make_lattice(angle, offseta, offsetb)
+        lat = self.make_tri_lattice(angle, offseta)
         gloc = self.gauss_fit_locs
         mindists = np.min(distance_matrix(gloc.T, lat),axis=1)
         return np.mean(mindists) #np.sum()
@@ -392,7 +393,7 @@ class CircCorralData:
         new_im = self.im.copy()
         new_im[self.im>np.mean(self.im)+3*np.std(self.im)] = np.inf
         plt.imshow(new_im)
-        latt = self.make_lattice(angle,offseta,offsetb)
+        latt = self.make_tri_lattice(angle,offseta)
         plt.scatter(*array(latt).T, s=5, c="black")
         plt.scatter(*self.gauss_fit_locs)
 
@@ -592,5 +593,5 @@ if __name__=="__main__":
         pdb.set_trace()
 
     # TODO: save circle sizes to excel
-    # TODO: calculate mean of radii 
+    # TODO: calculate mean of radii
     exit(0)
