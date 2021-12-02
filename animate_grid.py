@@ -235,7 +235,6 @@ class Grid:
                 self.ax2.set_aspect(0.1)
                 self.paused = False
 
-
                 plt.suptitle("Reconstructed Au on Nb110", y=0.95)
 
                 self.animation = animation.FuncAnimation(self.fig, self.updatefig, frames=g.cube_array.shape[0], interval=interval, blit=True)
