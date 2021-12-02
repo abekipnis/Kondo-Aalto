@@ -12,6 +12,9 @@ from multiprocessing import Pool, freeze_support
 from multiprocessing.pool import ThreadPool
 import multiprocessing.pool
 
+import warnings
+warnings.filterwarnings("ignore")
+
 # TODO: create main function
 # TODO: create class and methods, refactor
 # TODO: read from line spectra, location of spectra & .dat file etc.
@@ -28,6 +31,7 @@ m_electron = 9.109e-31 * ureg.kg
 electron_charge = 1.6e-19 * ureg.coulomb
 m_e = 0.4*m_electron
 E_0 = Q_(-0.067, "volt")*electron_charge
+
 
 def a(r, k, d0, a0):
     return (2/(np.pi*k*r))**0.5*np.exp(np.pi/4.*1j)*((a0*np.exp(2j*d0)-1)/2j)*np.exp((k*r*1j))
@@ -86,7 +90,6 @@ def calc_LDOS(atom_locs, nmxyrange, k_tip, n_atoms):
     X, Y = np.meshgrid(m, m)
     LDOS = np.zeros((n_sites,n_sites))
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
-
     p = np.array([[(X[n][m].magnitude, Y[n][m].magnitude, A, k_tip , atom_locs, n_atoms) for n in range(n_sites)] for m in range(n_sites)]).reshape(n_sites*n_sites,6)
     with Pool(5) as pool:
         LDOS = pool.starmap(LDOS_at_point,p)
@@ -128,7 +131,7 @@ def get_LDOS(e, atom_locs, nmxyrange,n_atoms):
     E = Q_(e,"volt")*electron_charge
     k_tip = k(E, m_e, E_0)
     LDOS = calc_LDOS(atom_locs, nmxyrange, k_tip, n_atoms)
-    print("time to get LDOS map:", time()-ts)
+    print("time to get LDOS map for E %d:"  %(E.magnitude), time()-ts)
     return np.array(LDOS).reshape(len(nmxyrange),len(nmxyrange))
 
 def get_spectrum_at_middle(atom_locs, erange):
@@ -167,7 +170,6 @@ def spectrum_along_line(atom_locs, erange):
 def get_spectra(atom_locs, nmxyrange, erange):
     s = []
     atom_locs = Q_(atom_locs, "nm")
-    print(multiprocessing.cpu_count())
     n_atoms = len(atom_locs)
     p = [(e, atom_locs, nmxyrange,n_atoms) for e in erange]
     with ThreadPool(5) as pool:
