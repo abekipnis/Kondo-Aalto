@@ -114,7 +114,10 @@ if __name__=="__main__":
 
 		return img,
 	animation = animation.FuncAnimation(fig, updatefig, frames=len(erange), interval=50, blit=True) #interval in ms
-	animation.save('%s_cube_movie.mp4' %(fname_head), writer="ffmpeg", fps=28)
+	try:
+		animation.save('%s_cube_movie.mp4' %(fname_head), writer="ffmpeg", fps=28)
+	except:
+		animation.save('%s_cube_movie.mp4' %(fname_head), fps=28)
 	plt.show()
 
 	plt.plot(erange, spectrum[:,5,5]);
