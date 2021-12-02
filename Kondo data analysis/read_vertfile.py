@@ -18,7 +18,7 @@ import traceback
 import sys
 import time
 from itertools import product
-import regex as re
+import re
 
 import tkinter as tk
 from tkinter import messagebox
@@ -41,7 +41,7 @@ class LoadTimeMeta(type):
     base_time = time.perf_counter_ns()
 
     def __new__(mcs, name, bases, namespace):
-        print(mcs, name, bases, namespace)
+        # print(mcs, name, bases, namespace)
         namespace["__class_load_time__"] = time.perf_counter_ns() - LoadTimeMeta.base_time
         return super().__new__(mcs, name, bases, namespace)
 
@@ -192,7 +192,9 @@ class Spec(metaclass=LoadTimeMeta):
             a3.set_xlabel("residual histogram")
             # plt.tight_layout()
             if savefig:
-                plt.savefig(file.split(".VERT")[0]+"%s_fit_residual.png" %(t))
+                # pdb.set_trace()
+                fig_path = os.path.join(os.path.split(self.fname)[0],"%s_fit_residual.png" %(t.strip(".VERT")))
+                plt.savefig(fig_path)
             # if showfig:
             # plt.show()
 
@@ -313,7 +315,6 @@ def plot_fano_fit_line(f):
     ax1.set_yticklabels(["%d" %(int(b)) for b in bias_labels])
 
     # ax1.set_xticks(np.arange(0, len(ns), 3))
-    pdb.set_trace()
     nlabels = 6
     step_nm = int(len(dists)/(nlabels-1))
     step_positions = np.arange(0, len(dists), step_nm)
@@ -332,15 +333,26 @@ def plot_fano_fit_line(f):
     ax1.tick_params(axis="x", bottom=False, top=True, labelbottom=False, labeltop=True)
 
     ax2.errorbar(dists, d1["e0"], yerr=covs["e0"], fmt='o')
-    e0_10pct =  0.1*(max(d1["e0"])-min(d1["e0"]))
+    mine0 = min(d1["e0"])
+    maxe0 = max(d1["e0"])
+#    pdb.set_trace()
+    e0_10pct =  0.1*(maxe0-mine0)
+    if not np.isnan(e0_10pct):
+        ax2.set_ylim([mine0-e0_10pct, maxe0+e0_10pct])
+    # assert not np.isnan(e0_10pct)
+    # assert not np.isnan(mine0)
+    # assert not np.isnan(maxe0)
     ax2.set_xlim([0,len_nm])
-    ax2.set_ylim([min(d1["e0"])-e0_10pct, max(d1["e0"])+e0_10pct])
     ax2.set_ylabel("mV")
     ax6.set_xlabel("Distance (nm)")
 
     ax3.errorbar(dists, d1["w"], yerr=covs["w"], fmt='o')
-    w_10pct =  0.1*(max(d1["w"])-min(d1["w"]))
-    ax3.set_ylim(min(d1["w"])-w_10pct, max(d1["w"]+w_10pct))
+    maxw = max(d1["w"])
+    minw = min(d1["w"])
+    w_10pct =  0.1*(maxw-minw)
+    assert not np.isnan(maxw)
+    assert not np.isnan(minw)
+    ax3.set_ylim(minw-w_10pct, maxw+w_10pct)
     ax7.set_xlabel("Distance (nm)")
     ax3.set_ylabel("mV")
 
@@ -535,6 +547,9 @@ def fit_data(bias, dIdV, marker1, marker2):
         n = np.ones((len(p0)))*np.nan
         return n, n, sb, fit_dIdV
 
+def lorentz(e, e0, gamma):
+    return 1/np.pi*(gamma/2)/((x-x0)**2+(gamma/2)**2)
+
 def fit_data_w_times_residual(bias, dIdV, marker1, marker2, fixed_vals):
     # data for which we are fitting the Fano function
     smallbias = [(n,b) for (n,b) in enumerate(bias) if b>=marker1 and b<=marker2]
@@ -579,11 +594,17 @@ def fit_data_w_times_residual(bias, dIdV, marker1, marker2, fixed_vals):
 
     def objective_function(p, bias, dIdV):
         # pdb.set_trace()
+        #parameters are [e0, w, q, a, b, c] so p[1] is w
         of = residual(dIdV, wrapper(bias, *p))[1]*p[1]
-        return of*p[3] #residual(data, fit)
+        return of #residual(data, fit)
 
     try:
-        res = optimize.least_squares(objective_function, x0=p0, args=([b[1] for b in smallbias], fit_dIdV,), bounds=bounds, max_nfev=2000, x_scale=[2,1,200,1,200])#, ftol=3e-16, xtol=3e-16, gtol=3e-16)
+        x_scale = [8,2,1,200,1,200]
+        x_scale = [b for n,b in enumerate(x_scale) if np.isnan(fixed_vals[n])]
+        res = optimize.least_squares(objective_function, x0=p0,
+                                        args=([b[1] for b in smallbias], fit_dIdV,),
+                                        bounds=bounds, max_nfev=2000,
+                                        x_scale=x_scale)#, ftol=3e-16, xtol=3e-16, gtol=3e-16)
         print(res)
         popt = res.x
         pcov = res.jac
@@ -726,9 +747,9 @@ class Application(tk.Frame):
         d_d = [] #default fitting
         for s in specs:
             d_w.append(s.fit_fano(savefig=self.save_figures.get(),
-                                        marker1=Emin, marker2=Emax, e0_fixed_val=E0f, showfig=False, type_fit="wtimes"))
+                                        marker1=Emin, marker2=Emax, e0_fixed_val=np.nan, showfig=False, type_fit="wtimes"))
             d_d.append(s.fit_fano(savefig=self.save_figures.get(),
-                                        marker1=Emin, marker2=Emax, e0_fixed_val=E0f, showfig=False))
+                                        marker1=Emin, marker2=Emax, e0_fixed_val=np.nan, showfig=False))
             self.update()
         # pdb.set_trace()
         for d in [[d_w,"width"], [d_d,"default"]]:
