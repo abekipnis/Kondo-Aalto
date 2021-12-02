@@ -35,11 +35,12 @@ kb = 8.617333262145e-5 #eV/K
 # - plot the rest of the fit outside the selection range
 
 class LoadTimeMeta(type):
-    base_time = time.perf_counter_ns()
+    base_time = time.perf_counter()
+    #time.perf_counter_ns() does not work in some python versions
 
     def __new__(mcs, name, bases, namespace):
         # print(mcs, name, bases, namespace)
-        namespace["__class_load_time__"] = time.perf_counter_ns() - LoadTimeMeta.base_time
+        namespace["__class_load_time__"] = time.perf_counter() - LoadTimeMeta.base_time
         return super().__new__(mcs, name, bases, namespace)
 
 class Spec(metaclass=LoadTimeMeta):
