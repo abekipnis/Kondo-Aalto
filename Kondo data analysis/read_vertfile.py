@@ -20,9 +20,6 @@ import time
 from itertools import product
 import re
 
-import tkinter as tk
-from tkinter import messagebox
-from tkinter.filedialog import askopenfilenames, asksaveasfile, StringVar, OptionMenu
 
 kb = 8.617333262145e-5 #eV/K
 
@@ -836,6 +833,10 @@ class Application(tk.Frame):
             print(e)
 
 if __name__=="__main__":
+
+    import tkinter as tk
+    from tkinter import messagebox
+    from tkinter.filedialog import askopenfilenames, asksaveasfile, StringVar, OptionMenu
     # small range spectra
     srs = []
     dpath = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
