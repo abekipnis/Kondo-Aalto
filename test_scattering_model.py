@@ -11,7 +11,6 @@ import multiprocessing
 import warnings
 from time import time
 import datetime
-import animate_grid
 if __name__=="__main__":
 	warnings.filterwarnings("ignore")
 	parser = argparse.ArgumentParser()
