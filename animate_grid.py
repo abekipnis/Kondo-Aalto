@@ -15,6 +15,7 @@ from matplotlib.widgets import Slider, Button
 from datetime import datetime
 from multiprocessing import Pool, freeze_support
 from find_atom_positions import CircCorralData
+
 class Grid:
     def __init__(self, file):
         self.file = file
@@ -86,6 +87,8 @@ class Grid:
 
         xpmx_nm = self.pix_to_nm(xpixmax)
         xpmn_nm = self.pix_to_nm(xpixmin)
+        ypmx_nm = self.pix_to_nm(ypixmax)
+        ypmn_nm = self.pix_to_nm(ypixmin)
 
         # fitting the "normal" way, with no parameters fixed (only bounded)
         # p = np.concatenate([    [   (self.specvz3[:,0][offset:-1],
@@ -108,6 +111,7 @@ class Grid:
 
         print(read_vertfile.fit_data_fixed_vals(*pe0[int((xpixmax-xpixmin)/2)+(xpixmax-xpixmin)*int((ypixmax-ypixmin)/2)]))
 
+        # as reminder, fit_data_fixed_vals(bias_mv, self.dIdV, marker1, marker2, fixed_vals)
         with Pool() as pool:
             L = pool.starmap(read_vertfile.fit_data_fixed_vals, pe0)
 
@@ -120,10 +124,10 @@ class Grid:
         for n, l in enumerate(labels):
             ax = plt.subplot(111)
             plt.subplots_adjust(left=0.25, bottom=0.25)
-            dat = np.concatenate(m.data.flatten()).reshape(nx,ny,6)[:,:,n]
+            dat = np.concatenate(m.data.flatten()).reshape(ny,nx,6)[:,:,n]
             # pdb.set_trace()
             img = ax.imshow(dat,
-                       extent=[xpmn_nm/10., xpmx_nm/10.,xpmn_nm/10., xpmx_nm/10.,]);
+                       extent=[xpmn_nm/10., xpmx_nm/10.,ypmn_nm/10., ypmx_nm/10.,]);
             plt.title(l)
             plt.xlabel("nm")
             plt.ylabel("nm")
@@ -139,6 +143,7 @@ class Grid:
                 nmxd=5
             s_cmax = Slider(ax_cmax, 'max', nmnd, nmxd, valfmt=c_max)
             s_cmin = Slider(ax_cmin, 'min', nmnd, nmxd, valfmt=c_max)
+
             def update(val, s=None):
                 _cmax = s_cmax.val
                 _cmin = s_cmin.val
@@ -147,14 +152,15 @@ class Grid:
             s_cmax.on_changed(update)
             s_cmin.on_changed(update)
 
+
             # save the data
-            f = datetime.today().strftime('%Y-%m-%d') + "_" + l + ".txt"
+            f = os.path.split(g.file)[-1].replace('.specgrid',"_specgrid_")+datetime.today().strftime('%Y-%m-%d') + "_" + l + ".txt"
             d = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/grid analysis"
             f = os.path.join(d,f)
             np.savetxt(f, dat)
 
             plt.show()
-
+            np.savetxt(f.strip(".txt")+ "_limits.txt", [s_cmin.val, s_cmax.val])
             # plt.savefig(l+".png")
 
     def pix_to_nm(self, pix):
@@ -284,27 +290,29 @@ class Grid:
 
 if __name__ == "__main__":
     # read size of image from .specgrid.dat file
-    # dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
+    dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
 
-    g = Grid("/Users/akipnis/Dropbox/personal-folders/Abe/A211102.190005.specgrid")
-    g.animate_cube(plotpoints=[[3.3, 3.6]])
+    # g = Grid("/Users/akipnis/Dropbox/personal-folders/Abe/A211102.190005.specgrid")
+    # g.animate_cube(plotpoints=[[3.3, 3.6]])
     #plt.show()
     # there are three successful grids from the first data set
 
     #this is the grid with a Cobalt in the center
-    # filename= dir +r"Ag 2021-08-13 2p5 nm radius/grid/Createc2_210814.214635.specgrid"
-    # g = Grid(filename)
-    # # range of pixels over which to plot Fano fit in grid
-    # xpixmin = ypixmin = 30
-    # xpixmax = ypixmax = 70
+    filename= dir +r"Ag 2021-08-13 2p5 nm radius/grid/Createc2_210814.214635.specgrid"
+    g = Grid(filename)
+    # range of pixels over which to plot Fano fit in grid
+    xpixmin = 32
+    xpixmax = 63
+
+    ypixmin = 33
+    ypixmax = 62
 
     # # TODO: turn this into nm to more easily change
-
-    # g.fit_Fano_to_grid_data(xpixmin, xpixmax, ypixmin, ypixmax)
+    pdb.set_trace()
+    g.fit_Fano_to_grid_data(xpixmin, xpixmax, ypixmin, ypixmax)
 
     # g.animate_cube(plotpoints=[[3.3, 3.6],[3.3, 3.8], [3.3, 4.0], [3.3, 4.2], [3.3, 4.4], [3.3, 4.6], [3.3, 4.8]])
     # plt.show()
-
 
     # # filename = dir +r'Ag 2021-08-16 2p5 nm radius empty/Createc2_210816.223358.specgrid'
     # # g = Grid(filename)
