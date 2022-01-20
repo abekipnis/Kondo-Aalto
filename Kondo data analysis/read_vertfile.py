@@ -19,7 +19,14 @@ import sys
 import time
 from itertools import product
 import re
+import tkinter as tk
 
+# import matplotlib
+# font = {'family' : 'normal',
+#         'weight' : 'normal',
+#         'size'   : 14}
+# import matplotlib
+# matplotlib.rc('font', **font)
 
 kb = 8.617333262145e-5 #eV/K
 
@@ -64,6 +71,7 @@ class Spec(metaclass=LoadTimeMeta):
         l[-1] = l[-1].strip("\\r\\n\'")
         l = [float(m) for m in l]
 
+
         self.NPoints = l[0]
         self.VertPosX_DAC = l[1]
         self.VertPosY_DAC = l[2]
@@ -81,16 +89,21 @@ class Spec(metaclass=LoadTimeMeta):
         self.T_AUXADC6 = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'T_AUXADC6[K]"][0].strip("\\r\\n'"))
         self.T_AUXADC7 = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'T_AUXADC7[K]"][0].strip("\\r\\n'"))
 
+
+        self.LockinAmpl = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'LockinAmpl"][0].strip("\\r\\n'"))
+        self.LockinFreq = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'LockinFreq"][0].strip("\\r\\n'"))
         self.FBLogiset = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'FBLogIset"][0].strip("\\r\\n'")) # units: pA
         self.biasVoltage = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'BiasVoltage / BiasVolt.[mV]"][0].strip("\\r\\n'")) # mV
         self.bias_mv = np.array([float(d[1]) for d in self.data][19:])
         self.current = np.array([float(d[4]) for d in self.data][19:])
         self.dIdV = np.array([float(d[5]) for d in self.data][19:])
 
-        self.bias_offset = interp1d(self.current, self.bias_mv)(0)
-
+        try:
+            self.bias_offset = interp1d(self.current, self.bias_mv)(0)
+            self.bias_mv -= self.bias_offset
+        except ValueError as ve:
+            print("could not calculate bias offset")
         #correcting the bias offset
-        self.bias_mv -= self.bias_offset
 
     def fit_fano(self, marker1: float = 0, marker2: float = 0,
                  savefig: bool = True, showfig: bool = True, e0_fixed_val = np.nan, w = np.nan, type_fit: str = "default") -> list:
@@ -124,77 +137,103 @@ class Spec(metaclass=LoadTimeMeta):
         # e0, w, q, a, b, c
         fixed_vals = [e0_fixed_val, np.nan, np.nan, np.nan, np.nan, np.nan]
         if type_fit == 'default':
-            popt, pcov, sb, fit_dIdV = fit_data_fixed_vals(self.bias_mv, self.dIdV, marker1, marker2, fixed_vals)
+            popt, pcov, sb, fit_dIdV, p0 = fit_data_fixed_vals(self.bias_mv, self.dIdV, marker1, marker2, fixed_vals)
         elif type_fit == 'wtimes': #using the width*residual as thing to minimize
-            popt, pcov, sb, fit_dIdV = fit_data_w_times_residual(self.bias_mv, self.dIdV, marker1,marker2, fixed_vals)
+            popt, pcov, sb, fit_dIdV, p0 = fit_data_w_times_residual(self.bias_mv, self.dIdV, marker1,marker2, fixed_vals)
         try:
             fig = figure(figsize=(8.5,6.6)) #width, height (inches)
             a1 = plt.subplot(2,1,1)
             trans = plt.gcf().transFigure
-            c = tuple(np.array(list(zip(popt,pcov.diagonal()))).flatten())
-            c = tuple(np.array(list(zip(popt, np.zeros(len(popt))))).flatten())
             # pdb.set_trace()
-            plt.text(0.05,0.2,
-                r"$\frac{dI}{dV}\sim a\frac{(q+\epsilon)^2}{1+\epsilon^2} + bV + c$"+"\n"
-                r"$\epsilon = \frac{V-\epsilon_0}{w}$"+"\n"
-                r"$w=\gamma/2$, $\gamma=$linewidth"+ "\n\n"
-                'e0: %1.2lf$\pm$%1.2lf mV\n\n'
-                'w: %1.2lf$\pm$%1.2lf mV\n\n'
-                'q: %1.2lf$\pm$%1.2lf\n\n'
-                'a: %1.2lf$\pm$%1.2lf\n\n'
-                'b: %1.2lf$\pm$%1.2lf\n\n'
-                'c: %1.2lf$\pm$%1.2lf\n\n'
-                 %(c),
-                transform=trans)
+            # if len(pcov.shape)<=1 and np.any(np.isnan(pcov)):
+            #     pcov = np.eye(pcov.shape[0])*np.zeros(pcov.shape[0])
+            # c = tuple(np.array(list(zip(popt, pcov.diagonal()))).flatten())
+            # c = tuple(np.array(list(zip(popt, np.zeros(len(popt))))).flatten())
+            c = popt
+            c = list(tuple([marker1]+[marker2]+
+                        [self.biasVoltage]+
+                        [self.FBLogiset/1000.0]+
+                        [self.bias_offset] + list(c)+p0))
+            c.insert(7, c[6]*1e-3/kb)
+            c = tuple(c)
+            # pdb.set_trace()
+            # plt.text(0.05,0.2,
+            #
+            #      %(c),
+            #     transform=trans)
 
-            plt.text(0.05, 0.8, "fit range\nmin: %1.2lf mV\n"
-                                "max: %1.2lf mV\n\n"
-                                "Bias setpoint: %1.2lf mV\n"
-                                "Current setpoint: %1.2lf pA\n"
-                                "Bias offset: %1.3lf mV"
-                                %(marker1,
-                                marker2,
-                                self.biasVoltage,
-                                self.FBLogiset,
-                                self.bias_offset),
+            plt.text(0.05, 0.2, "Fit Range:\n     min: %1.2lf mV\n"
+                                "     max: %1.2lf mV\n\n"
+                                "Spectrum acq. params:\n"
+                                "     Bias: %1.0lf mV\n"
+                                "     Current setpoint: %1.0lf nA\n"
+                                "     Bias offset: %1.3lf mV\n\n"
+                                "Fit equation:\n"
+                                r"    $\frac{dI}{dV}\sim a(\frac{(q+\epsilon)^2}{1+\epsilon^2}) + bV + c$" "\n"
+                                r"     $\epsilon = \frac{V-\epsilon_0}{w}$" "\n"
+                                r"    $w=2\gamma$, $\gamma=$HWHM" "\n\n"
+                                "Fit parameters:\n"
+                                r"    $\epsilon_0$" ': %1.2lf ' r"$mV$" '\n'#$\pm$%1.2lf mV\n'
+                                '    w: %1.2lf $mV$, '#\pm$%1.2lf mV, '
+                                r"$T_K=$" '%1.2lf $K$\n'
+                                '    q: %1.2lf\n'#$\pm$%1.2lf\n'
+                                '    a: %1.2lf\n'#$\pm$%1.2lf\n'
+                                '    b: %1.2lf\n'#$\pm$%1.2lf\n'
+                                '    c: %1.2lf\n\n'#$\pm$%1.2lf\n\n'
+                                r"Fit initial guess ($\epsilon_0$,w,q,a,b,c)" "\n"
+                                "     %1.2lf, %1.2lf, %1.2lf\n     %1.2lf, %1.2lf, %1.2lf"
+                                %(c),
                                 transform=trans)
             a1.plot(self.bias_mv, self.dIdV)
-            a1.plot(sb, fit_dIdV,"b-")
+            a1.plot(sb, fit_dIdV, "b-")
             a1.set_ylim(min(self.dIdV), max(self.dIdV))
             f = fano(sb, *popt)
-
             # f = fix_T(T)(sb, *popt)
             # plt.plot(bias, fix_T(T)(bias, *popt), "black")
 
             a1.plot(self.bias_mv, fano(self.bias_mv, *popt), 'r--')
+            a1.plot(self.bias_mv, fano(self.bias_mv, *popt)-popt[4]*self.bias_mv,"m--")#-0.2*(min(self.dIdV)-popt[4]),"m--")
             # plt.plot(sb, fano(sb, *popt1),'go', markersize=2)
 
             residY, residtot = residual(fit_dIdV, f) #NORMALIZE THIS BY # OF FIT POINTS
 
             plt.subplots_adjust(left=0.4)
-            a1.set_xlabel("Bias (mV)")
+            a1.set_xlabel(r"Bias ($mV$)")
+            a1.set_ylabel(r"$dI/dV$ (a.u.)")
+
             t1 = os.path.split(self.fname.split(dpath)[-1])
             t = t1[-1]
             a1.set_title("\n".join(list(t1)))
-            a1.legend(["data",r'fit data',"model"])
+            a1.legend(["data",r'fit data',"model","model - linear background"])
+            a1.axvline(marker1, color="b")
+            a1.axvline(marker2, color="b")
             # if savefig:
             #     plt.savefig(file.split(".VERT")[0]+"%s_fano_fit.png" %(t))
             # if showfig:
             #     plt.show()
             a2 = plt.subplot(2, 2, 3)
             a2.plot(sb, residY)
-            a2.set_xlabel("fit residuals")
+            a2.set_xlabel(r"Bias ($mV$)")
+            a2.legend(["Fit residuals"])
+            a2.set_ylabel(r"$dI/dV$")
 
             a3 = plt.subplot(2,2,4)
             a3.hist(residY)
-            a3.set_xlabel("residual histogram")
+            a3.set_xlabel("Residual histogram")
+            a3.yaxis.tick_right()
+            a3.set_ylabel("Counts")
+            a3.set_xlabel(r"$dI/dV$")
+            a3.legend(["Residual histogram"])
+            a3.set_xlim(min(residY),max(residY))
+
+            a3.yaxis.set_label_position("right")
             # plt.tight_layout()
             if savefig:
                 # pdb.set_trace()
-                fig_path = os.path.join(os.path.split(self.fname)[0],"%s_fit_residual.png" %(t.strip(".VERT")))
+                fig_path = os.path.join(os.path.split(self.fname)[0],"%s_fit_residual.pdf" %(t.strip(".VERT")))
                 plt.savefig(fig_path)
             # if showfig:
-            # plt.show()
+            plt.show()
 
             # plt.close()
         except Exception:
@@ -428,7 +467,7 @@ def fermi_dirac(e, mu, T):
 
 def fano(V, e0, w, q, a, b, c):
     def eps(V, e0, w):
-        return (np.array(V)-e0)/w
+        return (np.array(V)-e0)/(w/2)
     fit_func = a*((q + eps(V, e0, w))**2/(1+eps(V, e0, w)**2))+ b*np.array(V) + c
     return fit_func
 
@@ -464,7 +503,7 @@ def fit_data_fixed_vals(bias, dIdV, marker1, marker2, fixed_vals):
     b0 = (fit_dIdV[-1]-fit_dIdV[0])/(sb[-1]-sb[0])
     e00 = sb[np.argmin(scipy.signal.detrend(fit_dIdV))]
 
-    p0 = [e00, 4, 1, 1, b0, np.mean(fit_dIdV)]
+    p0 = [e00, 4, 0, 1, b0, np.mean(fit_dIdV)]
     hold = [0 if np.isnan(fixed_vals[n]) else 1 for n in range(len(p0)) ]
 
     p1 = [p if np.isnan(fixed_vals[n]) else fixed_vals[n] for n,p in enumerate(p0) ]
@@ -506,12 +545,11 @@ def fit_data_fixed_vals(bias, dIdV, marker1, marker2, fixed_vals):
             if hold[i]:
                 popt = np.insert(popt, i, p1[i])
                 pcov = np.insert(np.insert(pcov, i, 0, axis=1), i, 0, axis=0)
-        return popt, pcov, sb, fit_dIdV
-
-    except RuntimeError as e:
+        return popt, pcov, sb, fit_dIdV, p0
+    except (RuntimeError, IndexError) as e:
         print(e)
         n = np.ones((len(p0)))*np.nan
-        return n, n, sb, fit_dIdV
+        return n, n, sb, fit_dIdV, p0
 
 def fit_data(bias, dIdV, marker1, marker2):
     # data for which we are fitting the Fano function
@@ -593,16 +631,16 @@ def fit_data_w_times_residual(bias, dIdV, marker1, marker2, fixed_vals):
     def objective_function(p, bias, dIdV):
         # pdb.set_trace()
         #parameters are [e0, w, q, a, b, c] so p[1] is w
-        of = residual(dIdV, wrapper(bias, *p))[1]*p[1]
+        of = residual(dIdV, wrapper(bias, *p))[1]*abs(p[2])
         return of #residual(data, fit)
 
     try:
-        x_scale = [8,2,1,200,1,200]
+        x_scale = [8,2,1,1,1,200]
         x_scale = [b for n,b in enumerate(x_scale) if np.isnan(fixed_vals[n])]
         res = optimize.least_squares(objective_function, x0=p0,
                                         args=([b[1] for b in smallbias], fit_dIdV,),
-                                        bounds=bounds, max_nfev=2000,
-                                        x_scale=x_scale)#, ftol=3e-16, xtol=3e-16, gtol=3e-16)
+                                        bounds=bounds, max_nfev=2000)#,
+        #                                x_scale=x_scale)#, ftol=3e-16, xtol=3e-16, gtol=3e-16)
         print(res)
         popt = res.x
         pcov = res.jac
@@ -612,12 +650,12 @@ def fit_data_w_times_residual(bias, dIdV, marker1, marker2, fixed_vals):
             if hold[i]:
                 popt = np.insert(popt, i, p1[i])
                 pcov = np.insert(np.insert(pcov, i, 0, axis=1), i, 0, axis=0)
-        return popt, pcov, sb, fit_dIdV
+        return popt, pcov, sb, fit_dIdV, p0
 
-    except RuntimeError as e:
+    except (RuntimeError, IndexError) as e:
         print(e)
         n = np.ones((len(p0)))*np.nan
-        return n, n, sb, fit_dIdV
+        return n, n, sb, fit_dIdV, p0
 
 def save_fano_fits(files: list, opts: list, covs: list, m1: list, m2: list, path: str, xs: list, ys: list, resid: list):
     with open(path, "w") as f:
@@ -770,6 +808,7 @@ class Application(tk.Frame):
             # TODO: plot associated .dat file and spectrum locations
             if n==0 or self.keep_fit_bounds.get()==0:
                 s = Spec(f)
+                pdb.set_trace()
                 print("Spectrum load time (ms): ", s.__class_load_time__/1e6)
 
                 popt, pcov, marker1, marker2, x, y, r = s.fit_fano(savefig=self.save_figures.get())
@@ -835,28 +874,32 @@ class Application(tk.Frame):
 
 if __name__=="__main__":
 
-    import tkinter as tk
     from tkinter import messagebox
     from tkinter.filedialog import askopenfilenames, asksaveasfile, StringVar, OptionMenu
     # small range spectra
     srs = []
     dpath = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
     srs.append(dpath + "Ag 2021-08-13 3p8 nm radius/3p8nm pm20mV line/Createc2_210813.105240.L0029.VERT")
+    srs.append(dpath + "Ag 2021-08-13 3p8 nm radius/3p8nm pm20mV line/Createc2_210813.103843.VERT")
+
     srs.append(dpath + "Ag 2021-08-13 3p8 nm radius/pm 20mV spectrum on Co/Createc2_210813.104416.VERT")
     srs.append(dpath + "Ag 2021-07-29 corral built/Line spectrum across corral/Createc2_210729.180059.L0026.VERT")
     srs.append(dpath + "Ag 2021-08-13 2p5 nm radius/2p5nm radius pm 20mV line spectrum/Createc2_210813.165557.L0029.VERT")
     srs.append(dpath + "Ag 2021-08-12 4p5 nm radius/pm 20mV line/Createc2_210812.171526.L0036.VERT")
-    srs.append(dpath + "Ag 2021-08-13 3p8 nm radius/3p8nm pm20mV line/Createc2_210813.103843.VERT")
 
-    srs.append(dpath + "Ag 2021-08-13 2p5 nm radius/pm20 mV on Co/Createc2_210813.163836.VERT")
+    srs.append(dpath + "Ag 2021-08-13 2p5 nm radi us/pm20 mV on Co/Createc2_210813.163836.VERT")
 
     # large range spectra
     lrs = []
+    lrs.append(dpath + "Ag 2021-08-12 4p5 nm radius/Createc2_210812.163415.VERT")
+
+    lrs.append(dpath + "Ag 2021-08-11/3p8 nm radius line spectra pm100mV/Createc2_210811.113827.L0029.VERT")
+
+    lrs.append(dpath + "Ag 2021-08-09 2p5 nm radius/100mV spectrum on Co/Createc2_210809.162718.VERT")
+
+
     lrs.append(dpath + "Ag 2021-08-12 4p5 nm radius/4p5 nm line spectrum pm100mV/Createc2_210812.154131.L0036.VERT")
     lrs.append(dpath+ "Ag 2021-08-09 2p5 nm radius/pm 100mV line spectrum across corral/Createc2_210809.154356.L0025.VERT")
-    lrs.append(dpath + "Ag 2021-08-12 4p5 nm radius/Createc2_210812.163415.VERT")
-    lrs.append(dpath + "Ag 2021-08-11/3p8 nm radius line spectra pm100mV/Createc2_210811.113827.L0029.VERT")
-    lrs.append(dpath + "Ag 2021-08-09 2p5 nm radius/100mV spectrum on Co/Createc2_210809.162718.VERT")
     lrs.append(dpath + "Ag 2021-08-13 2p5 nm radius/pm 100 mV 2p5 nm radius line spectrum/Createc2_210813.173235.L0030.VERT")
     lrs.append(dpath + "Ag 2021-08-13 2p5 nm radius/300mV to -200mV line/Createc2_210813.231403.L0031.VERT")
 
