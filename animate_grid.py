@@ -15,6 +15,17 @@ from matplotlib.widgets import Slider, Button
 from datetime import datetime
 from multiprocessing import Pool, freeze_support
 from find_atom_positions import CircCorralData
+from itertools import repeat
+
+# need wrapper around pool.starmap to use kw arguments
+def starmap_with_kwargs(pool, fn, args_iter, kwargs_iter):
+    args_for_starmap = zip(repeat(fn), args_iter, kwargs_iter)
+    pdb.set_trace()
+    return pool.starmap(apply_args_and_kwargs, args_for_starmap)
+
+def apply_args_and_kwargs(fn, args, kwargs):
+    return fn(*args, **kwargs)
+
 
 class Grid:
     def __init__(self, file):
@@ -83,41 +94,55 @@ class Grid:
         ls = [float(b.split("=")[-1].rstrip(" \\r\\n'")) for b in np.array(a[0:600]).T[0] if "Length" in b]
         return ls #in angstroms
 
-    def fit_Fano_to_grid_data(self, xpixmin, xpixmax, ypixmin, ypixmax):
+    def fit_Fano_to_grid_data(self, xpixmin, xpixmax, ypixmin, ypixmax, file_marker):
 
         xpmx_nm = self.pix_to_nm(xpixmax)
         xpmn_nm = self.pix_to_nm(xpixmin)
         ypmx_nm = self.pix_to_nm(ypixmax)
         ypmn_nm = self.pix_to_nm(ypixmin)
 
-        # fitting the "normal" way, with no parameters fixed (only bounded)
-        # p = np.concatenate([    [   (self.specvz3[:,0][offset:-1],
-        #                             self.cube_array[:,i,j][offset:-1],
-        #                             -15,20)
+        p_fixed = [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan] #fix e0 at 8.3 mV
+        # pe0 = np.concatenate([    [   (self.specvz3[:,0][self.offset:-1],
+        #                             self.cube_array[:,i,j][self.offset:-1],
+        #                             -15, 20, p_fixed, False)
         #                             for i in range(xpixmin,xpixmax)]
         #                     for j in range(ypixmin,ypixmax)])
-        # with Pool() as pool:
-        #     L = pool.starmap(read_vertfile.fit_data, p)
-
-        # fitting with params fixed. np.nan means 'unfixed', otherwise fixed at given value
-        # [e0, w, q, a, b, c]
-
-        p_fixed = [8.3, np.nan, np.nan, np.nan, np.nan, np.nan] #fix e0 at 8.3 mV
-        pe0 = np.concatenate([    [   (self.specvz3[:,0][self.offset:-1],
-                                    self.cube_array[:,i,j][self.offset:-1],
-                                    -15, 20, p_fixed)
-                                    for i in range(xpixmin,xpixmax)]
-                            for j in range(ypixmin,ypixmax)])
-
-        print(read_vertfile.fit_data_fixed_vals(*pe0[int((xpixmax-xpixmin)/2)+(xpixmax-xpixmin)*int((ypixmax-ypixmin)/2)]))
-
-        # as reminder, fit_data_fixed_vals(bias_mv, self.dIdV, marker1, marker2, fixed_vals)
-        with Pool() as pool:
-            L = pool.starmap(read_vertfile.fit_data_fixed_vals, pe0)
-
         nx = xpixmax - xpixmin
         ny = ypixmax - ypixmin
-        Lm = np.array(L).reshape(nx,ny,4) # popt, pcov, sb, fit_dIdV
+        data = np.array([[self.cube_array[:,i,j][self.offset:-1]
+                    for i in range(xpixmin,xpixmax)]
+                    for j in range(ypixmin,ypixmax)]).flatten()
+        data = data.reshape(nx*ny, len(self.cube_array[:,0,0][self.offset:-1]))
+        # pdb.set_trace()
+        args_iter = zip(repeat(self.specvz3[:,0][self.offset:-1]),
+                    data,
+                    repeat(-15),
+                    repeat(20),
+                    repeat(p_fixed))
+        # pdb.set_trace()
+
+        # print(read_vertfile.fit_data_fixed_vals(*list(args_iter)[int((xpixmax-xpixmin)/2)+(xpixmax-xpixmin)*int((ypixmax-ypixmin)/2)], **kwargs_iter[0]))
+
+        # popt, pcov, sb, fit_dIdV, p0 = fit_data_fixed_vals(bias_mv, self.dIdV, marker1, marker2, fixed_vals)
+        with Pool() as pool:
+            L = pool.starmap(read_vertfile.fit_data_fixed_vals, args_iter)
+
+        # need to recreate the `zip` because it was `used up`
+        args_iter = zip(repeat(self.specvz3[:,0][self.offset:-1]),
+                    data,
+                    repeat(-15),
+                    repeat(20),
+                    repeat(p_fixed))
+        # use vals from this fit as init vals for next
+        kwargs_iter = [dict(init_vals=i, scale=False) for i in np.array(L)[:,0]]
+
+        with Pool() as pool:
+            L = starmap_with_kwargs(pool,read_vertfile.fit_data_w_times_residual, args_iter, kwargs_iter)
+
+        # pdb.set_trace()
+        nx = xpixmax - xpixmin
+        ny = ypixmax - ypixmin
+        Lm = np.array(L).reshape(nx,ny,5) # popt, pcov, sb, fit_dIdV, p0
         m = ma.masked_array(Lm[:,:,0], mask=np.any(pd.isnull(Lm),axis=-1))
         c_max = "%1.2lf"
         labels = [r"$\epsilon_0$","w","q","a","b","c"]
@@ -125,7 +150,6 @@ class Grid:
             ax = plt.subplot(111)
             plt.subplots_adjust(left=0.25, bottom=0.25)
             dat = np.concatenate(m.data.flatten()).reshape(ny,nx,6)[:,:,n]
-            # pdb.set_trace()
             img = ax.imshow(dat,
                        extent=[xpmn_nm/10., xpmx_nm/10.,ypmn_nm/10., ypmx_nm/10.,]);
             plt.title(l)
@@ -154,7 +178,9 @@ class Grid:
 
 
             # save the data
-            f = os.path.split(g.file)[-1].replace('.specgrid',"_specgrid_")+datetime.today().strftime('%Y-%m-%d') + "_" + l + ".txt"
+            g = os.path.split(self.file)[-1].replace('.specgrid',"_specgrid_")
+            today = datetime.today().strftime('%Y-%m-%d')
+            f = g + file_marker + today + "_" + l + ".txt"
             d = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/grid analysis"
             f = os.path.join(d,f)
             np.savetxt(f, dat)
@@ -235,7 +261,7 @@ class Grid:
                 self.ax2.yaxis.tick_right()
                 self.ax2.set_xlabel("Bias (mV)")
                 self.ax2.set_ylabel("dI/dV (a.u)")
-                self.ax1.set_title("LDOS(V,r)")
+                # self.ax1.set_title("LDOS(V,r)")
                 self.cbar.set_ticks([])
                 self.ax2.set_adjustable('box')
                 self.ax2.set_aspect(0.1)
@@ -276,10 +302,10 @@ class Grid:
                     self.ax2.plot(self.g.specvz3[:,0][self.g.offset:-1], self.g.cube_array[:,p[1], p[0]][self.g.offset:-1])
 
                 self.ax2.axvline(self.g.specvz3[i,0], c='r')
-                self.title2 = self.ax2.text(
-                0.5,1.1, "dI/dV point spectra from grid",
-                             transform=self.ax2.transAxes, ha="center")
-                             #bbox={'facecolor':'w', 'alpha':1, 'pad':5}
+                # self.title2 = self.ax2.text(
+                # 0.5,1.1, "dI/dV point spectra from grid",
+                #              transform=self.ax2.transAxes, ha="center")
+                #              #bbox={'facecolor':'w', 'alpha':1, 'pad':5}
                 self.ax2.set_xlabel("Bias (mV)")
                 self.ax2.set_ylabel("dI/dV (a.u)")
                 self.ax2.set_yticks([])
@@ -301,15 +327,18 @@ if __name__ == "__main__":
     filename= dir +r"Ag 2021-08-13 2p5 nm radius/grid/Createc2_210814.214635.specgrid"
     g = Grid(filename)
     # range of pixels over which to plot Fano fit in grid
+    # # TODO: turn this into nm to more easily change
     xpixmin = 32
     xpixmax = 63
 
     ypixmin = 33
     ypixmax = 62
 
-    # # TODO: turn this into nm to more easily change
-    pdb.set_trace()
-    g.fit_Fano_to_grid_data(xpixmin, xpixmax, ypixmin, ypixmax)
+    g.fit_Fano_to_grid_data(xpixmin, xpixmax, ypixmin, ypixmax,"trial")
+
+    # then plot this data with grid analysis/plot_params.py
+
+
 
     # g.animate_cube(plotpoints=[[3.3, 3.6],[3.3, 3.8], [3.3, 4.0], [3.3, 4.2], [3.3, 4.4], [3.3, 4.6], [3.3, 4.8]])
     # plt.show()
