@@ -9,6 +9,7 @@ from scipy.spatial import distance_matrix
 from scipy.optimize import leastsq, least_squares, minimize
 from  scipy.stats import sigmaclip
 import matplotlib.animation as animation
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from dataclasses import dataclass
 from multiprocessing import Process, Queue, Array
@@ -17,6 +18,8 @@ from sklearn.preprocessing import normalize
 from math import cos, sin
 import pandas as pd
 import scattering_model
+import pickle
+from scipy.interpolate import interp1d
 
 
 # DEFINING CONSTANTS
@@ -66,8 +69,29 @@ class CircCorralData:
         self.label = label
         self.image_file = createc.DAT_IMG(self.file)
 
+        # pdb.set_trace()
         # topography, current, topography, current
-        self.im = self.image_file._crop_img(self.image_file.img_array_list[2][:][:])
+
+        # have to check that the channel is correct !
+        # otherwise the _crop_img line will return an empty array
+        # usually the data is in channel 2 or channel 0
+
+        # _crop_img will remove rows that are zeros - problematic for when plotting
+
+        chan = 2
+        try:
+            self.im = self.image_file._crop_img(self.image_file.img_array_list[chan][:][:])
+        except:
+            self.im = self.image_file._crop_img(self.image_file.img_array_list[0][:][:])
+        if self.im.shape[0]==0:
+            print("using channel 0 instead of channel 2!")
+            chan = 0
+            self.im = self.image_file._crop_img(self.image_file.img_array_list[chan][:][:])
+        zconst = self.image_file.zPiezoConst # angstroms/V
+
+        DAC_V_conv = interp1d([-524288, 524287],[-10,10])
+        self.im = DAC_V_conv(self.im)*zconst
+
         self.imshape = self.im.shape
         self.xPix = self.imshape[0]
         self.yPix = self.imshape[1]
@@ -97,6 +121,7 @@ class CircCorralData:
         # return plane
 
     def get_region_centroids(self, diamond_size=5, sigmaclip=1.5, show=False):
+        # pdb.set_trace()
         diamond = morphology.diamond(diamond_size)
         maxima = morphology.h_maxima(self.im, sigmaclip*np.std(self.im))
         r = morphology.binary_dilation(maxima, selem=diamond)
@@ -129,7 +154,7 @@ class CircCorralData:
         d = [is_far_from_edge(self,d) for d in c]
         c = [d for d in c if is_far_from_edge(self,d)]
         self.centroids = c
-        print("%d centroids" %(len(self.centroids)))
+        print("\t%d centroids" %(len(self.centroids)))
         plt.close()
 
     def remove_central_atom(self, data):
@@ -157,7 +182,7 @@ class CircCorralData:
                 ccopy.pop(center_idx_1)
             except:
                 ccopy = np.delete(ccopy,center_idx_1,axis=0)
-            return ccopy
+            return ccopy, data[center_idx_1]
         else:
             plt.imshow(self.im)
             plt.scatter(*np.array(data).T)
@@ -252,17 +277,21 @@ class CircCorralData:
         y = c[1] + r*np.sin(theta)
         return x, y
 
-    def plot_circle_fit(self, points, radius, center, label):
+    def plot_circle_fit(self, points, radius, center, label, pix_or_nm="nm"):
         xc, yc = self.circle(radius, center, npoints=1000)
-        plt.scatter(*array(points).T,label=label)
-        plt.scatter(xc, yc, alpha=0.5, s=5, label=label)
+        if pix_or_nm=="pix":
+            plt.scatter(*array(points).T,label=label)
+            plt.scatter(xc, yc, alpha=0.5, s=5, label=label)
+        elif pix_or_nm=="nm":
+            plt.scatter(*self.pix_to_nm(array(points).T),label=label)
+            plt.scatter(self.pix_to_nm(xc), self.pix_to_nm(yc), alpha=0.5, s=5, label=label)
 
     def bbox(self):
         """
         return (x0, y0, x1, y1) defined by the min and max x, y coords of atoms making up the corral
         """
         if self.occupied:
-            xs, ys = array(self.remove_central_atom(self.gauss_fit_locs.T)).T
+            (xs, ys), center_atom_loc = array(self.remove_central_atom(self.gauss_fit_locs.T)).T
         else:
             xs, ys = array(self.gauss_fit_locs)
         return [min(xs), min(ys), max(xs), max(ys)]
@@ -457,32 +486,56 @@ class CircCorralData:
 
         #dist (Å) 'max height' guess is off from Gaussian fit
         d = np.mean(norm(self.pix_to_nm(array(self.centroids))-self.pix_to_nm(fp.T),axis=1)*10)
-        print("Max height guess different from Gaussian fit on average by: %1.2lf Å" %(d))
+        print("\tMax height guess different from Gaussian fit on average by: %1.2lf Å" %(d))
+        self.naive_to_gauss_error_angstroms = d
         self.gauss_fit_params = np.array(fit_params)
         self.gauss_fit_locs = fp
         return full_im, fp
 
     def compare_fits(self):
-        plt.figure(figsize=(9,6))
-        plt.imshow(self.im)#, extent=[0, self.pix_to_nm(self.xPix),0 ,self.pix_to_nm(self.yPix)])
-        self.plot_circle_fit(self.centroids, self.r_n, self.c_n, "naive")
-        self.plot_circle_fit(self.gauss_fit_locs.T, self.r_g, self.c_g, "Gaussian")
-        print(self.label)
-        print("Central atom from Naive fit: \n", self.pix_to_nm(self.r_n), self.c_n)
-        print("Central atom from Gauss fit: \n", self.pix_to_nm(self.r_g), self.c_g)
+        plt.figure(figsize=(9,4.5))
+        ax = plt.gca()
+        im = plt.imshow(self.im, extent=[0, self.pix_to_nm(self.image_file.xPixel) ,self.pix_to_nm(self.image_file.yPixel),0])
+        #divider = make_axes_locatable(ax)
+        #cax = divider.append_axes("right", size="5%", pad=0.05)
 
-        plt.legend()
-        plt.text(10,30,
-            "r (naive): %1.2lf nm\n"
-            "c (naive): x: %1.2lf nm, y: %1.2lf nm\n"
-            "r (gauss): %1.2lf nm\n"
-            "c (gauss): x: %1.2lf nm, y: %1.2lf nm"
-                %(self.pix_to_nm(self.r_n), *self.pix_to_nm(self.c_n),
-                self.pix_to_nm(self.r_g), *self.pix_to_nm(self.c_g)),
-                bbox={'facecolor':'w', 'alpha':0.5, 'pad':5})#,
-        plt.title(self.label + "\nFits to circle, naive & gaussian fit positions")
-        plt.savefig(self.label.split("/")[-1].split(".dat")[0] +"_circle_fits.png")
+        #plt.colorbar(im, cax=cax)#
+        cbar = plt.colorbar(fraction=0.046, pad=0.04)
+        cbar.set_label('pm', rotation=90)
+
+
+        # self.plot_circle_fit(self.centroids, self.r_n, self.c_n, "naive")
+        self.plot_circle_fit(self.gauss_fit_locs.T, self.r_g, self.c_g, "Gaussian")
+        print("\t",self.label)
+        print("\tCentral atom from Naive fit: ", self.pix_to_nm(self.r_n), self.c_n)
+        print("\tCentral atom from Gauss fit: ", self.pix_to_nm(self.r_g), self.c_g)
+
+        # plt.legend(loc="lower left")
+        plt.figtext(0.05,0.15,
+            "Fitting atom locations to circle: %d atoms\n\n"
+            "radius (naive): %1.2lf nm\n"
+            "center (naive): x: %1.2lf nm, y: %1.2lf nm\n\n"
+            "radius (Gauss): %1.2lf nm\n"
+            "center (Gauss): x: %1.2lf nm, y: %1.2lf nm\n\n"
+            "<Naive guess - Gaussian fit>: %1.2lf Å\n\n"
+            "Image acquisition settings:\n"
+            "Constant current mode\n"
+            "   Bias: %d mV\n"
+            "   Current setpoint: %d pA"
+                %(len(self.centroids),self.pix_to_nm(self.r_n), *self.pix_to_nm(self.c_n),
+                self.pix_to_nm(self.r_g), *self.pix_to_nm(self.c_g), self.naive_to_gauss_error_angstroms,
+                int(self.image_file.bias), int(self.image_file.current)),
+                bbox={'facecolor':'w', 'alpha':0.5, 'pad':5}, fontsize=12)#,
+        plt.xlabel(r"$nm$")
+        plt.ylabel(r"$nm$")
+        plt.subplots_adjust(left=0.55)
+        plt.suptitle(self.label + "\nFits to circle, naive & Gaussian fit positions")
+        # plt.tight_layout()
+        # plt.show()
+        plt.savefig("circle fit plots" + "/" +self.label.split("/")[-1].split(".dat")[0] +"_circle_fits.png")
+
         plt.close()
+        # pdb.set_trace()
 
     # TODO: write function to get average radius from all lines
 def round_to_even(n):
@@ -536,7 +589,8 @@ if __name__=="__main__":
     import numpy as np
     print("lattice spacing of 111 surface: %1.2lf Å" %(b*10))
     # Clean excel spreadsheet to read .dat file locations and relevant params
-    inventory = "/Users/akipnis/Dropbox/papers-in-progress/Small Kondo corrals/Small Kondo corral inventory.xlsx"
+    # inventory = "/Users/akipnis/Dropbox/papers-in-progress/Small Kondo corrals/Small Kondo corral inventory.xlsx"
+    inventory = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Small Kondo corral inventory - OneDrive copy.xlsx"
     inv = pd.read_excel(inventory, header=2)
     scans = inv['Scan file name & path']
     inv = inv[scans.notnull()]
@@ -546,14 +600,23 @@ if __name__=="__main__":
     inv['Scan file name & path'] = scans
     inv = inv.reset_index()
 
+    radii = []
+    files = []
+    central_atoms = []
     for n in inv.index.values[1:]:
         s = inv.iloc[n]
         p = s["Scan file name & path"]
+        print("Finding circle fit for %s" %(p))
         c = CircCorralData(dpath + p, p)
         c.occupied = s["occupied"]=="t"
         c.corral = True
         c.subtract_plane()
         c.get_region_centroids(diamond_size=5, sigmaclip=2, show=True)
+
+        if len(c.centroids)<3:
+            print("GETTING CENTROIDS AGAIN !!!!!")
+            # pdb.set_trace()
+            c.get_region_centroids(diamond_size=5, sigmaclip=0.4, show=True)
 
         # box size to fit atom positions
         box_size_nm = 1.5
@@ -570,8 +633,8 @@ if __name__=="__main__":
 
         # if corral is occupied, remove central atoms
         if c.occupied:
-            atoms_n = c.remove_central_atom(array(c.centroids))
-            atoms_g = c.remove_central_atom(c.gauss_fit_locs.T)
+            atoms_n, center_atom_loc = c.remove_central_atom(array(c.centroids))
+            atoms_g, center_atom_loc = c.remove_central_atom(c.gauss_fit_locs.T)
         else: # corral is unoccupied, don't try to remove central atom
             atoms_n = array(c.centroids)
             atoms_g = c.gauss_fit_locs.T
@@ -581,17 +644,26 @@ if __name__=="__main__":
 
         # better fit from gaussian fits to atoms
         c.r_g, c.c_g = c.nsphere_fit(atoms_g)
+        # bring back the zeros....
+        if c.im.shape[0] != c.im.shape[1]:
+            print("adding zeros back")
 
+            c.im = np.concatenate((c.im,np.zeros((c.im.shape[1]-c.im.shape[0],c.im.shape[1]))))
         c.compare_fits()
         plt.savefig(c.file+"_circle_fits.png")
-
+        # pdb.set_trace()
         # try to use the scattering model
-        atompoints, angle, offseta, offsetb, latt = c.fit_lattice(50)
-        erange = np.arange(-0.020, 0.020, 0.001)
-        spectra = scattering_model.gs(atompoints, latt, erange)
-        plt.plot(erange, spectra); plt.imshow()
-        pdb.set_trace()
-
-    # TODO: save circle sizes to excel
+        # atompoints, angle, offseta, offsetb, latt = c.fit_lattice(50)
+        # erange = np.arange(-0.020, 0.020, 0.001)
+        # spectra = scattering_model.gs(atompoints, latt, erange)
+        # plt.plot(erange, spectra); plt.imshow()
+        # pdb.set_trace()
+        radii.append(c.pix_to_nm(c.r_g))
+        files.append(p)
+        central_atoms.append(list(map(c.pix_to_nm, center_atom_loc)))
+    cft = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/circle fit plots/circle_fits.txt"
+    sv = np.array([files, radii, *np.array(central_atoms).T], dtype=object).T
+    np.savetxt(cft,sv,fmt=('%s,%lf,%lf,%lf'))
+                # TODO: save circle sizes to excel
     # TODO: calculate mean of radii
     exit(0)
