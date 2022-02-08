@@ -142,6 +142,16 @@ class Grid:
         return g + file_marker + today + "_"
 
     def fit_Fano_to_grid_data(self, xpixmin, xpixmax, ypixmin, ypixmax, file_marker):
+        """
+
+        Parameters
+        __________
+
+
+
+        Returns
+        _______
+        """
         self.file_marker = file_marker
 
         xpmx_nm = self.pix_to_nm(xpixmax)
@@ -198,7 +208,10 @@ class Grid:
         # use vals from this fit as init vals for next
         kwargs_iter = [dict(init_vals=i, scale=False) for i in np.array(L)[:,0]]
         with Pool() as pool:
-            L = starmap_with_kwargs(pool,read_vertfile.fit_data_w_times_residual, args_iter, kwargs_iter)
+            L = starmap_with_kwargs(pool,
+                                    read_vertfile.fit_data_w_times_residual,
+                                    args_iter,
+                                    kwargs_iter)
 
         nx = xpixmax - xpixmin
         ny = ypixmax - ypixmin
@@ -208,10 +221,30 @@ class Grid:
         # return g + self.file_marker + today + "_"
 
     def pix_to_nm(self, pix):
+        """
+
+        Parameters
+        __________
+
+
+
+        Returns
+        _______
+        """
         assert self.xpix==self.ypix and self.nmx==self.nmy
         return pix * self.nmx/self.xpix
 
     def nm_to_pix(self, nm):
+        """
+
+        Parameters
+        __________
+
+
+
+        Returns
+        _______
+        """
         assert self.xpix==self.ypix and self.nmx==self.nmy
         return nm*self.xpix/self.nmx*10
 
@@ -219,7 +252,8 @@ class Grid:
         '''
         animates a cube for visualisation.
 
-        INPUT:
+        Parameters:
+        ___________
             cube_array  : name of 3D numpy array that needs to be animated.
             cut         : trims pixels off of the images edge to remove edge detector effects.
                           Default = True as 0 returns empty array.
@@ -229,7 +263,8 @@ class Grid:
             cmap        : colormap. Default='hot'
             plotpoints  : [[x1,y1], [x2,y2]]
 
-        OUTPUT:
+        Returns:
+        ________
             animated window going through the cube.
 
         '''
@@ -332,6 +367,16 @@ class Grid:
         P = PauseAnimation(self, plotpoints)
 
 def analyze_Kondo_corral_grid():
+    """
+
+    Parameters
+    __________
+
+
+
+    Returns
+    _______
+    """
     dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
     filename= dir +r"Ag 2021-08-13 2p5 nm radius/grid/Createc2_210814.214635.specgrid"
     g = Grid(filename)
