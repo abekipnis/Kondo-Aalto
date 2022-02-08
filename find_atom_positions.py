@@ -259,7 +259,11 @@ class CircCorralData:
             X /= scale
 
         d = square(X).sum(axis=-1)
-        y, *_ = lstsq(B, d, rcond=None)#, overwrite_a=True, overwrite_b=True)
+        pdb.set_trace()
+        try:
+            y, *_ = lstsq(B, d, rcond=None)#, overwrite_a=True, overwrite_b=True)
+        except:
+            y, *_ = lstsq(B[0][0], d, rcond=None)#, overwrite_a=True, overwrite_b=True)
 
         c = 0.5 * y[:-1]
         r = sqrt(y[-1] + square(c).sum())
@@ -651,7 +655,7 @@ if __name__=="__main__":
             c.im = np.concatenate((c.im,np.zeros((c.im.shape[1]-c.im.shape[0],c.im.shape[1]))))
         c.compare_fits()
         plt.savefig(c.file+"_circle_fits.png")
-        # pdb.set_trace()
+
         # try to use the scattering model
         # atompoints, angle, offseta, offsetb, latt = c.fit_lattice(50)
         # erange = np.arange(-0.020, 0.020, 0.001)
