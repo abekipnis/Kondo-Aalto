@@ -6,7 +6,9 @@ import pandas as pd
 import matplotlib.animation as animation
 # from matplotlib.animation import FuncAnimation
 import importlib
+plot_params = importlib.import_module("grid analysis.plot_params")
 read_vertfile = importlib.import_module("Kondo data analysis.read_vertfile")
+
 import createc
 import pdb
 import os
@@ -20,12 +22,10 @@ from itertools import repeat
 # need wrapper around pool.starmap to use kw arguments
 def starmap_with_kwargs(pool, fn, args_iter, kwargs_iter):
     args_for_starmap = zip(repeat(fn), args_iter, kwargs_iter)
-    pdb.set_trace()
     return pool.starmap(apply_args_and_kwargs, args_for_starmap)
 
 def apply_args_and_kwargs(fn, args, kwargs):
     return fn(*args, **kwargs)
-
 
 class Grid:
     def __init__(self, file):
@@ -94,54 +94,7 @@ class Grid:
         ls = [float(b.split("=")[-1].rstrip(" \\r\\n'")) for b in np.array(a[0:600]).T[0] if "Length" in b]
         return ls #in angstroms
 
-    def fit_Fano_to_grid_data(self, xpixmin, xpixmax, ypixmin, ypixmax, file_marker):
-
-        xpmx_nm = self.pix_to_nm(xpixmax)
-        xpmn_nm = self.pix_to_nm(xpixmin)
-        ypmx_nm = self.pix_to_nm(ypixmax)
-        ypmn_nm = self.pix_to_nm(ypixmin)
-
-        p_fixed = [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan] #fix e0 at 8.3 mV
-        # pe0 = np.concatenate([    [   (self.specvz3[:,0][self.offset:-1],
-        #                             self.cube_array[:,i,j][self.offset:-1],
-        #                             -15, 20, p_fixed, False)
-        #                             for i in range(xpixmin,xpixmax)]
-        #                     for j in range(ypixmin,ypixmax)])
-        nx = xpixmax - xpixmin
-        ny = ypixmax - ypixmin
-        data = np.array([[self.cube_array[:,i,j][self.offset:-1]
-                    for i in range(xpixmin,xpixmax)]
-                    for j in range(ypixmin,ypixmax)]).flatten()
-        data = data.reshape(nx*ny, len(self.cube_array[:,0,0][self.offset:-1]))
-        # pdb.set_trace()
-        args_iter = zip(repeat(self.specvz3[:,0][self.offset:-1]),
-                    data,
-                    repeat(-15),
-                    repeat(20),
-                    repeat(p_fixed))
-        # pdb.set_trace()
-
-        # print(read_vertfile.fit_data_fixed_vals(*list(args_iter)[int((xpixmax-xpixmin)/2)+(xpixmax-xpixmin)*int((ypixmax-ypixmin)/2)], **kwargs_iter[0]))
-
-        # popt, pcov, sb, fit_dIdV, p0 = fit_data_fixed_vals(bias_mv, self.dIdV, marker1, marker2, fixed_vals)
-        with Pool() as pool:
-            L = pool.starmap(read_vertfile.fit_data_fixed_vals, args_iter)
-
-        # need to recreate the `zip` because it was `used up`
-        args_iter = zip(repeat(self.specvz3[:,0][self.offset:-1]),
-                    data,
-                    repeat(-15),
-                    repeat(20),
-                    repeat(p_fixed))
-        # use vals from this fit as init vals for next
-        kwargs_iter = [dict(init_vals=i, scale=False) for i in np.array(L)[:,0]]
-
-        with Pool() as pool:
-            L = starmap_with_kwargs(pool,read_vertfile.fit_data_w_times_residual, args_iter, kwargs_iter)
-
-        # pdb.set_trace()
-        nx = xpixmax - xpixmin
-        ny = ypixmax - ypixmin
+    def save_data_and_get_plot_limits(self, L, nx, ny, xpmn_nm, xpmx_nm, ypmn_nm, ypmx_nm, file_marker):
         Lm = np.array(L).reshape(nx,ny,5) # popt, pcov, sb, fit_dIdV, p0
         m = ma.masked_array(Lm[:,:,0], mask=np.any(pd.isnull(Lm),axis=-1))
         c_max = "%1.2lf"
@@ -176,18 +129,83 @@ class Grid:
             s_cmax.on_changed(update)
             s_cmin.on_changed(update)
 
-
             # save the data
             g = os.path.split(self.file)[-1].replace('.specgrid',"_specgrid_")
             today = datetime.today().strftime('%Y-%m-%d')
             f = g + file_marker + today + "_" + l + ".txt"
-            d = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/grid analysis"
-            f = os.path.join(d,f)
+            f = os.path.join(dpath,f)
             np.savetxt(f, dat)
 
             plt.show()
             np.savetxt(f.strip(".txt")+ "_limits.txt", [s_cmin.val, s_cmax.val])
             # plt.savefig(l+".png")
+        return g + file_marker + today + "_"
+
+    def fit_Fano_to_grid_data(self, xpixmin, xpixmax, ypixmin, ypixmax, file_marker):
+        self.file_marker = file_marker
+
+        xpmx_nm = self.pix_to_nm(xpixmax)
+        xpmn_nm = self.pix_to_nm(xpixmin)
+        ypmx_nm = self.pix_to_nm(ypixmax)
+        ypmn_nm = self.pix_to_nm(ypixmin)
+
+        # which parameters (e0, w, q, a, b, c) do we want fixed?
+        # np.nan means not fixed, otherwise its fixed at the given value
+        p_fixed = [np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]
+
+        nx = xpixmax - xpixmin
+        ny = ypixmax - ypixmin
+        data = np.array([[self.cube_array[:,i,j][self.offset:-1]
+                    for i in range(xpixmin,xpixmax)]
+                    for j in range(ypixmin,ypixmax)]).flatten()
+        data = data.reshape(nx*ny, len(self.cube_array[:,0,0][self.offset:-1]))
+
+        # lower bound for fit (mV)
+        lbound = -15
+
+        # upper bound for fit (mV)
+        ubound = 20
+
+        # using repeat() saves memory
+        args_iter = zip(repeat(self.specvz3[:,0][self.offset:-1]),
+                    data,
+                    repeat(lbound),
+                    repeat(ubound),
+                    repeat(p_fixed))
+
+        # print(read_vertfile.fit_data_fixed_vals(*list(args_iter)[int((xpixmax-xpixmin)/2)+(xpixmax-xpixmin)*int((ypixmax-ypixmin)/2)], **kwargs_iter[0]))
+
+        # popt, pcov, sb, fit_dIdV, p0 = fit_data_fixed_vals(bias_mv, self.dIdV, marker1, marker2, fixed_vals)
+        with Pool() as pool:
+            L = pool.starmap(read_vertfile.fit_data_fixed_vals, args_iter)
+
+        g = self.save_data_and_get_plot_limits(L, nx, ny, xpmn_nm, xpmx_nm, ypmn_nm, ypmx_nm, self.file_marker+"_init_")
+
+        def plot_decays(f):
+            fs = os.listdir(dpath)
+            fx = [fx for fx in fs if f in fx]
+            plot_params.plot_grid_fit_params(fx, xpixmin, xpixmax, ypixmin, ypixmax)
+
+        plot_decays(g)
+
+        # need to recreate the `zip` because it was `used up`
+        args_iter = zip(repeat(self.specvz3[:,0][self.offset:-1]),
+                    data,
+                    repeat(lbound),
+                    repeat(ubound),
+                    repeat(p_fixed))
+
+        # use vals from this fit as init vals for next
+        kwargs_iter = [dict(init_vals=i, scale=False) for i in np.array(L)[:,0]]
+        with Pool() as pool:
+            L = starmap_with_kwargs(pool,read_vertfile.fit_data_w_times_residual, args_iter, kwargs_iter)
+
+        nx = xpixmax - xpixmin
+        ny = ypixmax - ypixmin
+
+        g = self.save_data_and_get_plot_limits(L, nx, ny, xpmn_nm, xpmx_nm, ypmn_nm, ypmx_nm, self.file_marker)
+        plot_decays(g)
+        # return g + self.file_marker + today + "_"
 
     def pix_to_nm(self, pix):
         assert self.xpix==self.ypix and self.nmx==self.nmy
@@ -216,7 +234,7 @@ class Grid:
 
         '''
         class PauseAnimation:
-            def __init__(self, g, plotpoints):
+            def __init__(self, g, plotpoints, title=None):
                 self.g = g
                 gsk = {'width_ratios': [2, 1]}
                 self.pts = plotpoints
@@ -252,7 +270,6 @@ class Grid:
                 # we have to either manually change the axes limits or just cut off part of the data in the visualisation
 
                 self.pts = np.array(list(map(int,map(self.g.nm_to_pix, np.array(plotpoints).flatten())))).reshape(len(plotpoints),2)
-                # pdb.set_trace()
                 self.pts[:,0] = self.g.xpix-self.pts[:,0]
                 self.pts[:,1] = self.g.ypix-self.pts[:,1]
                 for p in self.pts:
@@ -267,12 +284,13 @@ class Grid:
                 self.ax2.set_aspect(0.1)
                 self.paused = False
 
-                plt.suptitle("Reconstructed Au on Nb110", y=0.95)
+                plt.suptitle(title, y=0.95)
 
                 self.animation = animation.FuncAnimation(self.fig, self.updatefig, frames=g.cube_array.shape[0], interval=interval, blit=True)
                 self.fig.canvas.mpl_connect('button_press_event', self.toggle_pausefig)
 
                 self.animation.save(g.file+'_cube_movie.mp4', writer="ffmpeg", fps=28)
+                print("Saved animation to %s" %(g.file))
 
             def toggle_pausefig(self, *args, **kwargs):
                 if self.paused:
@@ -313,17 +331,8 @@ class Grid:
 
         P = PauseAnimation(self, plotpoints)
 
-
-if __name__ == "__main__":
-    # read size of image from .specgrid.dat file
+def analyze_Kondo_corral_grid():
     dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
-
-    # g = Grid("/Users/akipnis/Dropbox/personal-folders/Abe/A211102.190005.specgrid")
-    # g.animate_cube(plotpoints=[[3.3, 3.6]])
-    #plt.show()
-    # there are three successful grids from the first data set
-
-    #this is the grid with a Cobalt in the center
     filename= dir +r"Ag 2021-08-13 2p5 nm radius/grid/Createc2_210814.214635.specgrid"
     g = Grid(filename)
     # range of pixels over which to plot Fano fit in grid
@@ -334,19 +343,29 @@ if __name__ == "__main__":
     ypixmin = 33
     ypixmax = 62
 
-    g.fit_Fano_to_grid_data(xpixmin, xpixmax, ypixmin, ypixmax,"trial")
+    f = g.fit_Fano_to_grid_data(xpixmin, xpixmax, ypixmin, ypixmax, "trial")
 
-    # then plot this data with grid analysis/plot_params.py
+def analyze_nb_reconstruction_specgrid():
+    g = Grid("/Users/akipnis/Dropbox/personal-folders/Abe/A211102.190005.specgrid")
+    ppts = [[3.3, 3.6],[3.3, 3.8], [3.3, 4.0], [3.3, 4.2], [3.3, 4.4], [3.3, 4.6], [3.3, 4.8]]
+    g.animate_cube(plotpoints=ppts, title="Reconstructed Au on Nb110")
+    plt.show()
 
+dpath = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/grid analysis"
+if __name__ == "__main__":
 
+    analyze_Kondo_corral_grid()
 
-    # g.animate_cube(plotpoints=[[3.3, 3.6],[3.3, 3.8], [3.3, 4.0], [3.3, 4.2], [3.3, 4.4], [3.3, 4.6], [3.3, 4.8]])
+    # read size of image from .specgrid.dat file
+
+    # g.animate_cube(plotpoints=[[3.3, 3.6]])
+    #plt.show()
+    # there are three successful grids from the first data set
+
+    # filename = dir +r'Ag 2021-08-16 2p5 nm radius empty/Createc2_210816.223358.specgrid'
+    # g = Grid(filename)
+    # g.animate_cube(plotpoints=[[4.58, 4.36],[4.58, 4.86], [4.58, 5.36],[4.58,5.86],[4.58, 6.36],[4.58, 6.86]])
     # plt.show()
-
-    # # filename = dir +r'Ag 2021-08-16 2p5 nm radius empty/Createc2_210816.223358.specgrid'
-    # # g = Grid(filename)
-    # # g.animate_cube(plotpoints=[[4.58, 4.36],[4.58, 4.86], [4.58, 5.36],[4.58,5.86],[4.58, 6.36],[4.58, 6.86]])
-    # # plt.show()
 
     # #not sure whats happening with this grid - can't see the data when this code runs
     # filename = dir+r'/Ag 2021-08-12 4p5 nm radius/grid/Createc2_210813.001749.specgrid'
