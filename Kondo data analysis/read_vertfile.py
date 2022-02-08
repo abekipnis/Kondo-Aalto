@@ -26,6 +26,8 @@ from itertools import product
 import re
 import tkinter as tk
 import createc
+from cmath import sqrt
+
 
 # import matplotlib
 # font = {'family' : 'normal',
@@ -275,7 +277,6 @@ class Spec(metaclass=LoadTimeMeta):
             return [popt, pcov, marker1, marker2, self.XPos_nm, self.YPos_nm, 0]
         return [popt, pcov, marker1, marker2, self.XPos_nm, self.YPos_nm, residtot]
 
-
 def plot_lrs():
     fig, (ax1,ax2) = plt.subplots(figsize=(8,6), nrows=2)
     for n,f in enumerate(lrs):
@@ -523,12 +524,29 @@ def fermi_dirac(e, mu, T):
     return dist
 
 def fano(V, e0, w, q, a, b, c):
+    """
+    Parameters
+    __________
+
+    Returns
+    _______
+    """
     def eps(V, e0, w):
         return (np.array(V)-e0)/(w/2)
     fit_func = a*((q + eps(V, e0, w))**2/(1+eps(V, e0, w)**2))+ b*np.array(V) + c
     return fit_func
 
+def frota(V, e0, gamma_f, a,b,c):
+    return a*(sqrt(1j*gammaf/(V-e0+1j*gammaf))) + b*V + c
+
 def fano_t_broad(T, V, e0, w, q, a, b, c):
+    """
+    Parameters
+    __________
+
+    Returns
+    _______
+    """
     # padding so there are no edge effects from convolution included in fit
     dV = np.abs(V[0] - V[1])
     padmVs = np.abs(V[0]-V[-1])/2 # padding (in mV) on either side of fit range
@@ -550,7 +568,25 @@ def residual(data, fit):
     # pdb.set_trace()
     return r, np.sqrt(sum([a*a for a in r]))/ld #normalized by # of data points
 
-def fit_data(bias, dIdV, marker1, marker2):
+def fit_data(bias: np.array, dIdV: np.array, marker1: float, marker2: float):
+    """
+    Fits the data in dIdV(bias) to a fano lineshape using linear regression
+    with reasonable range for the fit bounds.
+
+    Parameters
+    __________
+    bias: array (in mV)
+    dIdV: array
+    marker1: float (in mV)
+    marker2: float (in mV)
+
+    Returns
+    _______
+
+    popt:
+    pcov:
+    sb, fit_dIdV
+    """
     # data for which we are fitting the Fano function
     smallbias = [(n,b) for (n,b) in enumerate(bias) if b>=marker1 and b<=marker2]
     nsb, sb = np.array(smallbias).T
@@ -586,6 +622,13 @@ def lorentz(e, e0, gamma):
     return 1/np.pi*(gamma/2)/((x-x0)**2+(gamma/2)**2)
 
 def fit_data_fixed_vals(bias, dIdV, marker1, marker2, fixed_vals):
+    """
+    Parameters
+    __________
+
+    Returns
+    _______
+    """
     # data for which we are fitting the Fano function
     smallbias = [(n,b) for (n,b) in enumerate(bias) if b>=marker1 and b<=marker2]
     nsb, sb = np.array(smallbias).T
@@ -611,6 +654,7 @@ def fit_data_fixed_vals(bias, dIdV, marker1, marker2, fixed_vals):
     bounds = np.array([b for n,b in enumerate(bounds.T) if np.isnan(fixed_vals[n])]).T
 
     # https://stackoverflow.com/questions/31705327/scipy-optimize-curve-fit-setting-a-fixed-parameter
+    # fix some while fitting other Fano parameters
     def wrapper(V, *args):
         wrapperName = 'fano(V,'
         for i in range(0,len(hold)):
@@ -624,9 +668,7 @@ def fit_data_fixed_vals(bias, dIdV, marker1, marker2, fixed_vals):
             if i<len(hold):
                 wrapperName+=','
         wrapperName+=')'
-        # print(wrapperName)
         return eval(wrapperName)
-    # fix some while fitting other Fano parameters
     try:
         # popt, pcov = optimize.curve_fit(fix_T(T), sb, fit_dIdV, p0=p0, bounds=bounds)
         popt, pcov = optimize.curve_fit(wrapper, sb, fit_dIdV, p0=p0, bounds=bounds)
@@ -641,6 +683,13 @@ def fit_data_fixed_vals(bias, dIdV, marker1, marker2, fixed_vals):
         return n, n, sb, fit_dIdV, p0
 
 def fit_data_w_times_residual(bias, dIdV, marker1, marker2, fixed_vals, init_vals=None, scale=True):
+    """
+    Parameters
+    __________
+
+    Returns
+    _______
+    """
     assert(marker1<marker2)
     # data for which we are fitting the Fano function
     # print(locals().keys())
@@ -731,6 +780,13 @@ def fit_data_w_times_residual(bias, dIdV, marker1, marker2, fixed_vals, init_val
         return n, n, sb, fit_dIdV, p0
 
 def save_fano_fits(files: list, opts: list, covs: list, m1: list, m2: list, path: str, xs: list, ys: list, resid: list, radii: list, dists: list):
+    """
+    Parameters
+    __________
+
+    Returns
+    _______
+    """
     with open(path, "w") as f:
         f.write("file\tradius\tdist\te0\tw\tq\ta\tb\tc\tmarker1\tmarker2\tx(nm)\ty(nm)\tresid\n")
         for nf, file in enumerate(files):
@@ -878,6 +934,13 @@ class Application(tk.Frame):
         return
 
     def analyze_selected_line(self,u):
+        """
+        Parameters
+        __________
+
+        Returns
+        _______
+        """
         v = self.opts==u
         i = self.opts[v].index
         id = self.d.iloc[i]
@@ -973,6 +1036,13 @@ class Application(tk.Frame):
                 self.update()
 
     def analyze_files(self, files):
+        """
+        Parameters
+        __________
+
+        Returns
+        _______
+        """
         opts = []; covs = []; m1s = []; m2s = []; xs = []; ys = []; resids = []
         for n,f in enumerate(files):
             # TODO: decide fit range based on "central" spectrum
@@ -1044,6 +1114,15 @@ class Application(tk.Frame):
             print(e)
 
 def plot_line(image, specs, center):
+    """
+    
+    Parameters
+    __________
+
+
+    Returns
+    _______
+    """
     # some_file.py
     # import sys
     # from matplotlib.widgets import Slider, Button
@@ -1101,11 +1180,17 @@ def plot_line(image, specs, center):
     mean = np.mean(np.array(list(zip(fwd,bwd))),axis=1)
     mean = [m/m[-1] for m in mean]
 
-    im1 = ax1.matshow(mean,extent=[0,dist/10.,-100,100], aspect="auto",cmap=plt.get_cmap("plasma")) #making aspect larger makes image skinnier
+    # making aspect larger makes image skinnier
+    im1 = ax1.matshow(mean,
+                      extent=[0,dist/10.,-100,100],
+                      aspect="auto",
+                      cmap=plt.get_cmap("plasma"))
+
     # np.array(dIdVs)[:,0:int(len(dIdVs[0])/2)].shape
     ax1.set_xlabel("nm")
     ax1.xaxis.set_ticks_position("bottom")
     ax1.set_ylabel(r"Bias ($mV$)")
+
     # ax1.set_title("$dI/dV$ spectra")
     # ax1.hlines(-67,0,25,"r")
     # divider = make_axes_locatable(ax1)

@@ -71,6 +71,9 @@ def create_A_matrix(n_atoms, atom_locs, k_tip):
     for n in range(n_atoms):
         for m in range(n_atoms):
             if n==m:
+                # this number should be infinity (i.e. black dot scatterer)
+                # but np.inf will return not interesting data?
+                # so we have to use the biggest number possible (?)
                 A[n][m] = 1000000
             else:
                 A[n][m] = a(Q_(
@@ -89,6 +92,7 @@ def calc_LDOS(atom_locs, nmxyrange, k_tip, n_atoms):
     X, Y = np.meshgrid(m, m)
     LDOS = np.zeros((n_sites,n_sites))
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
+    pdb.set_trace()
     p = np.array([[(X[n][m].magnitude, Y[n][m].magnitude, A, k_tip , atom_locs, n_atoms) for n in range(n_sites)] for m in range(n_sites)]).reshape(n_sites*n_sites,6)
     with Pool(5) as pool:
         LDOS = pool.starmap(LDOS_at_point,p)

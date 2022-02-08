@@ -40,9 +40,23 @@ def make_soundfile(fname, rate=2205):
     period = tpCount * stepsize #steps * (angstroms / step) = angstroms
     frequencies = values / period #1/angstroms
 
-    plt.plot(frequencies, abs(ft))
-    plt.ylim([0,np.max(abs(ft[100:-1]))])
-    plt.savefig(os.path.join(dir,fname.strip(".LAT")+"FFT.png"))
+    fig, (ax1,ax2) = plt.subplots(2)
+
+    ax2.plot(frequencies, abs(ft))
+    ax2.set_ylim([0,np.max(abs(ft[100:-1]))])
+    ax2.set_ylabel("FFT")
+    ax2.set_xlabel("1/nm")
+
+    ax1.plot(np.array(distances)/10, curr_trace)
+    ax1.set_xlabel("(nm)")
+    ax1.set_ylabel("Current")
+    plt.suptitle(fname.strip(".LAT"))
+
+
+    plt.show()
+    pdb.set_trace()
+
+    # plt.savefig(os.path.join(dir,fname.strip(".LAT")+"FFT.png"))
     plt.close()
 
     # Parameters
