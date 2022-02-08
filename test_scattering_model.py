@@ -11,6 +11,7 @@ import multiprocessing
 import warnings
 from time import time
 import datetime
+
 if __name__=="__main__":
 	warnings.filterwarnings("ignore")
 	parser = argparse.ArgumentParser()
@@ -48,8 +49,9 @@ if __name__=="__main__":
 	c.corral = True
 	c.occupied = True
 
-	atoms_n = c.remove_central_atom(array(c.centroids))
-	atoms_g = c.remove_central_atom(c.gauss_fit_locs.T)
+
+	atoms_n, center_atom_loc = c.remove_central_atom(array(c.centroids))
+	atoms_g, center_atom_loc = c.remove_central_atom(c.gauss_fit_locs.T)
 
 	# naive fit from maximum points
 	c.r_n, c.c_n = c.nsphere_fit(atoms_n)
@@ -113,17 +115,12 @@ if __name__=="__main__":
 		img.set_array(np.flipud(np.rot90(d)))
 
 		return img,
-	animation = animation.FuncAnimation(fig, updatefig, frames=len(erange), interval=50, blit=True) #interval in ms
-<<<<<<< HEAD
+	anim = animation.FuncAnimation(fig, updatefig, frames=len(erange), interval=50, blit=True) #interval in ms
 	try:
-		animation.save('%s_cube_movie.mp4' %(fname_head), writer="ffmpeg", fps=28)
+		anim.save('%s_cube_movie.mp4' %(fname_head), writer="ffmpeg", fps=28)
 	except:
-		animation.save('%s_cube_movie.mp4' %(fname_head), fps=28)
+		anim.save('%s_cube_movie.mp4' %(fname_head), fps=28)
 	plt.show()
-=======
-	animation.save('%s_cube_movie.mp4' %(fname_head), writer="ffmpeg", fps=28)
-#	plt.show()
->>>>>>> 0c836548bf4370c34d9a7f6dda3e47819f70989b
 
 	plt.plot(erange, spectrum[:,5,5]);
 	plt.savefig("spectrum_test.png")
