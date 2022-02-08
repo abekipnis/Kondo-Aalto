@@ -538,10 +538,11 @@ class CircCorralData:
         plt.suptitle(self.label + "\nFits to circle, naive & Gaussian fit positions")
         # plt.tight_layout()
         # plt.show()
-        plt.savefig("circle fit plots" + "/" +self.label.split("/")[-1].split(".dat")[0] +"_circle_fits.png")
-
+        try:
+            plt.savefig("circle fit plots" + "/" +self.label.split("/")[-1].split(".dat")[0] +"_circle_fits.png")
+        except:
+            print("could not save circle fit plot")
         plt.close()
-        # pdb.set_trace()
 
     # TODO: write function to get average radius from all lines
 def round_to_even(n):
