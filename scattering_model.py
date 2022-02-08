@@ -32,7 +32,6 @@ electron_charge = 1.6e-19 * ureg.coulomb
 m_e = 0.4*m_electron
 E_0 = Q_(-0.067, "volt")*electron_charge
 
-
 def a(r, k, d0, a0):
     return (2/(np.pi*k*r))**0.5*np.exp(np.pi/4.*1j)*((a0*np.exp(2j*d0)-1)/2j)*np.exp((k*r*1j))
 
@@ -72,7 +71,7 @@ def create_A_matrix(n_atoms, atom_locs, k_tip):
     for n in range(n_atoms):
         for m in range(n_atoms):
             if n==m:
-                A[n][m] = 1
+                A[n][m] = 1000000
             else:
                 A[n][m] = a(Q_(
                     np.linalg.norm(atom_locs[n].magnitude-atom_locs[m].magnitude),"nm"),

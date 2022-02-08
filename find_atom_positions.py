@@ -259,11 +259,11 @@ class CircCorralData:
             X /= scale
 
         d = square(X).sum(axis=-1)
-        pdb.set_trace()
+
         try:
             y, *_ = lstsq(B, d, rcond=None)#, overwrite_a=True, overwrite_b=True)
-        except:
-            y, *_ = lstsq(B[0][0], d, rcond=None)#, overwrite_a=True, overwrite_b=True)
+        except e:
+            print("Could not do lstsq(B, d)",e)
 
         c = 0.5 * y[:-1]
         r = sqrt(y[-1] + square(c).sum())
@@ -295,7 +295,9 @@ class CircCorralData:
         return (x0, y0, x1, y1) defined by the min and max x, y coords of atoms making up the corral
         """
         if self.occupied:
-            (xs, ys), center_atom_loc = array(self.remove_central_atom(self.gauss_fit_locs.T)).T
+            c = self.remove_central_atom(self.gauss_fit_locs.T)
+            c = array(c).T
+            (xs, ys), center_atom_loc = c[0].T, c[1]
         else:
             xs, ys = array(self.gauss_fit_locs)
         return [min(xs), min(ys), max(xs), max(ys)]
