@@ -176,14 +176,14 @@ class Grid:
         # upper bound for fit (mV)
         ubound = 20
 
-        # using repeat() saves memory
+        # using repeat() saves memory over creating a big NxM array
+        # where N is the # of input parameters to the function
+        # and M is the number of times that the function has to be called
         args_iter = zip(repeat(self.specvz3[:,0][self.offset:-1]),
                     data,
                     repeat(lbound),
                     repeat(ubound),
                     repeat(p_fixed))
-
-        # print(read_vertfile.fit_data_fixed_vals(*list(args_iter)[int((xpixmax-xpixmin)/2)+(xpixmax-xpixmin)*int((ypixmax-ypixmin)/2)], **kwargs_iter[0]))
 
         # popt, pcov, sb, fit_dIdV, p0 = fit_data_fixed_vals(bias_mv, self.dIdV, marker1, marker2, fixed_vals)
         with Pool() as pool:
