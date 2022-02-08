@@ -11,6 +11,7 @@ from time import time
 from multiprocessing import Pool, freeze_support
 from multiprocessing.pool import ThreadPool
 import multiprocessing.pool
+from itertools import repeat
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -47,6 +48,17 @@ def k(E, m_e, E0):
     return K
 
 def LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms):
+    """
+
+
+    Parameters:
+    ___________
+
+
+
+    Returns:
+    ________
+    """
     delta0 = np.pi/4
     alpha0 = 0
     aT = [at(Q_(np.linalg.norm([x,y]-atomloc.magnitude),"nm"), k_tip.to("1/nm")) for atomloc in atom_locs]
@@ -59,12 +71,34 @@ def LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms):
     return ld
 
 def get_atom_locs(n_atoms, radius): #radius in nm
+    """
+
+
+    Parameters:
+    ___________
+
+
+
+    Returns:
+    ________
+    """
     atom_locs = np.asarray([[radius * np.cos(n*2*np.pi/n_atoms),
                         radius * np.sin(n*2*np.pi/n_atoms)]
                         for n in range(1,n_atoms+1)])
     return atom_locs
 
 def create_A_matrix(n_atoms, atom_locs, k_tip):
+    """
+
+
+    Parameters:
+    ___________
+
+
+
+    Returns:
+    ________
+    """
     A = np.zeros((n_atoms,n_atoms))
     delta0 = np.pi/4
     alpha0 = 0
@@ -84,6 +118,19 @@ def create_A_matrix(n_atoms, atom_locs, k_tip):
     return A
 
 def calc_LDOS(atom_locs, nmxyrange, k_tip, n_atoms):
+    """
+
+
+    Parameters:
+    ___________
+
+
+
+    Returns:
+    ________
+
+
+    """
     a0 = np.zeros(n_atoms)
     aT = np.zeros(n_atoms)
     m = Q_(np.asarray(nmxyrange),"nm")
@@ -92,14 +139,34 @@ def calc_LDOS(atom_locs, nmxyrange, k_tip, n_atoms):
     X, Y = np.meshgrid(m, m)
     LDOS = np.zeros((n_sites,n_sites))
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
-    pdb.set_trace()
-    p = np.array([[(X[n][m].magnitude, Y[n][m].magnitude, A, k_tip , atom_locs, n_atoms) for n in range(n_sites)] for m in range(n_sites)]).reshape(n_sites*n_sites,6)
+
+    # input parameters for LDOS_at_point()
+
+    p = zip(X.flatten().magnitude,
+            Y.flatten().magnitude,
+            repeat(A),
+            repeat(k_tip),
+            repeat(atom_locs),
+            repeat(n_atoms))
+
+    # p = np.array([[(X[n][m].magnitude, Y[n][m].magnitude, A, k_tip , atom_locs, n_atoms) for n in range(n_sites)] for m in range(n_sites)]).reshape(n_sites*n_sites,6)
     with Pool(5) as pool:
         LDOS = pool.starmap(LDOS_at_point,p)
 
     return LDOS
 
 def c_LDOS(atom_locs, latt_sites, k_tip):
+    """
+
+
+    Parameters:
+    ___________
+
+
+
+    Returns:
+    ________
+    """
     n_atoms = len(atom_locs)
     a0 = np.zeros(n_atoms)
     aT = np.zeros(n_atoms)
@@ -116,6 +183,17 @@ def c_LDOS(atom_locs, latt_sites, k_tip):
     return LDOS
 
 def gs(atom_locs, latt_sites, erange, spectrumpt):
+    """
+
+
+    Parameters:
+    ___________
+
+
+
+    Returns:
+    ________
+    """
     s = []
     # where in the lattice array do we need to index into to get the
     # spectrum at the point we want?
@@ -129,6 +207,17 @@ def gs(atom_locs, latt_sites, erange, spectrumpt):
     return s
 
 def get_LDOS(e, atom_locs, nmxyrange,n_atoms):
+    """
+
+
+    Parameters:
+    ___________
+
+
+
+    Returns:
+    ________
+    """
     ts = time()
     print(multiprocessing.current_process())
     E = Q_(e,"volt")*electron_charge
@@ -138,6 +227,17 @@ def get_LDOS(e, atom_locs, nmxyrange,n_atoms):
     return np.array(LDOS).reshape(len(nmxyrange),len(nmxyrange))
 
 def get_spectrum_at_middle(atom_locs, erange):
+    """
+
+
+    Parameters:
+    ___________
+
+
+
+    Returns:
+    ________
+    """
     n_atoms = len(atom_locs)
 
     atom_locs -= np.mean(atom_locs, axis=0)
@@ -152,6 +252,17 @@ def get_spectrum_at_middle(atom_locs, erange):
     return LDOS_spectrum
 
 def spectrum_along_line(atom_locs, erange):
+    """
+
+
+    Parameters:
+    ___________
+
+
+
+    Returns:
+    ________
+    """
     n_atoms = len(atom_locs)
 
     atom_locs -= np.mean(atom_locs, axis=0)
@@ -171,6 +282,17 @@ def spectrum_along_line(atom_locs, erange):
     return line_spectrum
 
 def get_spectra(atom_locs, nmxyrange, erange):
+    """
+
+
+    Parameters:
+    ___________
+
+
+
+    Returns:
+    ________
+    """
     s = []
     atom_locs = Q_(atom_locs, "nm")
     n_atoms = len(atom_locs)

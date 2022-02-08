@@ -707,7 +707,6 @@ def fit_data_w_times_residual(bias, dIdV, marker1, marker2, fixed_vals, init_val
     if init_vals is None:
         p0 = [e00, 4, 0.0001, 0.5, b0, np.mean(fit_dIdV)]
     else:
-        # pdb.set_trace()
         p0 = init_vals
     hold = [0 if np.isnan(fixed_vals[n]) else 1 for n in range(len(p0)) ]
 
@@ -738,7 +737,6 @@ def fit_data_w_times_residual(bias, dIdV, marker1, marker2, fixed_vals, init_val
             if i<len(hold):
                 wrapperName+=','
         wrapperName+=')'
-        # print(wrapperName)
         return eval(wrapperName)
 
     def objective_function(p, bias, dIdV):
@@ -748,8 +746,6 @@ def fit_data_w_times_residual(bias, dIdV, marker1, marker2, fixed_vals, init_val
 
     try:
         # x_scale = [8,2,1,1,1,200]
-        # pdb.set_trace()
-
         lsq_args = [objective_function]
         args = ([b[1] for b in smallbias], fit_dIdV,)
         lsq_kwargs = {"x0": p0, "args": args, "bounds": bounds, "max_nfev":4000}
@@ -1115,7 +1111,7 @@ class Application(tk.Frame):
 
 def plot_line(image, specs, center):
     """
-    
+
     Parameters
     __________
 
