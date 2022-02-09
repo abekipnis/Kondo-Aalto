@@ -17,7 +17,7 @@ import multiprocessing
 from sklearn.preprocessing import normalize
 from math import cos, sin
 import pandas as pd
-import scattering_model
+from scattering import scattering_model
 import pickle
 from scipy.interpolate import interp1d
 
@@ -110,6 +110,15 @@ class CircCorralData:
         return pix*scale/10
 
     def subtract_plane(self):
+        """
+        Parameters:
+        ___________
+        self: CircCorralData object
+
+        Returns:
+        ________
+
+        """
         X1, X2 = np.mgrid[:self.xPix, :self.yPix]
         nxny = self.xPix*self.yPix
         X = np.hstack((reshape(X1, (nxny, 1)), reshape(X2, (nxny, 1))))
@@ -121,7 +130,16 @@ class CircCorralData:
         # return plane
 
     def get_region_centroids(self, diamond_size=5, sigmaclip=1.5, show=False):
-        # pdb.set_trace()
+        """
+        Parameters:
+        ___________
+        self: CircCorralData object
+
+        Returns:
+        ________
+
+        """
+
         diamond = morphology.diamond(diamond_size)
         maxima = morphology.h_maxima(self.im, sigmaclip*np.std(self.im))
         r = morphology.binary_dilation(maxima, selem=diamond)
@@ -158,6 +176,17 @@ class CircCorralData:
         plt.close()
 
     def remove_central_atom(self, data):
+        """
+        Parameters:
+        ___________
+        self: CircCorralData object
+        data: 2d array x,y of atom coordinates
+
+        Returns:
+        ________
+        2D array of atom positions without central atom, central atom coordinates
+
+        """
         # Check two ways
         # 1:
         # get the distance matrix
@@ -190,12 +219,24 @@ class CircCorralData:
             raise Exception("Something went wrong removing central atom")
 
     def get_central_atom(self, data):
+        """
+        Parameters:
+        ___________
+        self: CircCorralData object
+        data: 2d array x,y of atom coordinates
+
+        Returns:
+        ________
+        2D array with x, y location of central atom
+
+        """
+
         # get the distance matrix
         distmat = distance_matrix(data, data)
 
         # nearest neighbor distances for every centroid
         dists = np.ma.masked_equal(distmat,0).min(axis=1)
-        # print(dists)
+
         # centroid w largest nearest neighbor distance is the central atom
         center_idx_1 = np.argmax(dists)
 
