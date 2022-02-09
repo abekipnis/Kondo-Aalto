@@ -1,3 +1,6 @@
+import pdb
+import sys
+sys.path.append("/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis")
 from find_atom_positions import CircCorralData
 from numpy import array
 import pdb
@@ -34,7 +37,7 @@ if __name__=="__main__":
 	parser.add_argument("--emax", type=float, default=0.1)
 	parser.add_argument("--n_es", type=int, default=20)
 	parser.add_argument("--ngridpoints", type=int, default=20)
-	parser.add_argument("--path", type=str, default="test/Createc2_210813.102220.dat")
+	parser.add_argument("--path", type=str, default="../test/Createc2_210813.102220.dat")
 	args = parser.parse_args()
 
 	if args.emin < scattering_model.E_0.magnitude/scattering_model.electron_charge.magnitude:
@@ -47,6 +50,7 @@ if __name__=="__main__":
 	datfile = os.path.split(args.path)[-1].strip('.dat')
 
 	fname_head = "%s_%s" %(datfile, now_string)
+	fname_head = fname_head.replace(" ","_")
 
 	c = CircCorralData(args.path, args.path.split("/")[-1])
 	c.subtract_plane()
@@ -82,8 +86,12 @@ if __name__=="__main__":
 
 	t = time()
 
-	args = [c.pix_to_nm(atoms_g), nmxyrange, erange]
+	l = scattering_model.spectrum_along_line(c.pix_to_nm(atoms_g), erange)
+	plt.imshow(np.flipud(np.array(l).T), extent=(0, 10, min(erange), max(erange)), aspect="auto")
+	plt.show()
+	pdb.set_trace()
 
+	args = [c.pix_to_nm(atoms_g), nmxyrange, erange]
 	spectrum = np.array(scattering_model.get_spectra(*args))
 
 	for i, e in enumerate(erange):
@@ -136,7 +144,6 @@ if __name__=="__main__":
 	# plt.savefig("point_spectrum_test.png")
 	# plt.show()
 
-	# l = scattering_model.spectrum_along_line(c.pix_to_nm(atoms_g), erange)
 	# l_data = np.rot90(np.array(l))
 	# np.save("line_spectrum_test_%s.npy" %(args.path.split("/")[-1]), l_data)
 	# plt.imshow(l_data);
