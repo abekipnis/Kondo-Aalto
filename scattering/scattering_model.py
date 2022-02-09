@@ -59,7 +59,7 @@ def LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms):
     Returns:
     ________
     """
-    delta0 = np.pi/4
+    delta0 = np.pi/4.
     alpha0 = 0
     aT = [at(Q_(np.linalg.norm([x,y]-atomloc.magnitude),"nm"), k_tip.to("1/nm")) for atomloc in atom_locs]
     a0 = [a(Q_(np.linalg.norm([x,y]-atomloc.magnitude),"nm"), k_tip.to("1/nm"),delta0, alpha0) for atomloc in atom_locs]
@@ -284,8 +284,6 @@ def spectrum_along_line(atom_locs, erange):
 
 def get_spectra(atom_locs, nmxyrange, erange):
     """
-
-
     Parameters:
     ___________
 
