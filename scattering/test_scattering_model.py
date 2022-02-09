@@ -23,6 +23,9 @@ python3 test_scattering_model.py --emin=-0.02 --emax=0.02 --n_es=5 --ngridpoints
 # TODO: optimize speed
 # TODO: longer runs
 # TODO: figure out infinity / black dot scattering, etc. derive math better
+# TODO: compare point spectra with unoccupied corrals
+# TODO: compare CH maps with unoccupied corrals
+# TODO: compare with line spectrum from empty corrals
 
 if __name__=="__main__":
 	warnings.filterwarnings("ignore")
@@ -44,8 +47,6 @@ if __name__=="__main__":
 	datfile = os.path.split(args.path)[-1].strip('.dat')
 
 	fname_head = "%s_%s" %(datfile, now_string)
-
-	pdb.set_trace()
 
 	c = CircCorralData(args.path, args.path.split("/")[-1])
 	c.subtract_plane()
@@ -78,25 +79,10 @@ if __name__=="__main__":
 	#spectra = scattering_model.gs(atompoints, latt, erange, c.c_g)
 	#plt.plot(erange, spectra); plt.imshow()
 	#get_spectra(atom_locs (in nm), n_sites (i.e. box size in pixels), r (radius in nm), erange)
-	# plt.close()
+
 	t = time()
 
 	args = [c.pix_to_nm(atoms_g), nmxyrange, erange]
-
-	# set this up so it runs command line in chunks
-	# to avoid the problem where it goes over the 15 minute time limit
-	command = """
-	#!/bin/bash
-	#SBATCH --time=04:00:00      # 4 hours
-	#SBATCH --mem=1000M   # 1G of memory
-	#SBATCH --cpus-per-task=4
-	#SBATCH --mem=8G
-	#SBATCH -o model_LDOS.out
-
-	export OMP_PROC_BIND=true
-	echo 'Running on :'$HOSTNAME
-	srun python3 test_scattering_model.py --emin=-0.066 --emax=0.3 --n_es=10 --ngridpoints=100 --path="test/Createc2_210812.170231.dat"
-	"""
 
 	spectrum = np.array(scattering_model.get_spectra(*args))
 
@@ -105,7 +91,10 @@ if __name__=="__main__":
 		spectrum_data = spectrum[i,:,:]
 		np.save("%s_spectrum_%1.2lf.npy" %(fname_head,e), spectrum_data)
 		extent = [0,c.pix_to_nm(c.xPix),0,c.pix_to_nm(c.xPix)]
-		plt.imshow(spectrum_data, extent=extent);
+		plt.imshow(np.rot90(spectrum_data.T), extent=extent);
+		x,y = np.array(list(map(c.pix_to_nm,c.gauss_fit_locs)))
+		plt.scatter(x,y)
+		plt.colorbar()
 		plt.savefig("%s_spectrum_%1.2lf.png" %(fname_head,e))
 	plt.close();
 
@@ -152,3 +141,20 @@ if __name__=="__main__":
 	# np.save("line_spectrum_test_%s.npy" %(args.path.split("/")[-1]), l_data)
 	# plt.imshow(l_data);
 	# plt.savefig("line_spectrum_test_%s.png" %(args.path.split("/")[-1]))
+
+
+	# set this up so it runs command line in chunks ??
+	# to avoid the problem where it goes over the 15 minute time limit
+	# or just run this using sbatch instead of sh
+	# shcommand = """
+	# #!/bin/bash
+	# #SBATCH --time=04:00:00      # 4 hours
+	# #SBATCH --mem=1000M   # 1G of memory
+	# #SBATCH --cpus-per-task=4
+	# #SBATCH --mem=8G
+	# #SBATCH -o model_LDOS.out
+	#
+	# export OMP_PROC_BIND=true
+	# echo 'Running on :'$HOSTNAME
+	# srun python3 test_scattering_model.py --emin=-0.066 --emax=0.3 --n_es=10 --ngridpoints=100 --path="test/Createc2_210812.170231.dat"
+	# """
