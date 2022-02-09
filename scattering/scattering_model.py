@@ -34,18 +34,73 @@ m_e = 0.4*m_electron
 E_0 = Q_(-0.067, "volt")*electron_charge
 
 def a(r, k, d0, a0):
+    """
+    Example:
+        a(Q_(0.1,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 1, 1).to_reduced_units()
+
+    Parameters:
+    ___________
+    r: ureg.Quantity in units of length
+    k: ureg.Quantity in units of 1/length
+    d0: float, unitless
+    a0: float, unitless
+
+    Returns:
+    ________
+    a: dimensionless imaginary number representing the amplitude at a distance
+            r from a scattering center with phase shift d0
+    """
     return (2/(np.pi*k*r))**0.5*np.exp(np.pi/4.*1j)*((a0*np.exp(2j*d0)-1)/2j)*np.exp((k*r*1j))
 
 def at(r, k):
+    """
+    Parameters:
+    ___________
+
+    Returns:
+    ________
+    """
     return (2/(np.pi*k*r))**0.5*np.exp(k*r*1j-1j*np.pi/4.)
 
 def E(k,m_e, E0):
+    """
+    Parameters:
+    ___________
+
+    Returns:
+    ________
+    """
     E = E0 + hbar**2*k**2/(2*m_e)
     return E
 
 def k(E, m_e, E0):
+    """
+    Example, Fermi wavelength can be calculated from:
+    # Fermi wavelength of Ag(111) ~ 7.5 nm
+    # 2*np.pi/(k(Q_(0, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge).to("1/nm"))
+
+    Parameters:
+    ___________
+    E:
+    m_e:
+    E_0:
+
+    Returns:
+    ________
+    k:
+    """
     K = (2*m_e*(E-E0)/(hbar**2))**.5#a
     return K
+
+#
+# # checking that things work
+# np.arange(0, 2*np.pi, 0.3)
+#
+# for d in np.arange(0,2*np.pi, 0.3):
+#
+# plt.plot([a(Q_(x,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 10*np.pi, 10).magnitude.imag for x in np.arange(1e-9, 100e-9, 1e-10)])
+# plt.plot([a(Q_(x,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 10*np.pi, 10).magnitude.imag for x in np.arange(1e-9, 100e-9, 1e-10)])
+
 
 def LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms):
     """
@@ -53,17 +108,22 @@ def LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms):
 
     Parameters:
     ___________
-
+    x: array
+    y: array
+    A:
+    k_tip:
+    atom_locs:
+    n_atoms: int
 
 
     Returns:
     ________
     """
-    delta0 = np.pi/4.
+    delta0 = np.pi/4. # why use this?
     alpha0 = 0
     aT = [at(Q_(np.linalg.norm([x,y]-atomloc.magnitude),"nm"), k_tip.to("1/nm")) for atomloc in atom_locs]
     a0 = [a(Q_(np.linalg.norm([x,y]-atomloc.magnitude),"nm"), k_tip.to("1/nm"),delta0, alpha0) for atomloc in atom_locs]
-    #
+
     # aT = [at(np.linalg.norm([x,y]-atomloc),k_tip) for atomloc in atom_locs]
     # a0 = [a(np.linalg.norm([x,y]-atomloc),k_tip,delta0,alpha0) for atomloc in atom_locs]
     ones = np.ones(n_atoms)
@@ -76,7 +136,8 @@ def get_atom_locs(n_atoms, radius): #radius in nm
 
     Parameters:
     ___________
-
+    n_atoms:
+    radius:
 
 
     Returns:
@@ -87,21 +148,23 @@ def get_atom_locs(n_atoms, radius): #radius in nm
                         for n in range(1,n_atoms+1)])
     return atom_locs
 
-def create_A_matrix(n_atoms, atom_locs, k_tip):
+def create_A_matrix(n_atoms, atom_locs, k_tip, delta_0=np.pi/4., alpha0=0):
     """
-
+    Create the atom-atom scattering matrix which stays constant for each energy
 
     Parameters:
     ___________
-
-
+    n_atoms: int
+    atom_locs:
+    k_tip:
+    delta_0: float
+    alpha0: float
 
     Returns:
     ________
+    A: n_atoms*n_atoms array
     """
     A = np.zeros((n_atoms,n_atoms))
-    delta0 = np.pi/4
-    alpha0 = 0
     for n in range(n_atoms):
         for m in range(n_atoms):
             if n==m:
@@ -207,7 +270,7 @@ def gs(atom_locs, latt_sites, erange, spectrumpt):
         s.append(LDOS[speclatidx])
     return s
 
-def get_LDOS(e, atom_locs, nmxyrange,n_atoms):
+def get_LDOS(e, atom_locs, nmxyrange, n_atoms):
     """
 
 
