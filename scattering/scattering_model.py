@@ -22,6 +22,9 @@ warnings.filterwarnings("ignore")
 # TODO: save line spectra data
 # TODO: adjust line spectra colorbar limits
 # TODO: parallelize line spectra calculation
+# TODO: try to simulate real line spectra data (i.e. get real spectra positions in x,y)
+# TODO: enable ability to adjust colorscale in simulated line spectra data
+# TODO: create line spectrum class object
 
 ureg = pint.UnitRegistry()
 set_application_registry(ureg)
@@ -56,6 +59,8 @@ def at(r, k):
     """
     Parameters:
     ___________
+    r:
+    k:
 
     Returns:
     ________
@@ -66,6 +71,9 @@ def E(k,m_e, E0):
     """
     Parameters:
     ___________
+    k: ureg.Quantity in units of 1/length
+    m_e: ureg.Quantity in units of mass
+    E0: ureg.Quantity in units of ?
 
     Returns:
     ________
@@ -130,14 +138,14 @@ def LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms):
     ld = 2*np.dot(np.dot(np.array(aT),np.linalg.inv(ones-A)),a0).real
     return ld
 
-def get_atom_locs(n_atoms, radius): #radius in nm
+def get_atom_locs(n_atoms, radius):
     """
 
 
     Parameters:
     ___________
-    n_atoms:
-    radius:
+    n_atoms: int
+    radius: float (in nm)
 
 
     Returns:
@@ -148,7 +156,7 @@ def get_atom_locs(n_atoms, radius): #radius in nm
                         for n in range(1,n_atoms+1)])
     return atom_locs
 
-def create_A_matrix(n_atoms, atom_locs, k_tip, delta_0=np.pi/4., alpha0=0):
+def create_A_matrix(n_atoms, atom_locs, k_tip, delta0=np.pi/4., alpha0=0):
     """
     Create the atom-atom scattering matrix which stays constant for each energy
 
@@ -157,7 +165,7 @@ def create_A_matrix(n_atoms, atom_locs, k_tip, delta_0=np.pi/4., alpha0=0):
     n_atoms: int
     atom_locs:
     k_tip:
-    delta_0: float
+    delta0: float
     alpha0: float
 
     Returns:
@@ -187,7 +195,10 @@ def calc_LDOS(atom_locs, nmxyrange, k_tip, n_atoms):
 
     Parameters:
     ___________
-
+    atom_locs:
+    nmxyrange:
+    k_tip:
+    n_atoms: int
 
 
     Returns:
@@ -205,7 +216,7 @@ def calc_LDOS(atom_locs, nmxyrange, k_tip, n_atoms):
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
 
     # input parameters for LDOS_at_point()
-
+    # use of zip() & repeat() saves memory by not creating big array every time
     p = zip(X.flatten().magnitude,
             Y.flatten().magnitude,
             repeat(A),
@@ -213,7 +224,6 @@ def calc_LDOS(atom_locs, nmxyrange, k_tip, n_atoms):
             repeat(atom_locs),
             repeat(n_atoms))
 
-    # p = np.array([[(X[n][m].magnitude, Y[n][m].magnitude, A, k_tip , atom_locs, n_atoms) for n in range(n_sites)] for m in range(n_sites)]).reshape(n_sites*n_sites,6)
     with Pool(5) as pool:
         LDOS = pool.starmap(LDOS_at_point,p)
 
@@ -225,7 +235,9 @@ def c_LDOS(atom_locs, latt_sites, k_tip):
 
     Parameters:
     ___________
-
+    atom_locs:
+    latt_sites:
+    k_tip:
 
 
     Returns:
@@ -362,8 +374,3 @@ def get_spectra(atom_locs, nmxyrange, erange):
     with ThreadPool(5) as pool:
         s = pool.starmap(get_LDOS, p)
     return s
-
-# TODO: put this all into a class (scattering model)
-# TODO: try to simulate real line spectra data (i.e. get real spectra positions in x,y)
-# TODO: enable ability to adjust colorscale in simulated line spectra data
-# TODO: create line spectrum class object

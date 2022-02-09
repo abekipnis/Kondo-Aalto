@@ -17,7 +17,6 @@ import multiprocessing
 from sklearn.preprocessing import normalize
 from math import cos, sin
 import pandas as pd
-from scattering import scattering_model
 import pickle
 from scipy.interpolate import interp1d
 
@@ -700,12 +699,6 @@ if __name__=="__main__":
         c.compare_fits()
         plt.savefig(c.file+"_circle_fits.png")
 
-        # try to use the scattering model
-        # atompoints, angle, offseta, offsetb, latt = c.fit_lattice(50)
-        # erange = np.arange(-0.020, 0.020, 0.001)
-        # spectra = scattering_model.gs(atompoints, latt, erange)
-        # plt.plot(erange, spectra); plt.imshow()
-        # pdb.set_trace()
         radii.append(c.pix_to_nm(c.r_g))
         files.append(p)
         central_atoms.append(list(map(c.pix_to_nm, center_atom_loc)))
