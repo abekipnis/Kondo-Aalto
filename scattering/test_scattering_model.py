@@ -87,6 +87,7 @@ if __name__=="__main__":
 	t = time()
 
 	l = scattering_model.spectrum_along_line(c.pix_to_nm(atoms_g), erange)
+	np.save("%s_line_spectrum.npy" %(fname_head))
 	plt.imshow(np.flipud(np.array(l).T), extent=(0, 10, min(erange), max(erange)), aspect="auto")
 	plt.show()
 	pdb.set_trace()
