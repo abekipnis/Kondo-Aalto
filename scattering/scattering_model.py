@@ -362,7 +362,7 @@ def line_spectrum_at_points(points, atom_locs, erange):
     atom_locs = Q_(atom_locs, "nm")
 
     line_spectrum = []
-    for e in erange[0:4]:
+    for e in erange:
         E = Q_(e,"volt")*electron_charge
         k_tip = k(E, m_e, E_0)
         A = create_A_matrix(n_atoms, atom_locs, k_tip)
