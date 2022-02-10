@@ -24,7 +24,6 @@ import sys
 import time
 from itertools import product
 import re
-import tkinter as tk
 import createc
 from cmath import sqrt
 
@@ -1260,7 +1259,7 @@ def plot_line(image, specs, center):
     plt.show()
 
 if __name__=="__main__":
-
+    import tkinter as tk
     from tkinter import messagebox
     from tkinter.filedialog import askopenfilenames, asksaveasfile, StringVar, OptionMenu
     # radii data file
