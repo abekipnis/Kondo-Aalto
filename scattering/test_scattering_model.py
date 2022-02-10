@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import os
 import argparse
-import multiprocessing
 import warnings
 from time import time
 import datetime
@@ -37,13 +36,7 @@ python3 test_scattering_model.py --emin=-0.02 --emax=0.02 --n_es=5 --ngridpoints
 # TODO: compare CH maps with unoccupied corrals
 # TODO: compare with line spectrum from empty corrals
 
-if __name__=="__main__":
-	host = socket.gethostname()
-	print("running on: ", host)
-
-	warnings.filterwarnings("ignore")
-	parser = argparse.ArgumentParser()
-
+def get_args(parser):
 	parser.add_argument("--emin", type=float, default=-0.05)
 	parser.add_argument("--emax", type=float, default=0.1)
 	parser.add_argument("--n_es", type=int, default=20)
@@ -55,18 +48,12 @@ if __name__=="__main__":
 
 	parser.add_argument("--path", type=str, default=d_dat)
 	parser.add_argument("--linespec_dir", type=str, default=d_linespec_dir)
+
 	args = parser.parse_args()
+	return args
 
-	path = args.path
-	linespec_dir = args.linespec_dir
-
-	localdir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
-	tritondir = "/m/phys/project/asp/labdata/Createc_new/STMDATA/Ag/Small Kondo corrals/"
-
-	dir = tritondir if "triton" in host else localdir
-	linespec_dir = dir + linespec_dir
-
-	if args.emin < sm.E_0.magnitude/sm.electron_charge.magnitude:
+def replicate_spectra(linespec_dir, path):
+	if emin < sm.E_0.magnitude/sm.electron_charge.magnitude:
 		print("minimum energy below surface state onset!")
 		exit(0)
 
@@ -87,7 +74,6 @@ if __name__=="__main__":
 	ylocs = [s.YPos_nm for s in specs]
 	x_nm = np.round(c.image_file.size[0]/10.)
 
-	pdb.set_trace()
 	xlocs = np.array(xlocs)-c.image_file.offset[0]/10.+x_nm/2.
 	ylocs = np.array(ylocs)-c.image_file.offset[1]/10.
 
@@ -119,7 +105,28 @@ if __name__=="__main__":
 	ls = sm.line_spectrum_at_points(lsp, c.pix_to_nm(atoms_g),specs[0].bias_mv)
 	plt.imshow(ls)
 	plt.savefig("%s_line_spectrum.pdf" %(fname_head))
-	np.save("%s_line_spectrum.npy" %(ls), l)
+	np.save("%s_line_spectrum.npy" %(ls), ls)
+
+if __name__=="__main__":
+	host = socket.gethostname()
+	print("Running on host: ", host)
+
+	warnings.filterwarnings("ignore")
+	args = get_args(argparse.ArgumentParser())
+	path = args.path								# the path to the .dat file
+	linespec_dir = args.linespec_dir				# path to folder with spectra
+	emin = args.emin								# min of energy range for model
+	emax = args.emax								# max of energy range for model
+	n_es = args.n_es								# number of points in energy range for model
+	ngridpoints = args.ngridpoints					# number of grid points (in 1 dimension)
+
+	localdir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
+	tritondir = "/m/phys/project/asp/labdata/Createc_new/STMDATA/Ag/Small Kondo corrals/"
+
+	dir = tritondir if "triton" in host else localdir
+	linespec_dir = dir + linespec_dir
+
+	replicate_spectra(linespec_dir, path)
 
 	# this takes too long if using the generated lattice from the fit
 	# better to use lattice generated from numpy mesh
@@ -129,9 +136,9 @@ if __name__=="__main__":
 
 	t = time()
 
-	erange = np.arange(args.emin, args.emax, (args.emax-args.emin)/args.n_es)
+	erange = np.arange(emin, emax, (emax-emin)/n_es)
 	print("Getting spectra for erange: ", erange)
-	nmxyrange = c.pix_to_nm(np.arange(0,c.xPix, c.xPix/args.ngridpoints))
+	nmxyrange = c.pix_to_nm(np.arange(0,c.xPix, c.xPix/ngridpoints))
 	l = sm.spectrum_along_line(c.pix_to_nm(atoms_g), erange)
 	np.save("%s_line_spectrum.npy" %(fname_head), l)
 	plt.imshow(np.flipud(np.array(l).T), extent=(0, 10, min(erange), max(erange)), aspect="auto")
@@ -181,7 +188,6 @@ if __name__=="__main__":
 
 	plt.plot(erange, spectrum[:,5,5]);
 	plt.savefig("spectrum_test.png")
-
 
 
 	# pdb.set_trace()
