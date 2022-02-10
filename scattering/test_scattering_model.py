@@ -123,7 +123,7 @@ if __name__=="__main__":
 	ngridpoints = args.ngridpoints					# number of grid points (in 1 dimension)
 
 	localdir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
-	tritondir = "/m/phys/project/asp/labdata/Createc_new/STMDATA/Ag/Small Kondo corrals/"
+	tritondir = "/scratch/work/kipnisa1/Small Kondo corrals/"
 
 	dir = tritondir if "triton" in host else localdir
 	linespec_dir = dir + linespec_dir
