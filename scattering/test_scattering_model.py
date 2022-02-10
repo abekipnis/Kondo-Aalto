@@ -1,8 +1,7 @@
 import pdb
 import sys
-os.getcwd()
 sys.path.append("/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis")
-sys.path.append("/home/kipnisa1/python/Small-Kondo-Corrals")
+sys.path.append("/home/kipnisa1/python/Small-Kondo-Corrals/Kondo data analysis")
 sys.path.insert(1, '/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/Kondo data analysis')
 
 from find_atom_positions import CircCorralData
