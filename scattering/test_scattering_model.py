@@ -1,6 +1,8 @@
 import pdb
 import sys
+os.getcwd()
 sys.path.append("/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis")
+sys.path.append("/home/kipnisa1/python/Small-Kondo-Corrals")
 sys.path.insert(1, '/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/Kondo data analysis')
 
 from find_atom_positions import CircCorralData
@@ -47,10 +49,11 @@ if __name__=="__main__":
 	parser.add_argument("--ngridpoints", type=int, default=20)
 
 	# "/m/phys/project/asp/labdata/Createc_new/STMDATA/Ag/Small Kondo corrals/"
-	default_dat = "../test/Createc2_210816.170832.dat"
-	default_line = "Ag 2021-08-16 2p5 nm radius empty/3p8 nm pm100mV line/"
-	parser.add_argument("--path", type=str, default=default_dat)
-	parser.add_argument("--linespec_dir", type=str, default=default_line)
+	d_dat = "../test/Createc2_210816.170832.dat"
+	d_linespec_dir = "Ag 2021-08-16 2p5 nm radius empty/3p8 nm pm100mV line/"
+
+	parser.add_argument("--path", type=str, default=d_dat)
+	parser.add_argument("--linespec_dir", type=str, default=d_linespec_dir)
 	args = parser.parse_args()
 
 	path = args.path
@@ -76,9 +79,9 @@ if __name__=="__main__":
 	c.subtract_plane()
 	c.get_region_centroids(diamond_size=5, sigmaclip=2)
 
-	spec_files = os.listdir(args.linespec_dir)
+	spec_files = os.listdir(linespec_dir)
 	spec_files = sorted([f for f in spec_files if f[-4:] =="VERT"])
-	specs = [Spec(args.linespec_dir+f) for f in spec_files]
+	specs = [Spec(linespec_dir+f) for f in spec_files]
 	xlocs = [s.XPos_nm for s in specs]
 	ylocs = [s.YPos_nm for s in specs]
 	x_nm = np.round(c.image_file.size[0]/10.)
