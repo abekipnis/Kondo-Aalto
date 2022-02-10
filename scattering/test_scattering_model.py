@@ -133,7 +133,7 @@ if __name__=="__main__":
 	print("Getting spectra for erange: ", erange)
 	nmxyrange = c.pix_to_nm(np.arange(0,c.xPix, c.xPix/args.ngridpoints))
 	l = sm.spectrum_along_line(c.pix_to_nm(atoms_g), erange)
-	np.save("%s_line_spectrum.npy" %(fname_head))
+	np.save("%s_line_spectrum.npy" %(fname_head), l)
 	plt.imshow(np.flipud(np.array(l).T), extent=(0, 10, min(erange), max(erange)), aspect="auto")
 	plt.show()
 	pdb.set_trace()
