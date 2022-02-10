@@ -33,11 +33,15 @@ Q_ = ureg.Quantity
 hbar = 1.0545718e-34 * ureg.joule * ureg.second
 m_electron = 9.109e-31 * ureg.kg
 electron_charge = 1.6e-19 * ureg.coulomb
-m_e = 0.4*m_electron
+m_e = 0.42*m_electron
 E_0 = Q_(-0.067, "volt")*electron_charge
 
 def a(r, k, d0, a0):
     """
+
+    a0 and d0 make up η = a0 + id0, the complex number representing the
+    abdosrptive channel. (s-wave shift for 2D electron scattering off atom on surface)
+
     Example:
         a(Q_(0.1,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 1, 1).to_reduced_units()
 
@@ -105,8 +109,9 @@ def k(E, m_e, E0):
 # np.arange(0, 2*np.pi, 0.3)
 #
 # for d in np.arange(0,2*np.pi, 0.3):
+
 #
-# plt.plot([a(Q_(x,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 10*np.pi, 10).magnitude.imag for x in np.arange(1e-9, 100e-9, 1e-10)])
+plt.plot(np.arange(1e-9, 100e-9, 1e-10),[a(Q_(x,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 5, 0).magnitude.real for x in np.arange(1e-9, 100e-9, 1e-10)])
 # plt.plot([a(Q_(x,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 10*np.pi, 10).magnitude.imag for x in np.arange(1e-9, 100e-9, 1e-10)])
 
 
