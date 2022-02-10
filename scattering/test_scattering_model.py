@@ -103,7 +103,10 @@ def replicate_spectra(linespec_dir, path):
 
 	# line spectrum points
 	lsp = np.array([xlocs, ylocs]).T
-	ls = sm.line_spectrum_at_points(lsp, c.pix_to_nm(atoms_g),specs[0].bias_mv)
+
+	# biases from Createc are in V, scattering model takes mV
+	biases = specs[0].bias_mv/100.
+	ls = sm.line_spectrum_at_points(lsp, c.pix_to_nm(atoms_g), biases)
 	plt.imshow(ls)
 	plt.savefig("%s_line_spectrum.pdf" %(fname_head))
 	np.save("%s_line_spectrum.npy" %(fname_head), ls)
