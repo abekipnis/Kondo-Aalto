@@ -119,7 +119,7 @@ if __name__=="__main__":
 	ls = sm.line_spectrum_at_points(lsp, c.pix_to_nm(atoms_g),specs[0].bias_mv)
 	plt.imshow(ls)
 	plt.savefig("%s_line_spectrum.pdf" %(fname_head))
-	np.save("%s_line_spectrum.npy" %(ls))
+	np.save("%s_line_spectrum.npy" %(ls), l)
 
 	# this takes too long if using the generated lattice from the fit
 	# better to use lattice generated from numpy mesh
