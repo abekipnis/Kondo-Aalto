@@ -15,7 +15,12 @@ from itertools import repeat
 # from numba import njit
 import warnings
 warnings.filterwarnings("ignore")
-
+class bcolors:
+    OK = '\033[92m' #GREEN
+    WARNING = '\033[93m' #YELLOW
+    FAIL = '\033[91m' #RED
+    RESET = '\033[0m' #RESET COLOR
+    BLUE = '\u001b[34m'
 # TODO: create main function
 # TODO: create class and methods, refactor
 # TODO: read from line spectra, location of spectra & .dat file etc.
@@ -111,7 +116,7 @@ def k(E, m_e, E0):
 # for d in np.arange(0,2*np.pi, 0.3):
 
 #
-plt.plot(np.arange(1e-9, 100e-9, 1e-10),[a(Q_(x,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 5, 0).magnitude.real for x in np.arange(1e-9, 100e-9, 1e-10)])
+# plt.plot(np.arange(1e-9, 100e-9, 1e-10),[a(Q_(x,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 5, 0).magnitude.real for x in np.arange(1e-9, 100e-9, 1e-10)])
 # plt.plot([a(Q_(x,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 10*np.pi, 10).magnitude.imag for x in np.arange(1e-9, 100e-9, 1e-10)])
 
 
@@ -234,35 +239,6 @@ def calc_LDOS(atom_locs, nmxyrange, k_tip, n_atoms):
 
     return LDOS
 
-def c_LDOS(atom_locs, latt_sites, k_tip):
-    """
-
-
-    Parameters:
-    ___________
-    atom_locs:
-    latt_sites:
-    k_tip:
-
-
-    Returns:
-    ________
-    """
-    n_atoms = len(atom_locs)
-    a0 = np.zeros(n_atoms)
-    aT = np.zeros(n_atoms)
-    m = latt_sites #nm
-    LDOS = np.zeros(len(latt_sites))
-    A = create_A_matrix(n_atoms, atom_locs, k_tip)
-
-    for n0, n in enumerate(latt_sites):
-        LDOS[n0] = LDOS_at_point(n[0], n[1], A, k_tip, atom_locs)
-
-    plt.scatter(*np.array(latt_sites).T, c=LDOS)
-    plt.colorbar()
-    plt.show()
-    return LDOS
-
 def gs(atom_locs, latt_sites, erange, spectrumpt):
     """
 
@@ -362,6 +338,50 @@ def spectrum_along_line(atom_locs, erange):
         line_spectrum.append(spectrum)
     return line_spectrum
 
+def line_spectrum_at_points(points, atom_locs, erange):
+    """
+
+
+    Parameters:
+    ___________
+
+
+
+    Returns:
+    ________
+    """
+    n_atoms = len(atom_locs)
+    n_bias = len(erange)
+    n_pts = len(points)
+
+    print(bcolors.OK + "Calculating line spectra for %d atoms, %d energy pts" %(n_atoms, n_bias) + bcolors.RESET)
+    pdb.set_trace()
+    m = np.mean(atom_locs, axis=0)
+    atom_locs -= m
+    points -= m
+    atom_locs = Q_(atom_locs, "nm")
+
+    line_spectrum = []
+    for e in erange[0:4]:
+        E = Q_(e,"volt")*electron_charge
+        k_tip = k(E, m_e, E_0)
+        A = create_A_matrix(n_atoms, atom_locs, k_tip)
+
+        print(bcolors.BLUE + "Calculating LDOS for %d pts, at %1.3lf mV" %(n_pts, e) + bcolors.RESET)
+
+        args = zip(points.T[0],
+                    points.T[1],
+                    repeat(A),
+                    repeat(k_tip),
+                    repeat(atom_locs),
+                    repeat(n_atoms))
+        with Pool() as p:
+            # LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms)
+            spec = p.starmap(LDOS_at_point, args)
+
+        line_spectrum.append(spec)
+    return line_spectrum
+
 def get_spectra(atom_locs, nmxyrange, erange):
     """
     Parameters:
@@ -379,3 +399,44 @@ def get_spectra(atom_locs, nmxyrange, erange):
     with ThreadPool(5) as pool:
         s = pool.starmap(get_LDOS, p)
     return s
+
+
+
+
+
+
+
+
+
+
+
+
+
+def c_LDOS(atom_locs, latt_sites, k_tip):
+    """
+
+
+    Parameters:
+    ___________
+    atom_locs:
+    latt_sites:
+    k_tip:
+
+
+    Returns:
+    ________
+    """
+    n_atoms = len(atom_locs)
+    a0 = np.zeros(n_atoms)
+    aT = np.zeros(n_atoms)
+    m = latt_sites #nm
+    LDOS = np.zeros(len(latt_sites))
+    A = create_A_matrix(n_atoms, atom_locs, k_tip)
+
+    for n0, n in enumerate(latt_sites):
+        LDOS[n0] = LDOS_at_point(n[0], n[1], A, k_tip, atom_locs)
+
+    plt.scatter(*np.array(latt_sites).T, c=LDOS)
+    plt.colorbar()
+    plt.show()
+    return LDOS
