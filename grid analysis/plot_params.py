@@ -88,7 +88,7 @@ def show_radial_decay(im, Xs, Ys, title,disc):
             p0 = [12.5, 0, 1]
         popt, pcov = scipy.optimize.curve_fit(Lorentzian, x, y, p0=p0,maxfev=4000)
         plt.plot(x, Lorentzian(x, *popt), color="black")
-    if title=="q":o
+    if title=="q":
         dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/spatial extent Kondo plots/width comparison"
         files = os.listdir(dir)
 
@@ -144,6 +144,11 @@ def plot_grid_fit_params(files, xmin, xmax, ymin, ymax):
 
     patt = re.compile(r'(?:specgrid(\S*)[0-9]{4})')
 
+    pdb.set_trace()
+
+    #sort the files so we always see the parameter spreads in the same order
+    # TODO: make it so it goes e, w, q, a, b, c  from top to bottom L --> R
+    dat_files = sorted(dat_files, key=lambda x: x.replace("$","z")[-5])
     for n,f in enumerate(dat_files):
         this_limit_file = [d for d in limit_files if f[0:-4] in d][0]
         limits = np.loadtxt(os.path.join(path,this_limit_file))
