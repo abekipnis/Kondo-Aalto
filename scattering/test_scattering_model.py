@@ -87,6 +87,7 @@ if __name__=="__main__":
 	ylocs = [s.YPos_nm for s in specs]
 	x_nm = np.round(c.image_file.size[0]/10.)
 
+	pdb.set_trace()
 	xlocs = np.array(xlocs)-c.image_file.offset[0]/10.+x_nm/2.
 	ylocs = np.array(ylocs)-c.image_file.offset[1]/10.
 
