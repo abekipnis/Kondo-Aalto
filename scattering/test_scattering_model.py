@@ -69,6 +69,7 @@ def replicate_spectra(linespec_dir, path):
 
 	spec_files = os.listdir(linespec_dir)
 	spec_files = sorted([f for f in spec_files if f[-4:] =="VERT"])
+	print("Found %d VERT files in line spectrum directory" %(len(spec_files)))
 	specs = [Spec(linespec_dir+f) for f in spec_files]
 	xlocs = [s.XPos_nm for s in specs]
 	ylocs = [s.YPos_nm for s in specs]
@@ -105,7 +106,8 @@ def replicate_spectra(linespec_dir, path):
 	ls = sm.line_spectrum_at_points(lsp, c.pix_to_nm(atoms_g),specs[0].bias_mv)
 	plt.imshow(ls)
 	plt.savefig("%s_line_spectrum.pdf" %(fname_head))
-	np.save("%s_line_spectrum.npy" %(ls), ls)
+	np.save("%s_line_spectrum.npy" %(fname_head), ls)
+	exit(0)
 
 if __name__=="__main__":
 	host = socket.gethostname()
