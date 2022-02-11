@@ -120,7 +120,7 @@ def k(E, m_e, E0):
 # plt.plot([a(Q_(x,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 10*np.pi, 10).magnitude.imag for x in np.arange(1e-9, 100e-9, 1e-10)])
 
 
-def LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms):
+def LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms, d0=np.pi/4., alpha0=0):
     """
 
 
@@ -137,10 +137,9 @@ def LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms):
     Returns:
     ________
     """
-    delta0 = np.pi/4. # why use this?
-    alpha0 = 0
-    aT = [at(Q_(np.linalg.norm([x,y]-atomloc.magnitude),"nm"), k_tip.to("1/nm")) for atomloc in atom_locs]
-    a0 = [a(Q_(np.linalg.norm([x,y]-atomloc.magnitude),"nm"), k_tip.to("1/nm"),delta0, alpha0) for atomloc in atom_locs]
+    kt = k_tip.to("1/nm")
+    aT = [at(Q_(np.linalg.norm([x,y]-atomloc.magnitude),"nm"), kt) for atomloc in atom_locs]
+    a0 = [a(Q_(np.linalg.norm([x,y]-atomloc.magnitude),"nm"), kt, d0, alpha0) for atomloc in atom_locs]
 
     # aT = [at(np.linalg.norm([x,y]-atomloc),k_tip) for atomloc in atom_locs]
     # a0 = [a(np.linalg.norm([x,y]-atomloc),k_tip,delta0,alpha0) for atomloc in atom_locs]

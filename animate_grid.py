@@ -37,7 +37,7 @@ class Grid:
         f = open(file, "rb")
         b = np.fromfile(f, dtype=np.float32,count=256)
         f.close
-
+        pdb.set_trace()
         self.version = a[0]
         self.nx = a[1]
         self.ny = a[2]
