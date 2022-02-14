@@ -155,7 +155,7 @@ def get_atom_locs(n_atoms, radius):
                         for n in range(1,n_atoms+1)])
     return atom_locs
 
-def create_A_matrix(n_atoms, atom_locs, k_tip, delta0=np.pi/4., alpha0=0):
+def create_A_matrix(n_atoms, atom_locs, k_tip, delta0=1.36., alpha0=0):
     """
     Create the atom-atom scattering matrix which stays constant for each energy
 
@@ -327,7 +327,7 @@ def spectrum_along_line(atom_locs, erange):
         line_spectrum.append(spectrum)
     return line_spectrum
 
-def line_spectrum_at_points(points, atom_locs, erange, delta0=np.pi/4., alpha0=0):
+def line_spectrum_at_points(points, atom_locs, erange, delta0=1.36, alpha0=0):
     """
 
 
