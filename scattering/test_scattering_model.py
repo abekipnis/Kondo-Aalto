@@ -75,7 +75,10 @@ def simulate_and_save_line_spectrum(c, fname_head, linespec_dir, biases="all"):
 	xlocs = np.array(xlocs)-c.image_file.offset[0]/10.+x_nm/2.
 	ylocs = np.array(ylocs)-c.image_file.offset[1]/10.
 
+	print("simulating line spectrum at %d points %d biases" %(len(lsp), len(biases)))
+
 	ls = sm.line_spectrum_at_points(lsp, c.pix_to_nm(atoms_g), biases)
+	ls = np.array(ls)
 	d = ls[~np.isnan(ls).any(axis=1)]
 
 	spec_dist = np.linalg.norm(lsp[-1]-lsp[0])
@@ -105,8 +108,8 @@ def fit_scattering_phase_shift(c, fname_head, linespec_dir, biases="all"):
 	biases = biases[bias_cut]
 	biases/=1000.
 
-	n_bias = 15 # divide # of bias data by n, reduces calculation time
-	n_spectra = 15 # divide # of spectra by n to reduce calc time
+	n_bias = 80 # divide # of bias data by n, reduces calculation time. 80
+	n_spectra = 40 # divide # of spectra by n to reduce calc time
 
 	biases = biases[0::n_bias]
 	x_nm = np.round(c.image_file.size[0]/10.)
@@ -119,7 +122,7 @@ def fit_scattering_phase_shift(c, fname_head, linespec_dir, biases="all"):
 	spec = lambda pts, d0: sm.line_spectrum_at_points(pts, atoms_g_nm, biases,d0)
 	def resid(d0, spectra):
 		ls = spec(lsp[::n_spectra], d0)
-
+		np.save("d0=%1.2lf" %(d0), ls)
 		spectra = spectra[::n_spectra]
 		line = lambda x, m, b: m*x+b
 
@@ -140,6 +143,8 @@ def fit_scattering_phase_shift(c, fname_head, linespec_dir, biases="all"):
 		return np.linalg.norm(ls[:,:,0]-spectra)
 
 	r = lambda d0: resid(d0, spectra)
+	print("FITTING SCATTERING PHASE SHIFT from %d points %d biases" %(len(lsp), len(biases)))
+
 	ret = scipy.optimize.minimize(r,np.pi/4, options={"disp":True})
 	print(ret)
 	ls = spec(lsp[::n_spectra], ret[0])
@@ -184,8 +189,8 @@ def replicate_spectra(linespec_dir, path):
 
 	# c.compare_fits()
 	# atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=5)
-	# fit_scattering_phase_shift(c, fname_head, linespec_dir)
-	simulate_and_save_line_spectrum(c, fname_head, linespec_dir)
+	fit_scattering_phase_shift(c, fname_head, linespec_dir)
+	# simulate_and_save_line_spectrum(c, fname_head, linespec_dir)
 	exit(0)
 
 if __name__=="__main__":
