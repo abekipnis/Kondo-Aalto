@@ -2,6 +2,7 @@ from test_scattering_model import replicate_spectra, get_args
 import socket, argparse
 import scattering_model as sm
 import warnings
+import pdb
 if __name__=="__main__":
 	host = socket.gethostname()
 	print("Running on host: ", host)
