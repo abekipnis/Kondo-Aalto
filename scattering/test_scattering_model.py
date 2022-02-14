@@ -5,7 +5,7 @@ sys.path.append('/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and 
 sys.path.append("/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis")
 sys.path.append("/home/kipnisa1/python/Small-Kondo-Corrals/Kondo data analysis")
 sys.path.append("/home/kipnisa1/python/Small-Kondo-Corrals/")
-
+import scipy
 from find_atom_positions import CircCorralData
 from read_vertfile import Spec
 from numpy import array
@@ -52,11 +52,110 @@ def get_args(parser):
 	args = parser.parse_args()
 	return args
 
-def replicate_spectra(linespec_dir, path):
-	if emin < sm.E_0.magnitude/sm.electron_charge.magnitude:
-		print("minimum energy below surface state onset!")
-		exit(0)
+def simulate_and_save_line_spectrum(c, fname_head, linespec_dir, biases="all"):
+	spec_files = os.listdir(linespec_dir)
+	spec_files = sorted([f for f in spec_files if f[-4:] =="VERT"])
+	print("Found %d VERT files in line spectrum directory" %(len(spec_files)))
+	specs = [Spec(linespec_dir+f) for f in spec_files]
+	xlocs = [s.XPos_nm for s in specs]
+	ylocs = [s.YPos_nm for s in specs]
 
+	# line spectrum points
+	lsp = np.array([xlocs, ylocs]).T
+
+	# bias values
+	# biases from Createc are in V, scattering model takes mV
+	biases = specs[0].bias_mv
+	biases = biases[biases>-67]
+	biases/=1000.
+	pdb.set_trace()
+	biases = biases[0::4] # divide the amount of data by 4
+	x_nm = np.round(c.image_file.size[0]/10.)
+	atoms_g = c.gauss_fit_locs.T
+	xlocs = np.array(xlocs)-c.image_file.offset[0]/10.+x_nm/2.
+	ylocs = np.array(ylocs)-c.image_file.offset[1]/10.
+
+	ls = sm.line_spectrum_at_points(lsp, c.pix_to_nm(atoms_g), biases)
+	d = ls[~np.isnan(ls).any(axis=1)]
+
+	spec_dist = np.linalg.norm(lsp[-1]-lsp[0])
+	plt.imshow(d, extent=[0,spec_dist, biases[0], biases[-1]], aspect='auto')
+	plt.imshow(ls)
+	plt.savefig("%s_line_spectrum.pdf" %(fname_head))
+	np.save("%s_line_spectrum.npy" %(fname_head), ls)
+
+def residual(data, fit):
+	return
+
+def fit_scattering_phase_shift(c, fname_head, linespec_dir, biases="all"):
+	spec_files = os.listdir(linespec_dir)
+	spec_files = sorted([f for f in spec_files if f[-4:] =="VERT"])
+	print("Found %d VERT files in line spectrum directory" %(len(spec_files)))
+	specs = [Spec(linespec_dir+f) for f in spec_files]
+	xlocs = [s.XPos_nm for s in specs]
+	ylocs = [s.YPos_nm for s in specs]
+
+	# line spectrum points
+	lsp = np.array([xlocs, ylocs]).T
+
+	# bias values
+	# biases from Createc are in V, scattering model takes mV
+	biases = specs[0].bias_mv
+	bias_cut = biases>-67
+	biases = biases[bias_cut]
+	biases/=1000.
+
+	n_bias = 80 # divide # of bias data by n, reduces calculation time
+	n_spectra = 30 # divide # of spectra by n to reduce calc time
+
+	biases = biases[0::n_bias]
+	x_nm = np.round(c.image_file.size[0]/10.)
+	atoms_g = c.gauss_fit_locs.T
+	xlocs = np.array(xlocs)-c.image_file.offset[0]/10.+x_nm/2.
+	ylocs = np.array(ylocs)-c.image_file.offset[1]/10.
+
+	spectra = [s.dIdV[bias_cut][::n_bias] for s in specs]
+	atoms_g_nm = c.pix_to_nm(atoms_g)
+	spec = lambda pts, d0: sm.line_spectrum_at_points(pts, atoms_g_nm, biases,d0)
+	def resid(d0, spectra):
+		ls = spec(lsp[::n_spectra], d0)
+
+		spectra = spectra[::n_spectra]
+		line = lambda x, m, b: m*x+b
+
+		# subtract linear fit from spectra
+		for s in spectra:
+			(m,b), _ = scipy.optimize.curve_fit(line, biases, s)
+			s -= (biases*m+b)
+
+		# normalize the arrays by subtracting the minimum and dividing by the new maximum
+		# https://se.mathworks.com/matlabcentral/answers/196798-how-to-normalize-values-in-a-matrix-to-be-between-0-and-1
+
+		spectra -= np.min(spectra)
+		spectra /= np.max(spectra)
+		spectra = spectra.T
+
+		ls -= np.min(ls)
+		ls /= np.max(ls)
+		# pdb.set_trace()
+		return np.linalg.norm(ls[:,:,0]-spectra)
+	Nfeval = 1
+	def callback(d0):
+		global Nfeval
+		print("Iter: %d, d0 = %1.2lf" %(Nfeval, d0) )
+		Nfeval += 1
+
+	r = lambda d0: resid(d0, spectra)
+	ret = scipy.optimize.minimize(r,np.pi/4,callback=callback, options={"disp":True})
+	d = ls[~np.isnan(ls).any(axis=1)]
+
+	spec_dist = np.linalg.norm(lsp[-1]-lsp[0])
+	plt.imshow(d, extent=[0,spec_dist, biases[0], biases[-1]], aspect='auto')
+	plt.imshow(ls)
+	plt.savefig("%s_line_spectrum.pdf" %(fname_head))
+	np.save("%s_line_spectrum.npy" %(fname_head), ls)
+
+def replicate_spectra(linespec_dir, path):
 	now_string = str(datetime.datetime.today())
 	datfile = os.path.split(path)[-1].strip('.dat')
 
@@ -66,17 +165,6 @@ def replicate_spectra(linespec_dir, path):
 	c = CircCorralData(path, path.split("/")[-1])
 	c.subtract_plane()
 	c.get_region_centroids(diamond_size=5, sigmaclip=2)
-
-	spec_files = os.listdir(linespec_dir)
-	spec_files = sorted([f for f in spec_files if f[-4:] =="VERT"])
-	print("Found %d VERT files in line spectrum directory" %(len(spec_files)))
-	specs = [Spec(linespec_dir+f) for f in spec_files]
-	xlocs = [s.XPos_nm for s in specs]
-	ylocs = [s.YPos_nm for s in specs]
-	x_nm = np.round(c.image_file.size[0]/10.)
-
-	xlocs = np.array(xlocs)-c.image_file.offset[0]/10.+x_nm/2.
-	ylocs = np.array(ylocs)-c.image_file.offset[1]/10.
 
 	# the box size to fit atom positions
 	box_size_nm = 1
@@ -93,26 +181,15 @@ def replicate_spectra(linespec_dir, path):
 		atoms_g = c.gauss_fit_locs.T
 
 	# naive fit from maximum points
-	c.r_n, c.c_n = c.nsphere_fit(atoms_n)
+	# c.r_n, c.c_n = c.nsphere_fit(atoms_n)
 
 	# better fit from gaussian fits to atoms
-	c.r_g, c.c_g = c.nsphere_fit(atoms_g)
+	# c.r_g, c.c_g = c.nsphere_fit(atoms_g)
 
 	# c.compare_fits()
 	# atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=5)
-
-	# line spectrum points
-	lsp = np.array([xlocs, ylocs]).T
-
-	# biases from Createc are in V, scattering model takes mV
-	biases = specs[0].bias_mv/1000.
-	ls = sm.line_spectrum_at_points(lsp, c.pix_to_nm(atoms_g), biases)
-	d = ls[~np.isnan(ls).any(axis=1)]
-
-	plt.imshow(, extent=[0,7, biases[0], biases[-1]], aspect='auto');
-	plt.imshow(ls)
-	plt.savefig("%s_line_spectrum.pdf" %(fname_head))
-	np.save("%s_line_spectrum.npy" %(fname_head), ls)
+	fit_scattering_phase_shift(c, fname_head, linespec_dir)
+	# simulate_and_save_line_spectrum(c, fname_head, linespec_dir)
 	exit(0)
 
 if __name__=="__main__":

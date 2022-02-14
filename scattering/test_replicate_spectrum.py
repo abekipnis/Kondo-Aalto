@@ -1,3 +1,7 @@
+from test_scattering_model import replicate_spectra, get_args
+import socket, argparse
+import scattering_model as sm
+import warnings
 if __name__=="__main__":
 	host = socket.gethostname()
 	print("Running on host: ", host)
@@ -10,7 +14,9 @@ if __name__=="__main__":
 	emax = args.emax								# max of energy range for model
 	n_es = args.n_es								# number of points in energy range for model
 	ngridpoints = args.ngridpoints					# number of grid points (in 1 dimension)
-
+	if emin < sm.E_0.magnitude/sm.electron_charge.magnitude:
+		print("minimum energy below surface state onset!")
+		exit(0)
 	localdir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
 	tritondir = "/scratch/work/kipnisa1/Small Kondo corrals/"
 
