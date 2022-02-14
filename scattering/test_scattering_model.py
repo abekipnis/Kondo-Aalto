@@ -105,8 +105,8 @@ def fit_scattering_phase_shift(c, fname_head, linespec_dir, biases="all"):
 	biases = biases[bias_cut]
 	biases/=1000.
 
-	n_bias = 80 # divide # of bias data by n, reduces calculation time
-	n_spectra = 30 # divide # of spectra by n to reduce calc time
+	n_bias = 15 # divide # of bias data by n, reduces calculation time
+	n_spectra = 15 # divide # of spectra by n to reduce calc time
 
 	biases = biases[0::n_bias]
 	x_nm = np.round(c.image_file.size[0]/10.)
@@ -141,6 +141,8 @@ def fit_scattering_phase_shift(c, fname_head, linespec_dir, biases="all"):
 
 	r = lambda d0: resid(d0, spectra)
 	ret = scipy.optimize.minimize(r,np.pi/4, options={"disp":True})
+	print(ret)
+	ls = spec(lsp[::n_spectra], ret[0])
 	d = ls[~np.isnan(ls).any(axis=1)]
 
 	spec_dist = np.linalg.norm(lsp[-1]-lsp[0])
