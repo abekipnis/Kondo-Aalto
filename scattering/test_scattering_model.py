@@ -90,7 +90,7 @@ def simulate_and_save_line_spectrum(c, fname_head, linespec_dir, biases="all"):
 def residual(data, fit):
 	return
 
-def fit_scattering_phase_shift(c, fname_head, linespec_dir, biases="all"):
+def fit_scattering_phase_shift(c, fname_head, linespec_dir, n_bias=20, n_spectra=15):
 	spec_files = os.listdir(linespec_dir)
 	spec_files = sorted([f for f in spec_files if f[-4:] =="VERT"])
 	print("Found %d VERT files in line spectrum directory" %(len(spec_files)))
@@ -108,22 +108,22 @@ def fit_scattering_phase_shift(c, fname_head, linespec_dir, biases="all"):
 	biases = biases[bias_cut]
 	biases/=1000.
 
-	n_bias = 80 # divide # of bias data by n, reduces calculation time. 80
-	n_spectra = 40 # divide # of spectra by n to reduce calc time
+	# n_bias = 20 # num of bias data, reduces calculation time.
+	# n_spectra = 15 # num of spectra
 
-	biases = biases[0::n_bias]
+	biases = biases[0::int(len(biases)/n_bias)]
 	x_nm = np.round(c.image_file.size[0]/10.)
 	atoms_g = c.gauss_fit_locs.T
 	xlocs = np.array(xlocs)-c.image_file.offset[0]/10.+x_nm/2.
 	ylocs = np.array(ylocs)-c.image_file.offset[1]/10.
 
-	spectra = [s.dIdV[bias_cut][::n_bias] for s in specs]
+	spectra = [s.dIdV[bias_cut][::int(len(biases)/n_bias)] for s in specs]
 	atoms_g_nm = c.pix_to_nm(atoms_g)
 	spec = lambda pts, d0: sm.line_spectrum_at_points(pts, atoms_g_nm, biases,d0)
 	def resid(d0, spectra):
-		ls = spec(lsp[::n_spectra], d0)
+		ls = spec(lsp[::int(len(lsp)/n_spectra)], d0)
 		np.save("d0=%1.2lf" %(d0), ls)
-		spectra = spectra[::n_spectra]
+		spectra = spectra[::int(len(lsp)/n_spectra)]
 		line = lambda x, m, b: m*x+b
 
 		# subtract linear fit from spectra
@@ -181,14 +181,6 @@ def replicate_spectra(linespec_dir, path):
 		atoms_n = c.centroids
 		atoms_g = c.gauss_fit_locs.T
 
-	# naive fit from maximum points
-	# c.r_n, c.c_n = c.nsphere_fit(atoms_n)
-
-	# better fit from gaussian fits to atoms
-	# c.r_g, c.c_g = c.nsphere_fit(atoms_g)
-
-	# c.compare_fits()
-	# atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=5)
 	fit_scattering_phase_shift(c, fname_head, linespec_dir)
 	# simulate_and_save_line_spectrum(c, fname_head, linespec_dir)
 	exit(0)
@@ -213,17 +205,10 @@ if __name__=="__main__":
 	dir = tritondir if on_triton else localdir
 	linespec_dir = dir + linespec_dir
 
-	# deactivate pdb.set_trace function debugging calls if on triton
 	if on_triton:
 		pdb.set_trace = lambda: 1
 
 	replicate_spectra(linespec_dir, path)
-
-	# this takes too long if using the generated lattice from the fit
-	# better to use lattice generated from numpy mesh
-	#spectra = sm.gs(atompoints, latt, erange, c.c_g)
-	#plt.plot(erange, spectra); plt.imshow()
-	#get_spectra(atom_locs (in nm), n_sites (i.e. box size in pixels), r (radius in nm), erange)
 
 	t = time()
 
@@ -309,3 +294,12 @@ if __name__=="__main__":
 	# echo 'Running on :'$HOSTNAME
 	# srun python3 test_scattering_model.py --emin=-0.066 --emax=0.3 --n_es=10 --ngridpoints=100 --path="test/Createc2_210812.170231.dat"
 	# """
+
+	# naive fit from maximum points
+	# c.r_n, c.c_n = c.nsphere_fit(atoms_n)
+
+	# better fit from gaussian fits to atoms
+	# c.r_g, c.c_g = c.nsphere_fit(atoms_g)
+
+	# c.compare_fits()
+	# atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=5)
