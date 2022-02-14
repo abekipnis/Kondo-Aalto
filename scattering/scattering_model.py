@@ -343,7 +343,7 @@ def line_spectrum_at_points(points, atom_locs, erange, delta0=1.36, alpha0=0):
     n_bias = len(erange)
     n_pts = len(points)
 
-    print(bcolors.OK + "Calculating line spectra for %d atoms, %d energy pts" %(n_atoms, n_bias) + bcolors.RESET)
+    print(bcolors.OK + "Calculating spectra at %d locs, %d energies" %(n_pts, n_bias) + bcolors.RESET)
     m = np.mean(atom_locs, axis=0)
     atom_locs -= m
     points -= m
@@ -366,7 +366,6 @@ def line_spectrum_at_points(points, atom_locs, erange, delta0=1.36, alpha0=0):
                     repeat(delta0),
                     repeat(alpha0))
         with Pool() as p:
-            # LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms)
             spec = p.starmap(LDOS_at_point, args)
 
         line_spectrum.append(spec)
