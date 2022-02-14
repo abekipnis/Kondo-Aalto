@@ -119,7 +119,7 @@ def fit_scattering_phase_shift(c, fname_head, linespec_dir, n_bias=20, n_spectra
 
 	spectra = [s.dIdV[bias_cut][::int(len(biases)/n_bias)] for s in specs]
 	atoms_g_nm = c.pix_to_nm(atoms_g)
-	spec = lambda pts, d0: sm.line_spectrum_at_points(pts, atoms_g_nm, biases,d0)
+	spec = lambda pts, d0: sm.line_spectrum_at_points(pts, atoms_g_nm, biases, d0)
 	def resid(d0, spectra):
 		ls = spec(lsp[::int(len(lsp)/n_spectra)], d0)
 		np.save("d0=%1.2lf" %(d0), ls)
@@ -147,7 +147,7 @@ def fit_scattering_phase_shift(c, fname_head, linespec_dir, n_bias=20, n_spectra
 
 	ret = scipy.optimize.minimize(r,np.pi/4, options={"disp":True})
 	print(ret)
-	ls = spec(lsp[::n_spectra], ret[0])
+	ls = spec(lsp[::n_spectra], ret.x)
 	d = ls[~np.isnan(ls).any(axis=1)]
 
 	spec_dist = np.linalg.norm(lsp[-1]-lsp[0])
