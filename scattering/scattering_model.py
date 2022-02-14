@@ -113,7 +113,7 @@ def k(E, m_e, E0):
 # plt.plot([a(Q_(x,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 10*np.pi, 10).magnitude.imag for x in np.arange(1e-9, 100e-9, 1e-10)])
 
 
-def LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms, d0=np.pi/4, alpha0=0):
+def LDOS_at_point(x, y, A, kt, atom_locs, n_atoms, d0=1.36, alpha0=0):
     """
 
 
@@ -130,9 +130,8 @@ def LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms, d0=np.pi/4, alpha0=0):
     Returns:
     ________
     """
-    kt = k_tip.to("1/nm")
     ds = [Q_(np.linalg.norm([x,y]-al.magnitude),"nm") for al in atom_locs]
-    aT, a0 = np.array([[at(d, kt),a(d, kt, d0, alpha0)] for d in ds]).T
+    aT, a0 = np.array([[at(d, kt), a(d, kt, d0, alpha0)] for d in ds]).T
     ones = np.ones(n_atoms)
     ld = 2*np.dot(np.dot(np.array(aT),np.linalg.inv(ones-A)),a0).real
     return ld
@@ -216,10 +215,12 @@ def calc_LDOS(atom_locs, nmxyrange, k_tip, n_atoms):
 
     # input parameters for LDOS_at_point()
     # use of zip() & repeat() saves memory by not creating big array every time
+    kt = k_tip.to("1/nm")
+
     p = zip(X.flatten().magnitude,
             Y.flatten().magnitude,
             repeat(A),
-            repeat(k_tip),
+            repeat(kt),
             repeat(atom_locs),
             repeat(n_atoms))
 
@@ -294,7 +295,7 @@ def get_spectrum_at_middle(atom_locs, erange):
         E = Q_(e,"volt")*electron_charge
         k_tip = k(E, m_e, E_0)
         A = create_A_matrix(n_atoms, atom_locs, k_tip)
-        LDOS_spectrum.append(LDOS_at_point(0, 0, A, k_tip, atom_locs, n_atoms))
+        LDOS_spectrum.append(LDOS_at_point(0, 0, A, k_tip.to("1/nm"), atom_locs, n_atoms))
     return LDOS_spectrum
 
 def spectrum_along_line(atom_locs, erange):
@@ -390,31 +391,31 @@ def get_spectra(atom_locs, nmxyrange, erange):
     return s
 
 
-def c_LDOS(atom_locs, latt_sites, k_tip, delta0=np.pi/4, alpha0=0):
-    """
-
-
-    Parameters:
-    ___________
-    atom_locs:
-    latt_sites:
-    k_tip:
-
-
-    Returns:
-    ________
-    """
-    n_atoms = len(atom_locs)
-    a0 = np.zeros(n_atoms)
-    aT = np.zeros(n_atoms)
-    m = latt_sites #nm
-    LDOS = np.zeros(len(latt_sites))
-    A = create_A_matrix(n_atoms, atom_locs, k_tip)
-
-    for n0, n in enumerate(latt_sites):
-        LDOS[n0] = LDOS_at_point(n[0], n[1], A, k_tip, atom_locs, delta0=np.pi/4, alpha0=0)
-
-    plt.scatter(*np.array(latt_sites).T, c=LDOS)
-    plt.colorbar()
-    plt.show()
-    return LDOS
+# def c_LDOS(atom_locs, latt_sites, k_tip, delta0=np.pi/4, alpha0=0):
+#     """
+#
+#
+#     Parameters:
+#     ___________
+#     atom_locs:
+#     latt_sites:
+#     k_tip:
+#
+#
+#     Returns:
+#     ________
+#     """
+#     n_atoms = len(atom_locs)
+#     a0 = np.zeros(n_atoms)
+#     aT = np.zeros(n_atoms)
+#     m = latt_sites #nm
+#     LDOS = np.zeros(len(latt_sites))
+#     A = create_A_matrix(n_atoms, atom_locs, k_tip)
+#
+#     for n0, n in enumerate(latt_sites):
+#         LDOS[n0] = LDOS_at_point(n[0], n[1], A, k_tip, atom_locs, delta0=np.pi/4, alpha0=0)
+#
+#     plt.scatter(*np.array(latt_sites).T, c=LDOS)
+#     plt.colorbar()
+#     plt.show()
+#     return LDOS
