@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-file = "Createc2_210813.102220_021221_153301_simulated_grid.npy"
+file = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/scattering/scattering model plots/Createc2_210813.102220_021221_153301_simulated_grid.npy"
 header = file.strip("_simulated_grid.npy")
 spectrum = np.load(file)
 

@@ -106,17 +106,10 @@ def k(E, m_e, E0):
     ________
     k:
     """
-    K = (2*m_e*(E-E0)/(hbar**2))**.5#a
+    K = (2*m_e*(E-E0)/(hbar**2))**.5
     return K
 
-#
-# # checking that things work
-# np.arange(0, 2*np.pi, 0.3)
-#
-# for d in np.arange(0,2*np.pi, 0.3):
-
-#
-# plt.plot(np.arange(1e-9, 100e-9, 1e-10),[a(Q_(x,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 5, 0).magnitude.real for x in np.arange(1e-9, 100e-9, 1e-10)])
+# plt.plot(np.arange(1e-9, 100e-9, 1e-10),[a(Q_(x,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), np.pi/2, 0).magnitude.real for x in np.arange(1e-9, 100e-9, 1e-10)])
 # plt.plot([a(Q_(x,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 10*np.pi, 10).magnitude.imag for x in np.arange(1e-9, 100e-9, 1e-10)])
 
 
@@ -138,11 +131,8 @@ def LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms, d0=np.pi/4., alpha0=0):
     ________
     """
     kt = k_tip.to("1/nm")
-    aT = [at(Q_(np.linalg.norm([x,y]-atomloc.magnitude),"nm"), kt) for atomloc in atom_locs]
-    a0 = [a(Q_(np.linalg.norm([x,y]-atomloc.magnitude),"nm"), kt, d0, alpha0) for atomloc in atom_locs]
-
-    # aT = [at(np.linalg.norm([x,y]-atomloc),k_tip) for atomloc in atom_locs]
-    # a0 = [a(np.linalg.norm([x,y]-atomloc),k_tip,delta0,alpha0) for atomloc in atom_locs]
+    ds = [Q_(np.linalg.norm([x,y]-al.magnitude),"nm") for al in atom_locs]
+    aT, a0 = np.array([[at(d, kt),a(d, kt, d0, alpha0)] for d in ds]).T
     ones = np.ones(n_atoms)
     ld = 2*np.dot(np.dot(np.array(aT),np.linalg.inv(ones-A)),a0).real
     return ld
@@ -337,7 +327,7 @@ def spectrum_along_line(atom_locs, erange):
         line_spectrum.append(spectrum)
     return line_spectrum
 
-def line_spectrum_at_points(points, atom_locs, erange):
+def line_spectrum_at_points(points, atom_locs, erange, delta0=np.pi/4., alpha0=0):
     """
 
 
@@ -354,7 +344,6 @@ def line_spectrum_at_points(points, atom_locs, erange):
     n_pts = len(points)
 
     print(bcolors.OK + "Calculating line spectra for %d atoms, %d energy pts" %(n_atoms, n_bias) + bcolors.RESET)
-    pdb.set_trace()
     m = np.mean(atom_locs, axis=0)
     atom_locs -= m
     points -= m
@@ -373,7 +362,9 @@ def line_spectrum_at_points(points, atom_locs, erange):
                     repeat(A),
                     repeat(k_tip),
                     repeat(atom_locs),
-                    repeat(n_atoms))
+                    repeat(n_atoms),
+                    repeat(delta0),
+                    repeat(alpha0))
         with Pool() as p:
             # LDOS_at_point(x, y, A, k_tip, atom_locs, n_atoms)
             spec = p.starmap(LDOS_at_point, args)
@@ -400,18 +391,7 @@ def get_spectra(atom_locs, nmxyrange, erange):
     return s
 
 
-
-
-
-
-
-
-
-
-
-
-
-def c_LDOS(atom_locs, latt_sites, k_tip):
+def c_LDOS(atom_locs, latt_sites, k_tip, delta0=np.pi/4., alpha0=0):
     """
 
 
@@ -433,7 +413,7 @@ def c_LDOS(atom_locs, latt_sites, k_tip):
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
 
     for n0, n in enumerate(latt_sites):
-        LDOS[n0] = LDOS_at_point(n[0], n[1], A, k_tip, atom_locs)
+        LDOS[n0] = LDOS_at_point(n[0], n[1], A, k_tip, atom_locs, delta0=np.pi/4., alpha0=0)
 
     plt.scatter(*np.array(latt_sites).T, c=LDOS)
     plt.colorbar()

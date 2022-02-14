@@ -77,6 +77,8 @@ def show_radial_decay(im, Xs, Ys, title,disc):
             d_r.append([d, j])
     # plt.close()
     x, y = np.array(d_r).T
+    if title=="a":
+        y = y/y[np.argmin(x)]
     plt.figure(title)
     plt.scatter(x,y);
     if title=="a" or title=="w":
@@ -88,7 +90,8 @@ def show_radial_decay(im, Xs, Ys, title,disc):
             p0 = [12.5, 0, 1]
         popt, pcov = scipy.optimize.curve_fit(Lorentzian, x, y, p0=p0,maxfev=4000)
         plt.plot(x, Lorentzian(x, *popt), color="black")
-    if title=="q":
+    if title=="q" or title=="w" or title=="a":
+        print("comparing q with data from other corrals")
         dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/spatial extent Kondo plots/width comparison"
         files = os.listdir(dir)
 
@@ -98,6 +101,7 @@ def show_radial_decay(im, Xs, Ys, title,disc):
         d = pd.DataFrame()
 
         # plt.figure(figsize=(9,6))
+        radii = []
         for f in files:
             data = pd.read_csv(os.path.join(dir,f), delimiter="\t", index_col=False)
             # data = data[data["radius"]<2.5]
@@ -105,11 +109,21 @@ def show_radial_decay(im, Xs, Ys, title,disc):
             dcutoff = 0.5
             # cut_data = data[np.abs(data["q"])<qcutoff]
             # cut_data = cut_data[cut_data["dist"]<dcutoff]
-            plt.scatter(data["dist"], data["w"], c=data["radius"],cmap="summer")
+            denom = [1 if title!="a" else data["a"].iloc[np.argmin(data["dist"])]]
+            scatter = plt.scatter(data["dist"], data[title]/denom, c=data["radius"].iloc[0],cmap="summer")
+            r = np.round(data["radius"].iloc[0],2)
+            if r not in radii:
+                scatter.set_label(r)
+                radii.append(r)
             plt.clim(2.4,4.8)
-        plt.ylim(-0.2, 1.2)
+        if title=="w":
+            plt.ylim(0,20)
+        elif title=="q":
+            plt.ylim(-0.2, 1.2)
+        elif title =="a":
+            plt.ylim(0,2)
+        plt.legend()
     plt.title(title)
-
     plt.savefig(os.path.join(path, "%s_%s_decay.pdf" %(disc, title)))
 
 def plot_grid_fit_params(files, xmin, xmax, ymin, ymax):
@@ -118,7 +132,7 @@ def plot_grid_fit_params(files, xmin, xmax, ymin, ymax):
 
     limit_files = [f for f in files if "limits" in f]
     dat_files = [f for f in files if "limits" not in f]
-    pdb.set_trace()
+    # pdb.set_trace()
     assert(len(limit_files)>0 and len(dat_files)>0 and len(dat_files)==len(limit_files))
 
     # img.meta['specgriddx']
@@ -144,11 +158,29 @@ def plot_grid_fit_params(files, xmin, xmax, ymin, ymax):
 
     patt = re.compile(r'(?:specgrid(\S*)[0-9]{4})')
 
-    pdb.set_trace()
+    # pdb.set_trace()
 
     #sort the files so we always see the parameter spreads in the same order
     # TODO: make it so it goes e, w, q, a, b, c  from top to bottom L --> R
     dat_files = sorted(dat_files, key=lambda x: x.replace("$","z")[-5])
+    limit_files = sorted(limit_files, key=lambda x: x.replace("$", "z")[-5])
+
+    # get set of all datasets, which are differentiated by a date string
+    dates = []
+    for d in dat_files:
+        rs = re.search("trial(\S*)_a",d)
+        if rs is not None:
+            rsg = rs.group(1)
+            if rsg not in dates:
+                dates.append(rsg)
+
+    ddict = {i: dates[i] for i in range(len(dates)) }
+
+    inp = int(input("Enter number to select which dataset to analyze"))
+
+    dat_files = [d for d in dat_files if ddict[inp] in d]
+    limit_files = [d for d in limit_files if ddict[inp] in d]
+
     for n,f in enumerate(dat_files):
         this_limit_file = [d for d in limit_files if f[0:-4] in d][0]
         limits = np.loadtxt(os.path.join(path,this_limit_file))
@@ -220,8 +252,8 @@ if __name__=="__main__":
     path = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/grid analysis"
     d = os.listdir(path)
     files = sorted([f for f in d if ".txt" in f and "trial" in f])
+    xmin = 32; xmax = 63; ymin = 33; ymax = 62
     plot_grid_fit_params(files, 32,63,33,62)
-
 
 # dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/spatial extent Kondo plots/width comparison"
 # files = os.listdir(dir)
