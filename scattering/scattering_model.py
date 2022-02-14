@@ -155,7 +155,7 @@ def get_atom_locs(n_atoms, radius):
                         for n in range(1,n_atoms+1)])
     return atom_locs
 
-def create_A_matrix(n_atoms, atom_locs, k_tip, delta0=1.36., alpha0=0):
+def create_A_matrix(n_atoms, atom_locs, k_tip, delta0=1.36, alpha0=0):
     """
     Create the atom-atom scattering matrix which stays constant for each energy
 
@@ -391,7 +391,7 @@ def get_spectra(atom_locs, nmxyrange, erange):
     return s
 
 
-def c_LDOS(atom_locs, latt_sites, k_tip, delta0=np.pi/4., alpha0=0):
+def c_LDOS(atom_locs, latt_sites, k_tip, delta0=np.pi/4, alpha0=0):
     """
 
 
@@ -413,7 +413,7 @@ def c_LDOS(atom_locs, latt_sites, k_tip, delta0=np.pi/4., alpha0=0):
     A = create_A_matrix(n_atoms, atom_locs, k_tip)
 
     for n0, n in enumerate(latt_sites):
-        LDOS[n0] = LDOS_at_point(n[0], n[1], A, k_tip, atom_locs, delta0=np.pi/4., alpha0=0)
+        LDOS[n0] = LDOS_at_point(n[0], n[1], A, k_tip, atom_locs, delta0=np.pi/4, alpha0=0)
 
     plt.scatter(*np.array(latt_sites).T, c=LDOS)
     plt.colorbar()
