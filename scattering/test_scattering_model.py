@@ -68,7 +68,7 @@ def simulate_and_save_line_spectrum(c, fname_head, linespec_dir, biases="all"):
 	biases = specs[0].bias_mv
 	biases = biases[biases>-67]
 	biases/=1000.
-	pdb.set_trace()
+
 	biases = biases[0::4] # divide the amount of data by 4
 	x_nm = np.round(c.image_file.size[0]/10.)
 	atoms_g = c.gauss_fit_locs.T
@@ -137,13 +137,7 @@ def fit_scattering_phase_shift(c, fname_head, linespec_dir, biases="all"):
 
 		ls -= np.min(ls)
 		ls /= np.max(ls)
-		# pdb.set_trace()
 		return np.linalg.norm(ls[:,:,0]-spectra)
-	Nfeval = 1
-	# def callback(d0):
-	# 	global Nfeval
-	# 	print("Iter: %d, d0 = %1.2lf" %(Nfeval, d0) )
-	# 	Nfeval += 1
 
 	r = lambda d0: resid(d0, spectra)
 	ret = scipy.optimize.minimize(r,np.pi/4, options={"disp":True})
@@ -188,8 +182,8 @@ def replicate_spectra(linespec_dir, path):
 
 	# c.compare_fits()
 	# atompoints, angle, offseta, offsetb, latt = c.fit_lattice(niter=5)
-	fit_scattering_phase_shift(c, fname_head, linespec_dir)
-	# simulate_and_save_line_spectrum(c, fname_head, linespec_dir)
+	# fit_scattering_phase_shift(c, fname_head, linespec_dir)
+	simulate_and_save_line_spectrum(c, fname_head, linespec_dir)
 	exit(0)
 
 if __name__=="__main__":
