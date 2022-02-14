@@ -140,13 +140,13 @@ def fit_scattering_phase_shift(c, fname_head, linespec_dir, biases="all"):
 		# pdb.set_trace()
 		return np.linalg.norm(ls[:,:,0]-spectra)
 	Nfeval = 1
-	def callback(d0):
-		global Nfeval
-		print("Iter: %d, d0 = %1.2lf" %(Nfeval, d0) )
-		Nfeval += 1
+	# def callback(d0):
+	# 	global Nfeval
+	# 	print("Iter: %d, d0 = %1.2lf" %(Nfeval, d0) )
+	# 	Nfeval += 1
 
 	r = lambda d0: resid(d0, spectra)
-	ret = scipy.optimize.minimize(r,np.pi/4,callback=callback, options={"disp":True})
+	ret = scipy.optimize.minimize(r,np.pi/4, options={"disp":True})
 	d = ls[~np.isnan(ls).any(axis=1)]
 
 	spec_dist = np.linalg.norm(lsp[-1]-lsp[0])
