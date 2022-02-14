@@ -52,138 +52,128 @@ def get_args(parser):
 	args = parser.parse_args()
 	return args
 
-def simulate_and_save_line_spectrum(c, fname_head, linespec_dir, biases="all"):
-	spec_files = os.listdir(linespec_dir)
-	spec_files = sorted([f for f in spec_files if f[-4:] =="VERT"])
-	print("Found %d VERT files in line spectrum directory" %(len(spec_files)))
-	specs = [Spec(linespec_dir+f) for f in spec_files]
-	xlocs = [s.XPos_nm for s in specs]
-	ylocs = [s.YPos_nm for s in specs]
+# def simulate_and_save_line_spectrum(c, fname_head, linespec_dir, biases="all"):
 
-	# line spectrum points
-	lsp = np.array([xlocs, ylocs]).T
-
-	# bias values
-	# biases from Createc are in V, scattering model takes mV
-	biases = specs[0].bias_mv
-	biases = biases[biases>-67]
-	biases/=1000.
-
-	biases = biases[0::4] # divide the amount of data by 4
-	x_nm = np.round(c.image_file.size[0]/10.)
-	atoms_g = c.gauss_fit_locs.T
-	xlocs = np.array(xlocs)-c.image_file.offset[0]/10.+x_nm/2.
-	ylocs = np.array(ylocs)-c.image_file.offset[1]/10.
-
-	print("simulating line spectrum at %d points %d biases" %(len(lsp), len(biases)))
-
-	ls = sm.line_spectrum_at_points(lsp, c.pix_to_nm(atoms_g), biases)
-	ls = np.array(ls)
-	d = ls[~np.isnan(ls).any(axis=1)]
-
-	spec_dist = np.linalg.norm(lsp[-1]-lsp[0])
-	plt.imshow(d, extent=[0,spec_dist, biases[0], biases[-1]], aspect='auto')
-	plt.imshow(ls)
-	plt.savefig("%s_line_spectrum.pdf" %(fname_head))
-	np.save("%s_line_spectrum.npy" %(fname_head), ls)
 
 def residual(data, fit):
 	return
 
-def fit_scattering_phase_shift(c, fname_head, linespec_dir, n_bias=20, n_spectra=15):
-	spec_files = os.listdir(linespec_dir)
-	spec_files = sorted([f for f in spec_files if f[-4:] =="VERT"])
-	print("Found %d VERT files in line spectrum directory" %(len(spec_files)))
-	specs = [Spec(linespec_dir+f) for f in spec_files]
-	xlocs = [s.XPos_nm for s in specs]
-	ylocs = [s.YPos_nm for s in specs]
+class ScatteringSimulation():
+	def __init__(self, linespec_dir, path):
+		self.now_string = str(datetime.datetime.today())
+		self.datfile = os.path.split(path)[-1].strip('.dat')
 
-	# line spectrum points
-	lsp = np.array([xlocs, ylocs]).T
+		self.linespec_dir = linespec_dir
+		self.fname_head = "%s_%s" %(self.datfile, self.now_string)
+		self.fname_head = self.fname_head.replace(" ","_")
 
-	# bias values
-	# biases from Createc are in V, scattering model takes mV
-	biases = specs[0].bias_mv
-	bias_cut = biases>-67
-	biases = biases[bias_cut]
-	biases/=1000.
+		self.c = CircCorralData(path, path.split("/")[-1])
+		self.c.subtract_plane()
+		self.c.get_region_centroids(diamond_size=5, sigmaclip=2)
 
-	# n_bias = 20 # num of bias data, reduces calculation time.
-	# n_spectra = 15 # num of spectra
+		# the box size to fit atom positions
+		box_size_nm = 1
+		box_size_pix = int(self.c.nm_to_pix(box_size_nm))
+		self.c.fit_atom_pos_gauss(box_size=box_size_pix)
+		self.c.corral = True
+		self.c.occupied = True
 
-	biases = biases[0::int(len(biases)/n_bias)]
-	x_nm = np.round(c.image_file.size[0]/10.)
-	atoms_g = c.gauss_fit_locs.T
-	xlocs = np.array(xlocs)-c.image_file.offset[0]/10.+x_nm/2.
-	ylocs = np.array(ylocs)-c.image_file.offset[1]/10.
+		centroids = self.c.centroids
+		gauss_fit_locs = self.c.gauss_fit_locs.T
+		try:
+			self.atoms_n, self.center_atom_loc = c.remove_central_atom(array(centroids))
+			self.atoms_g, self.center_atom_loc = c.remove_central_atom(gauss_fit_locs)
+		except:
+			self.atoms_n = centroids
+			self.atoms_g = gauss_fit_locs
 
-	spectra = [s.dIdV[bias_cut][::int(len(biases)/n_bias)] for s in specs]
-	atoms_g_nm = c.pix_to_nm(atoms_g)
-	spec = lambda pts, d0: sm.line_spectrum_at_points(pts, atoms_g_nm, biases, d0)
-	def resid(d0, spectra):
-		ls = spec(lsp[::int(len(lsp)/n_spectra)], d0)
-		np.save("d0=%1.2lf" %(d0), ls)
-		spectra = spectra[::int(len(lsp)/n_spectra)]
-		line = lambda x, m, b: m*x+b
+		self.spec_files = os.listdir(linespec_dir)
+		self.spec_files = sorted([f for f in self.spec_files if f[-4:] =="VERT"])
+		print("Found %d VERT files in line spectrum directory" %(len(self.spec_files)))
+		self.specs = [Spec(linespec_dir+f) for f in self.spec_files]
+		self.xlocs = [s.XPos_nm for s in self.specs]
+		self.ylocs = [s.YPos_nm for s in self.specs]
 
-		# subtract linear fit from spectra
-		for s in spectra:
-			(m,b), _ = scipy.optimize.curve_fit(line, biases, s)
-			s -= (biases*m+b)
+		# line spectrum points
+		self.lsp = np.array([self.xlocs, self.ylocs]).T
+		self.spec_dist = np.linalg.norm(self.lsp[-1]-self.lsp[0])
 
-		# normalize the arrays by subtracting the minimum and dividing by the new maximum
-		# https://se.mathworks.com/matlabcentral/answers/196798-how-to-normalize-values-in-a-matrix-to-be-between-0-and-1
+		# bias values
+		# biases from Createc are in V, scattering model takes mV
+		self.biases = self.specs[0].bias_mv
+		self.bias_cut = self.biases>-67
+		self.biases = self.biases[self.bias_cut]
+		self.biases/=1000.
 
-		spectra -= np.min(spectra)
-		spectra /= np.max(spectra)
-		spectra = spectra.T
+		self.biases = self.biases[0::4] # divide the amount of data by 4
 
-		ls -= np.min(ls)
-		ls /= np.max(ls)
-		return np.linalg.norm(ls[:,:,0]-spectra)
+		self.x_nm = np.round(self.c.image_file.size[0]/10.)
+		self.atoms_g = self.c.gauss_fit_locs.T
+		self.atoms_g_nm = self.c.pix_to_nm(self.atoms_g)
+		self.xlocs = np.array(self.xlocs)-self.c.image_file.offset[0]/10.+self.x_nm/2.
+		self.ylocs = np.array(self.ylocs)-self.c.image_file.offset[1]/10.
 
-	r = lambda d0: resid(d0, spectra)
-	print("FITTING SCATTERING PHASE SHIFT from %d points %d biases" %(len(lsp), len(biases)))
+	def simulate_and_save_line_spectrum(self):
+		print("simulating line spectrum at %d points %d biases" %(len(self.lsp), len(self.biases)))
 
-	ret = scipy.optimize.minimize(r,np.pi/4, options={"disp":True})
-	print(ret)
-	ls = spec(lsp[::n_spectra], ret.x)
-	d = ls[~np.isnan(ls).any(axis=1)]
+		self.ls = sm.line_spectrum_at_points(self.lsp, self.atoms_g_nm, self.biases)
+		self.ls = np.array(ls)
+		self.d = self.ls[~np.isnan(self.ls).any(axis=1)]
 
-	spec_dist = np.linalg.norm(lsp[-1]-lsp[0])
-	plt.imshow(d, extent=[0,spec_dist, biases[0], biases[-1]], aspect='auto')
-	plt.imshow(ls)
-	plt.savefig("%s_line_spectrum.pdf" %(fname_head))
-	np.save("%s_line_spectrum.npy" %(fname_head), ls)
+		plt.imshow(self.d, extent=[0,self.spec_dist, self.biases[0], self.biases[-1]], aspect='auto')
+		plt.imshow(self.ls)
+		plt.savefig("%s_line_spectrum.pdf" %(self.fname_head))
+		np.save("%s_line_spectrum.npy" %(self.fname_head), self.ls)
 
-def replicate_spectra(linespec_dir, path):
-	now_string = str(datetime.datetime.today())
-	datfile = os.path.split(path)[-1].strip('.dat')
+	def fit_scattering_phase_shift(self, n_bias=20, n_spectra=15):
 
-	fname_head = "%s_%s" %(datfile, now_string)
-	fname_head = fname_head.replace(" ","_")
+		ebias = int(len(self.biases)/n_bias)
+		espectra = int(len(self.lsp)/n_spectra)
+		# n_bias = 20 # num of bias data, reduces calculation time.
+		# n_spectra = 15 # num of spectra
 
-	c = CircCorralData(path, path.split("/")[-1])
-	c.subtract_plane()
-	c.get_region_centroids(diamond_size=5, sigmaclip=2)
+		biases = self.biases[0::int(len(self.biases)/n_bias)]
 
-	# the box size to fit atom positions
-	box_size_nm = 1
-	box_size_pix = int(c.nm_to_pix(box_size_nm))
-	c.fit_atom_pos_gauss(box_size=box_size_pix)
-	c.corral = True
-	c.occupied = True
+		self.spectra = [s.dIdV[self.bias_cut][::ebias] for s in self.specs]
+		self.spec = lambda pts, d0: sm.line_spectrum_at_points(pts, self.atoms_g_nm, self.biases, d0)
 
-	try:
-		atoms_n, center_atom_loc = c.remove_central_atom(array(c.centroids))
-		atoms_g, center_atom_loc = c.remove_central_atom(c.gauss_fit_locs.T)
-	except:
-		atoms_n = c.centroids
-		atoms_g = c.gauss_fit_locs.T
+		def resid(d0, spectra):
+			ls = self.spec(self.lsp[::espectra], d0)
+			np.save("d0=%1.2lf" %(d0), ls)
+			spectra_r = spectra[::espectra]
+			line = lambda x, m, b: m*x+b
 
-	fit_scattering_phase_shift(c, fname_head, linespec_dir)
-	# simulate_and_save_line_spectrum(c, fname_head, linespec_dir)
-	exit(0)
+			# subtract linear fit from spectra
+			for s in spectra_r:
+				(m,b), _ = scipy.optimize.curve_fit(line, biases, s)
+				s -= (biases*m+b)
+
+			# normalize the arrays by subtracting the minimum and dividing by the new maximum
+			# https://se.mathworks.com/matlabcentral/answers/196798-how-to-normalize-values-in-a-matrix-to-be-between-0-and-1
+
+			spectra_r -= np.min(spectra_r)
+			spectra_r /= np.max(spectra_r)
+			spectra_r = spectra_r.T
+
+			ls -= np.min(ls)
+			ls /= np.max(ls)
+			return np.linalg.norm(ls[:,:,0]-spectra_r)
+
+		self.r = lambda d0: resid(d0, self.spectra)
+		print("FITTING SCATTERING PHASE SHIFT from %d points %d biases" %(len(self.lsp), len(self.biases)))
+
+		self.ret = scipy.optimize.minimize(self.r,np.pi/4, options={"disp":True})
+
+		self.ls = spec(self.lsp[::espectra], ret.x)
+		self.d = ls[~np.isnan(ls).any(axis=1)]
+
+		spec_dist = np.linalg.norm(lsp[-1]-lsp[0])
+		plt.imshow(d, extent=[0,spec_dist, biases[0], biases[-1]], aspect='auto')
+		plt.imshow(ls)
+		plt.savefig("%s_line_spectrum.pdf" %(fname_head))
+		np.save("%s_line_spectrum.npy" %(fname_head), ls)
+
+		# simulate_and_save_line_spectrum(c, fname_head, linespec_dir)
 
 if __name__=="__main__":
 	host = socket.gethostname()
@@ -208,7 +198,9 @@ if __name__=="__main__":
 	if on_triton:
 		pdb.set_trace = lambda: 1
 
-	replicate_spectra(linespec_dir, path)
+	ss = ScatteringSimulation(linespec_dir, path)
+	ss.fit_scattering_phase_shift()
+	ss.simulate_and_save_line_spectrum()
 
 	t = time()
 
