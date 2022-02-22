@@ -98,10 +98,20 @@ class Spec(metaclass=LoadTimeMeta):
         self.LockinAmpl = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'LockinAmpl"][0].strip("\\r\\n'"))
         self.LockinFreq = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'LockinFreq"][0].strip("\\r\\n'"))
         self.FBLogiset = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'FBLogIset"][0].strip("\\r\\n'")) # units: pA
-        self.biasVoltage = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'BiasVoltage / BiasVolt.[mV]"][0].strip("\\r\\n'")) # mV
-        self.bias_mv = np.array([float(d[1]) for d in self.data][19:])
-        self.current = np.array([float(d[4]) for d in self.data][19:])
-        self.dIdV = np.array([float(d[5]) for d in self.data][19:])
+        # print([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'BiasVoltage / BiasVolt.[mV]"])
+        try:
+            self.biasVoltage = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'BiasVoltage / BiasVolt.[mV]"][0].strip("\\r\\n'").replace(",",'.')) # mV
+        except:
+            pdb.set_trace()
+        try:
+            self.bias_mv = np.array([float(d[1].replace(",",".")) for d in self.data][19:])
+        except:
+            pdb.set_trace()
+        # try:
+        #     self.current = np.array([float(d[4].replace(",",".")) for d in self.data][19:])
+        # except:
+        self.current = np.array([float(d[4].replace(",",".")) for d in self.data][19:])
+        self.dIdV = np.array([float(d[5].replace(",",".")) for d in self.data][19:])
 
         try:
             self.bias_offset = interp1d(self.current, self.bias_mv)(0)
@@ -278,7 +288,7 @@ class Spec(metaclass=LoadTimeMeta):
         return [popt, pcov, marker1, marker2, self.XPos_nm, self.YPos_nm, residtot]
 
 def plot_lrs():
-    fig, (ax1,ax2) = plt.subplots(figsize=(8,6), nrows=2)
+    fig, (ax1,ax2) = plt.subplots(figsize=(8,8), nrows=2)
     for n,f in enumerate(lrs):
         s = Spec(f)
         # s.get_corral_radius()
@@ -975,6 +985,7 @@ def plot_line(image, specs, center):
     )
 
     plt.show()
+
 srs = []
 dpath = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
 # srs.append(dpath + "Ag 2021-08-13 3p8 nm radius/3p8nm pm20mV line/Createc2_210813.105240.L0029.VERT")
@@ -993,7 +1004,7 @@ lrs.append(dpath + "Ag 2021-08-13 2p5 nm radius/300mV to -200mV line/Createc2_21
 lrs.append(dpath + "Ag 2021-08-11/3p8 nm radius line spectra pm100mV/Createc2_210811.113827.L0029.VERT")
 
 lrs.append(dpath + "Ag 2021-08-12 4p5 nm radius/Createc2_210812.163415.VERT")
-
+# plot_lrs()
 if __name__=="__main__":
     from application import Application
     import tkinter as tk

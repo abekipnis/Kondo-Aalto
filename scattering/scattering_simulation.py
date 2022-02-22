@@ -6,7 +6,8 @@ import numpy as np
 import scipy
 import scattering_model as sm
 import pdb
-
+import matplotlib.pyplot as plt
+from scattering_model import ScatteringModel
 class ScatteringSimulator():
 	def __init__(self, linespec_dir, path):
 		self.now_string = str(datetime.datetime.today())
@@ -43,9 +44,6 @@ class ScatteringSimulator():
 		self.xlocs = [s.XPos_nm for s in self.specs]
 		self.ylocs = [s.YPos_nm for s in self.specs]
 
-		# line spectrum points
-		self.lsp = np.array([self.xlocs, self.ylocs]).T
-		self.spec_dist = np.linalg.norm(self.lsp[-1]-self.lsp[0])
 
 		# bias values
 		# biases from Createc are in V, scattering model takes mV
@@ -57,22 +55,35 @@ class ScatteringSimulator():
 		# self.biases = self.biases[0::4] # divide the amount of data by 4
 
 		self.x_nm = np.round(self.c.image_file.size[0]/10.)
-		self.atoms_g = self.c.gauss_fit_locs.T
 		self.atoms_g_nm = self.c.pix_to_nm(self.atoms_g)
+
 		self.xlocs = np.array(self.xlocs)-self.c.image_file.offset[0]/10.+self.x_nm/2.
 		self.ylocs = np.array(self.ylocs)-self.c.image_file.offset[1]/10.
 
-	def simulate_and_save_line_spectrum(self):
+		# line spectrum points
+		self.lsp = np.array([self.xlocs, self.ylocs]).T
+		self.spec_dist = np.linalg.norm(self.lsp[-1]-self.lsp[0])
+
+		self.scattering_model = ScatteringModel()
+
+	def simulate_and_save_line_spectrum(self, n_spectra=5, n_bias=5):
 		print("simulating line spectrum at %d points %d biases" %(len(self.lsp), len(self.biases)))
 
-		self.ls = sm.line_spectrum_at_points(self.lsp, self.atoms_g_nm, self.biases)
-		self.ls = np.array(ls)
+		ebias = int(len(self.biases)/n_bias)
+		espectra = int(len(self.lsp)/n_spectra)
+
+		biases = self.biases[::ebias]
+		lsp = self.lsp[::espectra]
+
+		self.ls = sm.line_spectrum_at_points(lsp, self.atoms_g_nm, biases)
+		self.ls = np.array(self.ls)
 		self.d = self.ls[~np.isnan(self.ls).any(axis=1)]
 
 		plt.imshow(self.d, extent=[0,self.spec_dist, self.biases[0], self.biases[-1]], aspect='auto')
 		plt.imshow(self.ls)
 		plt.savefig("%s_line_spectrum.pdf" %(self.fname_head))
 		np.save("%s_line_spectrum.npy" %(self.fname_head), self.ls)
+		# plt.show()
 
 	def fit_scattering_phase_shift(self, n_bias=5, n_spectra=5):
 
@@ -91,7 +102,7 @@ class ScatteringSimulator():
 			np.save("d0=%1.2lf" %(d0), ls)
 			spectra_r = spectra[::espectra]
 			line = lambda x, m, b: m*x+b
-			pdb.set_trace()
+
 			# subtract linear fit from spectra
 			for s in spectra_r:
 				(m,b), _ = scipy.optimize.curve_fit(line, biases, s)
@@ -110,11 +121,12 @@ class ScatteringSimulator():
 		# function to calculate spectrum and fit residual
 		self.r = lambda d0: resid(d0, spectra)
 
-
+		# optimizing to fit the scattering phase shift
+		# minimize(function, init_vals, options)
 		print("FITTING SCATTERING PHASE SHIFT from %d points %d biases" %(len(lsp), len(biases)))
-		pdb.set_trace()
 		self.ret = scipy.optimize.minimize(self.r, np.pi/4, options={"disp":True})
 
+		# create the spectra of the final parameter and show it
 		self.ls = spec(self.lsp[::espectra], ret.x)
 		self.d = ls[~np.isnan(ls).any(axis=1)]
 
@@ -123,5 +135,3 @@ class ScatteringSimulator():
 		plt.imshow(ls)
 		plt.savefig("%s_line_spectrum.pdf" %(fname_head))
 		np.save("%s_line_spectrum.npy" %(fname_head), ls)
-
-		# simulate_and_save_line_spectrum(c, fname_head, linespec_dir)

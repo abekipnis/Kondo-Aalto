@@ -72,5 +72,7 @@ if __name__=="__main__":
 		pdb.set_trace = lambda: 1
 
 	ssim = ss.ScatteringSimulator(linespec_dir, path)
-	ssim.fit_scattering_phase_shift(n_bias=20, n_spectra=20)
+	# ssim.simulate_and_save_line_spectrum(n_bias=5, n_spectra=10)
+
+	ssim.fit_scattering_phase_shift(n_bias=5, n_spectra=15)
 	exit(0)

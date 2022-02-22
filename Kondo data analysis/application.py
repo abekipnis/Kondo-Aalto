@@ -284,9 +284,9 @@ class Application(tk.Frame):
         opts, covs, m1, m2, xs, ys, resids = self.analyze_files(filenames)
         try:
             if self.var3.get():
-                path = asksaveasfile(parent=root,
-                                     # defaultextension=["txt", "*.txt"],
-                                     initialfile=filenames[0].split("/")[-1][0:-9]+".txt").name
+                # path = asksaveasfile(parent=root,
+                #                      # defaultextension=["txt", "*.txt"],
+                #                      initialfile=filenames[0].split("/")[-1][0:-9]+".txt").name
                 self.update()
                 save_fano_fits(filenames, opts, covs, m1, m2, path, xs, ys, resids)
                 plot_fano_fit_line(path)
