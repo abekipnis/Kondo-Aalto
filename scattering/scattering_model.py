@@ -1,12 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial import distance_matrix
+from scipy.special import jv, yn
 import pint
 from pint import set_application_registry
 import cmath
 import numpy as np
 import multiprocessing
 import pdb
+import math
 from time import time
 from multiprocessing import Pool, freeze_support
 from multiprocessing.pool import ThreadPool
@@ -21,6 +23,8 @@ class bcolors:
     FAIL = '\033[91m' #RED
     RESET = '\033[0m' #RESET COLOR
     BLUE = '\u001b[34m'
+    PURPLE = "\u001B[35m"
+    CYAN = "\u001B[36m"
 # TODO: create main function
 # TODO: create class and methods, refactor
 # TODO: read from line spectra, location of spectra & .dat file etc.
@@ -38,8 +42,37 @@ Q_ = ureg.Quantity
 hbar = 1.0545718e-34 * ureg.joule * ureg.second
 m_electron = 9.109e-31 * ureg.kg
 electron_charge = 1.6e-19 * ureg.coulomb
-m_e = 0.42*m_electron
-E_0 = Q_(-0.067, "volt")*electron_charge
+
+
+class ScatteringModel():
+    def __init__(self, atom_locs, ):
+        """
+        """
+        self.m_e = 0.42*m_electron
+        self.E_0 = Q_(-0.067, "volt")*electron_charge
+        self.atom_locs = atom_locs
+        return
+
+    def a(self):
+        return (2/(np.pi*k*r))**0.5*np.exp(np.pi/4.*1j)*((a0*np.exp(2j*d0)-1)/2j)*np.exp((k*r*1j))
+
+    def at(self):
+        return
+
+    def A(self):
+        return
+
+    def g0ret(self):
+        return
+
+    def si(self):
+        return 1j*4*hbar**2/m_e*(np.exp(2j*(a+1j*ib))-1)
+
+    def line_spectrum_at_points(self):
+        return
+
+    def get_LDOS(self):
+        return
 
 def a(r, k, d0, a0):
     """
@@ -75,6 +108,9 @@ def at(r, k):
     ________
     """
     return (2/(np.pi*k*r))**0.5*np.exp(k*r*1j-1j*np.pi/4.)
+
+def si(e, a, ib):
+    return 1j*4*hbar**2/m_e*(np.exp(2j*(a+1j*ib))-1)
 
 def E(k,m_e, E0):
     """
@@ -113,7 +149,7 @@ def k(E, m_e, E0):
 # plt.plot([a(Q_(x,"meter"), k(Q_(-0.065, "volt")*electron_charge, m_e, Q_(-0.067, "volt")*electron_charge), 10*np.pi, 10).magnitude.imag for x in np.arange(1e-9, 100e-9, 1e-10)])
 
 
-def LDOS_at_point(x, y, A, kt, atom_locs, n_atoms, d0=1.36, alpha0=0):
+def LDOS_at_point(x, y, A, kt, atom_locs, n_atoms, d0, alpha0):
     """
 
 
@@ -133,6 +169,8 @@ def LDOS_at_point(x, y, A, kt, atom_locs, n_atoms, d0=1.36, alpha0=0):
     ds = [Q_(np.linalg.norm([x,y]-al.magnitude),"nm") for al in atom_locs]
     aT, a0 = np.array([[at(d, kt), a(d, kt, d0, alpha0)] for d in ds]).T
     ones = np.ones(n_atoms)
+
+    # In Fiete2003 its reported in equation 9 as Im(G(r,r,ε))/π
     ld = 2*np.dot(np.dot(np.array(aT),np.linalg.inv(ones-A)),a0).real
     return ld
 
@@ -173,18 +211,34 @@ def create_A_matrix(n_atoms, atom_locs, k_tip, delta0=1.36, alpha0=0):
     A = np.zeros((n_atoms,n_atoms))
     for n in range(n_atoms):
         for m in range(n_atoms):
-            if n==m:
-                # this number should be infinity (i.e. black dot scatterer)
-                # but np.inf will return not interesting data?
-                # so we have to use the biggest number possible (?)
-                A[n][m] = 1000000
-            else:
-                A[n][m] = a(Q_(
-                    np.linalg.norm(atom_locs[n].magnitude-atom_locs[m].magnitude),"nm"),
-                    k_tip.to("1/nm"),
-                    delta0, # d0
+            # if n==m:
+            #     # this number should be infinity (i.e. black dot scatterer)
+            #     # but np.inf will return not interesting data?
+            #     # so we have to use the biggest number possible (?)
+            #     # Fiete2003 equation 18
+
+
+            # or Crommie1995, equation 5
+                # A[n][m] =  1 #- a(Q_(
+                    # np.linalg.norm(atom_locs[n].magnitude-atom_locs[m].magnitude),"nm"),
+                    # k_tip.to("1/nm"),
+                    # delta0, # d0
+                    # alpha0) # a0
+            # else:
+            A[n][m] = at(Q_(
+                np.linalg.norm(atom_locs[n].magnitude-atom_locs[m].magnitude),"nm"),
+                k_tip.to("1/nm"),
+                delta0, # d0
                     alpha0) # a0
+
+
+
+            # A[n][m] = si(e, a, ib)*
     return A
+
+def g0ret(rp, r, k):
+    dr = np.linalg.norm(rp-r)
+    return -1j*(m_e/(2*hbar**2))*(jv(0,k*dr )+1j*yn(0, k*dr))
 
 # @njit(parallel=True)
 def calc_LDOS(atom_locs, nmxyrange, k_tip, n_atoms):
@@ -328,29 +382,36 @@ def spectrum_along_line(atom_locs, erange):
         line_spectrum.append(spectrum)
     return line_spectrum
 
-def line_spectrum_at_points(points, atom_locs, erange, delta0=1.36, alpha0=0):
+def line_spectrum_at_points(points, atom_locs, erange, delta0=1.36, alpha0=1e16):
     """
-
+    Used for fitting the delta0 scattering phase shift and attenuation alpha0
+    for Ag quantum corrals on Ag(111) in order to subtract background spectrum
+    for more accurate determination of the Kondo temperature in the quantum confined
+    system of the corral.
 
     Parameters:
     ___________
-
-
+    points: list (units: nm)
+    atom_locs: list (units: nm)
+    erange: list (units: V)
+    delta: float (units: radians)
+    alpha0: float
 
     Returns:
     ________
+    line_spectrum:
     """
     n_atoms = len(atom_locs)
     n_bias = len(erange)
     n_pts = len(points)
 
-    print(bcolors.OK + "Calculating spectra at %d locs, %d energies" %(n_pts, n_bias) + bcolors.RESET)
-    m = np.mean(atom_locs, axis=0)
-    atom_locs -= m
-    points -= m
+    print(bcolors.OK + "Calculating spectra at %d locs, %d energies" %(n_pts, n_bias))
+    print(bcolors.CYAN + "delta0: %1.2lf, alpha0: %1.2lf" %(delta0, alpha0) + bcolors.RESET)
+
     atom_locs = Q_(atom_locs, "nm")
 
     line_spectrum = []
+
     for e in erange:
         E = Q_(e,"volt")*electron_charge
         k_tip = k(E, m_e, E_0)

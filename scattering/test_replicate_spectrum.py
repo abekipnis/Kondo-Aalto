@@ -29,4 +29,4 @@ if __name__=="__main__":
 	if on_triton:
 		pdb.set_trace = lambda: 1
 
-	replicate_spectra(linespec_dir, path)
+	# replicate_spectra(linespec_dir, path)
