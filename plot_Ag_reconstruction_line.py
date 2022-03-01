@@ -2,6 +2,12 @@ import sys
 from matplotlib.widgets import Slider, Button
 from find_atom_positions import CircCorralData
 import socket
+host = socket.gethostname()
+if host == "L21-0455":
+    sys.path.insert(1, 'Z:\Documents\Small-Kondo-Corrals\Kondo data analysis')
+else:
+    sys.path.insert(1, "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/Kondo data analysis")
+
 from read_vertfile import Spec
 import numpy as np
 import os
@@ -15,11 +21,6 @@ from scipy.interpolate import interp1d
 # insert at 1, 0 is the script path (or '' in REPL)
 
 if __name__=="__main__":
-    host = socket.gethostname()
-    if host == "L21-0455":
-        sys.path.insert(1, 'Z:\Documents\Small-Kondo-Corrals\Kondo data analysis')
-    else:
-        sys.path.insert(1, "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/Kondo data analysis")
 
     if host=="L21-0455": #on aalto computer
         head = r"Y:\labdata\Createc\STMDATA\Nb(110)"
