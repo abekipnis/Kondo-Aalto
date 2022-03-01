@@ -4,7 +4,7 @@ from matplotlib.widgets import Slider, Button
 from find_atom_positions import CircCorralData
 
 # insert at 1, 0 is the script path (or '' in REPL)
-sys.path.insert(1, '/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/Kondo data analysis')
+sys.path.insert(1, 'Z:\Documents\Small-Kondo-Corrals\Kondo data analysis')
 from read_vertfile import Spec
 import numpy as np
 import createc
@@ -26,10 +26,9 @@ from scipy.interpolate import interp1d
 #     return disp_ratio / data_ratio
 
 import os
-# p = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/Ag 2021-08-16 2p5 nm radius empty/3p8 nm pm100mV line/"
-p = "/Volumes/asp/labdata/Createc/STMDATA/Nb(110)/2021-12-14 dep18 2h 5uA flux 800C/"
-# imf = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/Ag 2021-08-16 2p5 nm radius empty/Createc2_210816.170832.dat"
-imf = "/Volumes/asp/labdata/Createc/STMDATA/Nb(110)/2021-12-14 dep18 2h 5uA flux 800C/A211215.135305.dat"
+head = r"Y:\labdata\Createc\STMDATA\Nb(110)"
+p = os.path.join(head,"2021-12-14 dep18 2h 5uA flux 800C/")
+imf = os.path.join(head, "2021-12-14 dep18 2h 5uA flux 800C/A211215.135305.dat")
 image = createc.DAT_IMG(imf)
 
 c = CircCorralData(imf, imf.split("/")[-1])
