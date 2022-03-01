@@ -2,9 +2,14 @@
 import sys
 from matplotlib.widgets import Slider, Button
 from find_atom_positions import CircCorralData
+import socket 
 
 # insert at 1, 0 is the script path (or '' in REPL)
-sys.path.insert(1, 'Z:\Documents\Small-Kondo-Corrals\Kondo data analysis')
+host = socket.gethostname()
+if host == "L21-0455":
+    sys.path.insert(1, 'Z:\Documents\Small-Kondo-Corrals\Kondo data analysis')
+else:
+    sys.path.insert(1, "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/Kondo data analysis")
 from read_vertfile import Spec
 import numpy as np
 import createc
@@ -26,7 +31,10 @@ from scipy.interpolate import interp1d
 #     return disp_ratio / data_ratio
 
 import os
-head = r"Y:\labdata\Createc\STMDATA\Nb(110)"
+if host=="L21-0455": #on aalto computer
+    head = r"Y:\labdata\Createc\STMDATA\Nb(110)"
+else: 
+    head = r"\Volumes\asp\labdata\Createc\STMDATA\Nb(110)"
 p = os.path.join(head,"2021-12-14 dep18 2h 5uA flux 800C/")
 imf = os.path.join(head, "2021-12-14 dep18 2h 5uA flux 800C/A211215.135305.dat")
 image = createc.DAT_IMG(imf)
@@ -103,8 +111,6 @@ cbar = fig.colorbar(im2, cax=cax, orientation='vertical')#,fraction=0.046, pad=0
 cbar.set_label("nm")
 # cbar.set_ticks([])
 ax2.plot(np.array(xlocs)-image.offset[0]/10+x_nm/2,np.array(ylocs)-image.offset[1]/10,"r")
-
-
 c.nm_to_pix(np.array(xlocs)-image.offset[0]/10+x_nm/2)
 
 # ax2.set_title("Topography")
