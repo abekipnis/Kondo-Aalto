@@ -25,9 +25,9 @@ if __name__=="__main__":
     if host=="L21-0455": #on aalto computer
         head = r"Y:\labdata\Createc\STMDATA\Nb(110)"
     else:
-        head = r"\Volumes\asp\labdata\Createc\STMDATA\Nb(110)"
+        head = r'/Volumes/PROJECT/asp/labdata/Createc/STMDATA/Nb(110)'
     p = os.path.join(head,"2021-12-14 dep18 2h 5uA flux 800C/")
-    imf = os.path.join(head, "2021-12-14 dep18 2h 5uA flux 800C/A211215.135305.dat")
+    imf = os.path.join(head, "2021-12-14 dep18 2h 5uA flux 800C","A211215.135305.dat")
     image = createc.DAT_IMG(imf)
 
     c = CircCorralData(imf, imf.split("/")[-1])
