@@ -569,7 +569,7 @@ class CircCorralData:
             "Constant current mode\n"
             "   Bias: %d mV\n"
             "   Current setpoint: %d pA"
-                %(len(self.centroids),self.pix_to_nm(self.r_n), *self.pix_to_nm(self.c_n),
+                %(len(self.centroids), self.pix_to_nm(self.r_n), *self.pix_to_nm(self.c_n),
                 self.pix_to_nm(self.r_g), *self.pix_to_nm(self.c_g), self.naive_to_gauss_error_angstroms,
                 int(self.image_file.bias), int(self.image_file.current)),
                 bbox={'facecolor':'w', 'alpha':0.5, 'pad':5}, fontsize=12)#,
@@ -578,12 +578,47 @@ class CircCorralData:
         plt.subplots_adjust(left=0.55)
         plt.suptitle(self.label + "\nFits to circle, naive & Gaussian fit positions")
         # plt.tight_layout()
-        # plt.show()
+        plt.show()
         try:
             plt.savefig("circle fit plots" + "/" +self.label.split("/")[-1].split(".dat")[0] +"_circle_fits.png")
         except:
             print("could not save circle fit plot")
         plt.close()
+
+    def get_corral_radius(self, box_size_nm_init):
+        # box size to fit atom positions
+        box_size_nm = box_size_nm_init
+        box_size_pix = int(self.nm_to_pix(box_size_nm))
+        while True: # may have to iterate to make the box size smaller
+            try:
+                full_im, fit_params = self.fit_atom_pos_gauss(box_size=box_size_pix)
+                break
+            except ValueError as e:
+                print(e)
+                print("trying with smaller box size")
+                box_size_nm-=0.1
+                box_size_pix = int(self.nm_to_pix(box_size_nm))
+
+        # if corral is occupied, remove central atoms
+        if self.occupied:
+            atoms_n, center_atom_loc = self.remove_central_atom(array(self.centroids))
+            atoms_g, center_atom_loc = self.remove_central_atom(self.gauss_fit_locs.T)
+        else: # corral is unoccupied, don't try to remove central atom
+            atoms_n = array(self.centroids)
+            atoms_g = self.gauss_fit_locs.T
+
+        # naive fit from maximum points
+        self.r_n, self.c_n = self.nsphere_fit(atoms_n)
+
+        # better fit from gaussian fits to atoms
+        self.r_g, self.c_g = self.nsphere_fit(atoms_g)
+        # bring back the zeros....
+        if self.im.shape[0] != self.im.shape[1]:
+            print("adding zeros back since nx != ny in image pixels")
+
+            self.im = np.concatenate((self.im,np.zeros((self.im.shape[1]-self.im.shape[0],self.im.shape[1]))))
+        self.compare_fits()
+        return self.pix_to_nm(self.r_g)
 
     # TODO: write function to get average radius from all lines
 def round_to_even(n):
@@ -632,6 +667,9 @@ def fitgaussian(data, c):
         print("Something went wrong, fix it!")
         pdb.set_trace()
     return p
+
+
+
 
 if __name__=="__main__":
     import numpy as np
