@@ -21,7 +21,6 @@ import pandas as pd
 import pickle
 from scipy.interpolate import interp1d
 
-
 # DEFINING CONSTANTS
 a = 0.409 # nm, lattice constant of silver
 d = np.sqrt(6)/4.*a # height of triangles
@@ -150,7 +149,6 @@ class CircCorralData:
         if show:
             plt.figure()
             plt.imshow(xim)
-            # plt.show()
             plt.close()
         regions_areas = [r.area for r in regions]
         regions_area_max = max(regions_areas)
