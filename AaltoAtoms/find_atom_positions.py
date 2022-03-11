@@ -297,10 +297,10 @@ class CircCorralData:
             X /= scale
 
         d = square(X).sum(axis=-1)
-
+        assert(len(B[0])==3)
         try:
             y, *_ = lstsq(B, d, rcond=None)#, overwrite_a=True, overwrite_b=True)
-        except e:
+        except Exception as e:
             print("Could not do lstsq(B, d)",e)
 
         c = 0.5 * y[:-1]

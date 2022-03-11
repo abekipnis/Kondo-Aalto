@@ -1,8 +1,7 @@
-from find_atom_positions import CircCorralData
+from AaltoAtoms import CircCorralData
 from numpy import array
 import pdb
 import numpy as np
-import scattering_model
 import matplotlib.pyplot as plt
 import argparse
 import multiprocessing
@@ -37,8 +36,10 @@ if __name__=="__main__":
 	c.corral = True
 	c.occupied = True
 
-	atoms_n = c.remove_central_atom(array(c.centroids))
-	atoms_g = c.remove_central_atom(c.gauss_fit_locs.T)
+	assert(len(c.centroids[0])==2)
+	atoms_n, central_atom_n = c.remove_central_atom(array(c.centroids))
+
+	atoms_g, central_atom_g = c.remove_central_atom(c.gauss_fit_locs.T)
 
 	# naive fit from maximum points
 	c.r_n, c.c_n = c.nsphere_fit(atoms_n)
