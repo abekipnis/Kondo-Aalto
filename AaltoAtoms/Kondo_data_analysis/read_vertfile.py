@@ -267,7 +267,8 @@ class Spec(metaclass=LoadTimeMeta):
             # plt.tight_layout()
             if savefig:
                 # pdb.set_trace()
-                fp = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/spatial extent Kondo plots/width comparison"
+                #fp = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/spatial extent Kondo plots/width comparison"
+                fp = os.path.dirname(self.fname)
                 fig_path = os.path.join(fp,"%s_fit_residual.pdf" %(t.strip(".VERT")))
 
                 # fig_path = os.path.join(os.path.split(self.fname)[0],"%s_fit_residual.pdf" %(t.strip(".VERT")))
