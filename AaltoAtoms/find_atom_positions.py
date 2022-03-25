@@ -321,12 +321,27 @@ class CircCorralData:
 
     def plot_circle_fit(self, points, radius, center, label, pix_or_nm="nm"):
         xc, yc = self.circle(radius, center, npoints=1000)
+
+        # draw a line across the middle of the circle
+        vechl_min, vechl_max = center - [radius, 0], center + [radius, 0]
+
+        # draw vertical line through middle of circle
+        vecvl_min, vecvl_max = center - [0, radius], center + [0, radius]
+
+
+
+
         if pix_or_nm=="pix":
             plt.scatter(*array(points).T,label=label)
             plt.scatter(xc, yc, alpha=0.5, s=5, label=label)
         elif pix_or_nm=="nm":
+            vechl_min, vechl_max, vecvl_min, vecvl_max = list(map(self.pix_to_nm, [vechl_min, vechl_max, vecvl_min, vecvl_max]))
             plt.scatter(*self.pix_to_nm(array(points).T),label=label)
             plt.scatter(self.pix_to_nm(xc), self.pix_to_nm(yc), alpha=0.5, s=5, label=label)
+
+        plt.plot(*array([vechl_min, vechl_max]).T, c='r')
+        plt.plot(*array([vecvl_min, vecvl_max]).T, c='r')
+
 
     def bbox(self):
         """
