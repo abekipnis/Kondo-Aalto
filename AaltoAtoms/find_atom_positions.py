@@ -2,7 +2,7 @@ import createc
 from createc import utils
 import matplotlib.pyplot as plt
 import numpy as np
-import pdb
+import pdb, os
 from skimage import morphology, measure
 from numpy import empty, sqrt, square, meshgrid, linspace, dot, argmax, argmin, reshape, array
 from numpy.linalg import norm, pinv, lstsq
@@ -562,7 +562,6 @@ class CircCorralData:
         cbar = plt.colorbar(fraction=0.046, pad=0.04)
         cbar.set_label('pm', rotation=90)
 
-
         # self.plot_circle_fit(self.centroids, self.r_n, self.c_n, "naive")
         self.plot_circle_fit(self.gauss_fit_locs.T, self.r_g, self.c_g, "Gaussian")
         print("\t",self.label)
@@ -590,11 +589,13 @@ class CircCorralData:
         plt.subplots_adjust(left=0.55)
         plt.suptitle(self.label + "\nFits to circle, naive & Gaussian fit positions")
         # plt.tight_layout()
-        plt.show()
         try:
-            plt.savefig("circle fit plots" + "/" +self.label.split("/")[-1].split(".dat")[0] +"_circle_fits.png")
+            f = os.path.join(os.path.dirname(self.file), self.label.split(".dat")[0]+"_circle_fit.pdf")
+            plt.savefig(f)
         except:
+            print(e)
             print("could not save circle fit plot")
+        plt.show()
         plt.close()
 
     def get_corral_radius(self, box_size_nm_init):
