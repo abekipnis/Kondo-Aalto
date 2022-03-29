@@ -6,8 +6,12 @@ import pandas as pd
 import matplotlib.animation as animation
 # from matplotlib.animation import FuncAnimation
 import importlib
-plot_params = importlib.import_module("grid analysis.plot_params")
-read_vertfile = importlib.import_module("Kondo data analysis.read_vertfile")
+from ..grid_analysis import plot_params
+from  ..Kondo_data_analysis import read_vertfile
+from ..find_atom_positions import CircCorralData 
+
+#plot_params = importlib.import_module("grid_analysis.plot_params")
+#read_vertfile = importlib.import_module("Kondo data analysis.read_vertfile")
 
 import createc
 import pdb
@@ -16,7 +20,6 @@ import numpy.ma as ma
 from matplotlib.widgets import Slider, Button
 from datetime import datetime
 from multiprocessing import Pool, freeze_support
-from find_atom_positions import CircCorralData
 from itertools import repeat
 
 # need wrapper around pool.starmap to use kw arguments
