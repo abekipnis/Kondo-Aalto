@@ -592,10 +592,14 @@ class CircCorralData:
         try:
             f = os.path.join(os.path.dirname(self.file), self.label.split(".dat")[0]+"_circle_fit.pdf")
             plt.savefig(f)
-        except Error as e:
+        except FileNotFoundError as e:
             print(e)
             print("could not save circle fit plot")
             print("tried to save as %s" %(f))
+            f = os.path.join(os.path.dirname(self.file), os.path.basename(self.label).split(".dat")[0]+"_circle_fit.pdf")
+            print("trying again as: %s" %(f))
+            plt.savefig(f)
+        print("saving figure was successful")
         plt.show()
         plt.close()
         return self.pix_to_nm(self.r_g)
