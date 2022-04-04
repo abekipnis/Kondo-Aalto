@@ -592,11 +592,13 @@ class CircCorralData:
         try:
             f = os.path.join(os.path.dirname(self.file), self.label.split(".dat")[0]+"_circle_fit.pdf")
             plt.savefig(f)
-        except:
+        except Error as e:
             print(e)
             print("could not save circle fit plot")
+            print("tried to save as %s" %(f))
         plt.show()
         plt.close()
+        return self.pix_to_nm(self.r_g)
 
     def get_corral_radius(self, box_size_nm_init):
         # box size to fit atom positions
