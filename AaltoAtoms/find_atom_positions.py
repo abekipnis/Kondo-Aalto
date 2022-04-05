@@ -551,7 +551,7 @@ class CircCorralData:
         self.gauss_fit_locs = fp
         return full_im, fp
 
-    def compare_fits(self):
+    def compare_fits(self, savefig=True):
         plt.figure(figsize=(9,4.5))
         ax = plt.gca()
         im = plt.imshow(self.im, extent=[0, self.pix_to_nm(self.image_file.xPixel) ,self.pix_to_nm(self.image_file.yPixel),0])
@@ -589,22 +589,24 @@ class CircCorralData:
         plt.subplots_adjust(left=0.55)
         plt.suptitle(self.label + "\nFits to circle, naive & Gaussian fit positions")
         # plt.tight_layout()
-        try:
-            f = os.path.join(os.path.dirname(self.file), self.label.split(".dat")[0]+"_circle_fit.pdf")
-            plt.savefig(f)
-        except FileNotFoundError as e:
-            print(e)
-            print("could not save circle fit plot")
-            print("tried to save as %s" %(f))
-            f = os.path.join(os.path.dirname(self.file), os.path.basename(self.label).split(".dat")[0]+"_circle_fit.pdf")
-            print("trying again as: %s" %(f))
-            plt.savefig(f)
-        print("saving figure was successful")
+
+        if savefig:
+            try:
+                f = os.path.join(os.path.dirname(self.file), self.label.split(".dat")[0]+"_circle_fit.pdf")
+                plt.savefig(f)
+            except FileNotFoundError as e:
+                print(e)
+                print("could not save circle fit plot")
+                print("tried to save as %s" %(f))
+                f = os.path.join(os.path.dirname(self.file), os.path.basename(self.label).split(".dat")[0]+"_circle_fit.pdf")
+                print("trying again as: %s" %(f))
+                plt.savefig(f)
+            print("saving figure was successful")
         plt.show()
         plt.close()
         return self.pix_to_nm(self.r_g)
 
-    def get_corral_radius(self, box_size_nm_init):
+    def get_corral_radius(self, box_size_nm_init, savefig=True):
         # box size to fit atom positions
         box_size_nm = box_size_nm_init
         box_size_pix = int(self.nm_to_pix(box_size_nm))
@@ -636,7 +638,7 @@ class CircCorralData:
             print("adding zeros back since nx != ny in image pixels")
 
             self.im = np.concatenate((self.im,np.zeros((self.im.shape[1]-self.im.shape[0],self.im.shape[1]))))
-        self.compare_fits()
+        self.compare_fits(savefig=savefig)
         return self.pix_to_nm(self.r_g)
 
     # TODO: write function to get average radius from all lines

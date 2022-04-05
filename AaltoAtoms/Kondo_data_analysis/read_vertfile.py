@@ -255,15 +255,22 @@ class Spec(metaclass=LoadTimeMeta):
             a2.set_ylabel(r"$dI/dV$")
 
             a3 = plt.subplot(2,2,4)
-            a3.hist(residY)
-            a3.set_xlabel("Residual histogram")
-            a3.yaxis.tick_right()
-            a3.set_ylabel("Counts")
-            a3.set_xlabel(r"$dI/dV$")
-            a3.legend(["Residual histogram"])
-            a3.set_xlim(min(residY),max(residY))
+            try:
+                a3.hist(residY)
+                a3.set_xlabel("Residual histogram")
+                a3.yaxis.tick_right()
+                a3.set_ylabel("Counts")
+                a3.set_xlabel(r"$dI/dV$")
+                a3.legend(["Residual histogram"])
+                a3.set_xlim(min(residY),max(residY))
+                a3.yaxis.set_label_position("right")
 
-            a3.yaxis.set_label_position("right")
+            except ValueError as e:
+                print(e)
+                print("could not plot histogram of residuals ! ! !")
+                print("something wrong with fit bounds probably")
+
+
             # plt.tight_layout()
             if savefig:
                 # pdb.set_trace()
