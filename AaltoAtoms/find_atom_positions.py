@@ -141,7 +141,7 @@ class CircCorralData:
         self.im -= plane
         # return plane
 
-    def get_region_centroids(self, diamond_size=2, sigmaclip=4, show=True):
+    def get_region_centroids(self, diamond_size=2, sigmaclip=4, show=True, percentile=99):
         """
         Parameters:
         ___________
@@ -157,7 +157,6 @@ class CircCorralData:
         x = res.lowerlimit + np.linspace(0, res.binsize * res.cumcount.size, res.cumcount.size)
 
         # what is the value below which 'percentile' % of topography data points are?
-        percentile = 99
 
         # normed cumulative distribution function
         normed_cdf = res.cumcount / np.max(res.cumcount)
@@ -716,6 +715,9 @@ class CircCorral(CircCorralData):
 
         self.file = None  # because we are reading directly from the STM, no file or path
         self.label = str(datetime.now())  # no file label
+
+        # initially
+        self.centroids = None
 
 
 def round_to_even(n):
