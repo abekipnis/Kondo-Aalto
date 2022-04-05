@@ -255,21 +255,29 @@ class Spec(metaclass=LoadTimeMeta):
             a2.set_ylabel(r"$dI/dV$")
 
             a3 = plt.subplot(2,2,4)
-            a3.hist(residY)
-            a3.set_xlabel("Residual histogram")
-            a3.yaxis.tick_right()
-            a3.set_ylabel("Counts")
-            a3.set_xlabel(r"$dI/dV$")
-            a3.legend(["Residual histogram"])
-            a3.set_xlim(min(residY),max(residY))
+            try:
+                a3.hist(residY)
+                a3.set_xlabel("Residual histogram")
+                a3.yaxis.tick_right()
+                a3.set_ylabel("Counts")
+                a3.set_xlabel(r"$dI/dV$")
+                a3.legend(["Residual histogram"])
+                a3.set_xlim(min(residY),max(residY))
+                a3.yaxis.set_label_position("right")
 
-            a3.yaxis.set_label_position("right")
+            except ValueError as e:
+                print(e)
+                print("could not plot histogram of residuals ! ! !")
+                print("something wrong with fit bounds probably")
+
+
             # plt.tight_layout()
             if savefig:
                 # pdb.set_trace()
                 #fp = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/spatial extent Kondo plots/width comparison"
                 fp = os.path.dirname(self.fname)
                 fig_path = os.path.join(fp,"%s_fit_residual.pdf" %(t.strip(".VERT")))
+                fig_path = os.path.join(fp,"%s_fit_residual.png" %(t.strip(".VERT")))
 
                 # fig_path = os.path.join(os.path.split(self.fname)[0],"%s_fit_residual.pdf" %(t.strip(".VERT")))
                 plt.savefig(fig_path)
@@ -525,6 +533,8 @@ def plot_fano_fit_line(f):
     ax1.set_ylabel("bias (mV)")
 
     plt.savefig(f.split(".txt")[0]+".pdf")
+    plt.savefig(f.split(".txt")[0]+".png")
+
     # plt.show()
 
 def fermi_dirac(e, mu, T):

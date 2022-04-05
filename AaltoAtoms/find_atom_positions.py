@@ -4,7 +4,7 @@ from scipy import stats
 import numpy.ma as ma
 import matplotlib.pyplot as plt
 import numpy as np
-import pdb, os
+import pdb, os, traceback
 from skimage import morphology, measure
 from numpy import empty, sqrt, square, meshgrid, linspace, dot, argmax, argmin, reshape, array
 from numpy.linalg import norm, pinv, lstsq
@@ -590,8 +590,8 @@ class CircCorralData:
         self.gauss_fit_locs = fp
         return full_im, fp
 
-    def compare_fits(self):
-        plt.figure(figsize=(9, 4.5))
+    def compare_fits(self, savefig=True):
+        plt.figure(figsize=(9,4.5))
         ax = plt.gca()
         im = plt.imshow(self.im,
                         extent=[0, self.pix_to_nm(self.xPix), self.pix_to_nm(self.yPix), 0])
@@ -630,16 +630,35 @@ class CircCorralData:
         plt.subplots_adjust(left=0.55)
         plt.suptitle(self.label + "\nFits to circle, naive & Gaussian fit positions")
         # plt.tight_layout()
-        try:
-            f = os.path.join(os.path.dirname(self.file), self.label.split(".dat")[0] + "_circle_fit.pdf")
-            plt.savefig(f)
-        except:
-            print(e)
-            print("could not save circle fit plot")
+
+        if savefig:
+            try:
+                # save as both a .pdf and a .png
+                dn = os.path.dirname(self.file)
+                fn = self.label.split(".dat")[0]+"_circle_fit.pdf"
+                f = os.path.join(dn, fn)
+                plt.savefig(f)
+                fn = self.label.split(".dat")[0]+"_circle_fit.png"
+                f = os.path.join(dn, fn)
+                plt.savefig(f)
+
+            except FileNotFoundError as e:
+                print(e)
+                print("could not save circle fit plot")
+                print("tried to save as %s" %(f))
+                f = os.path.join(os.path.dirname(self.file), os.path.basename(self.label).split(".dat")[0]+"_circle_fit.pdf")
+                print("trying again as: %s" %(f))
+                plt.savefig(f)
+
+                f = os.path.join(os.path.dirname(self.file), os.path.basename(self.label).split(".dat")[0]+"_circle_fit.png")
+                plt.savefig(f)
+
+            print("saving figure was successful")
         plt.show()
         plt.close()
+        return self.pix_to_nm(self.r_g)
 
-    def get_corral_radius(self, box_size_nm_init):
+    def get_corral_radius(self, box_size_nm_init, savefig=True):
         # box size to fit atom positions
         box_size_nm = box_size_nm_init
         box_size_pix = int(self.nm_to_pix(box_size_nm))
@@ -655,9 +674,15 @@ class CircCorralData:
 
         # if corral is occupied, remove central atoms
         if self.occupied:
-            atoms_n, center_atom_loc = self.remove_central_atom(array(self.centroids))
-            atoms_g, center_atom_loc = self.remove_central_atom(self.gauss_fit_locs.T)
-        else:  # corral is unoccupied, don't try to remove central atom
+            try:
+                atoms_n, center_atom_loc = self.remove_central_atom(array(self.centroids))
+                atoms_g, center_atom_loc = self.remove_central_atom(self.gauss_fit_locs.T)
+            except Exception as e:
+                print(e)
+                print(traceback.format_exc())
+                atoms_n = array(self.centroids)
+                atoms_g = self.gauss_fit_locs.T
+        else: # corral is unoccupied, don't try to remove central atom
             atoms_n = array(self.centroids)
             atoms_g = self.gauss_fit_locs.T
 
@@ -669,9 +694,8 @@ class CircCorralData:
         # bring back the zeros....
         if self.im.shape[0] != self.im.shape[1]:
             print("adding zeros back since nx != ny in image pixels")
-
             self.im = np.concatenate((self.im, np.zeros((self.im.shape[1] - self.im.shape[0], self.im.shape[1]))))
-        self.compare_fits()
+        self.compare_fits(savefig=savefig)
         return self.pix_to_nm(self.r_g)
 
     # TODO: write function to get average radius from all lines
