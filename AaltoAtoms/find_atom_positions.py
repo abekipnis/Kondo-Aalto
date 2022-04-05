@@ -141,6 +141,7 @@ class CircCorralData:
         self.im -= plane
         # return plane
 
+    def get_region_centroids(self, diamond_size=2, sigmaclip=4, show=True):
         """
         Parameters:
         ___________
@@ -180,9 +181,8 @@ class CircCorralData:
         regions = measure.regionprops(xim)
         if show:
             plt.figure()
-            plt.imshow(maxima)
             plt.title(self.label + "\nLocal maxima")
-            plt.imshow(xim)
+            plt.imshow(xim[0])
             plt.close()
         regions_areas = [r.area for r in regions]
         regions_area_max = max(regions_areas)
