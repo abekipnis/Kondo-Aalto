@@ -277,6 +277,7 @@ class Spec(metaclass=LoadTimeMeta):
                 #fp = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/spatial extent Kondo plots/width comparison"
                 fp = os.path.dirname(self.fname)
                 fig_path = os.path.join(fp,"%s_fit_residual.pdf" %(t.strip(".VERT")))
+                fig_path = os.path.join(fp,"%s_fit_residual.png" %(t.strip(".VERT")))
 
                 # fig_path = os.path.join(os.path.split(self.fname)[0],"%s_fit_residual.pdf" %(t.strip(".VERT")))
                 plt.savefig(fig_path)
@@ -532,6 +533,8 @@ def plot_fano_fit_line(f):
     ax1.set_ylabel("bias (mV)")
 
     plt.savefig(f.split(".txt")[0]+".pdf")
+    plt.savefig(f.split(".txt")[0]+".png")
+
     # plt.show()
 
 def fermi_dirac(e, mu, T):

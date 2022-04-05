@@ -592,8 +592,15 @@ class CircCorralData:
 
         if savefig:
             try:
-                f = os.path.join(os.path.dirname(self.file), self.label.split(".dat")[0]+"_circle_fit.pdf")
+                # save as both a .pdf and a .png
+                dn = os.path.dirname(self.file)
+                fn = self.label.split(".dat")[0]+"_circle_fit.pdf"
+                f = os.path.join(dn, fn)
                 plt.savefig(f)
+                fn = self.label.split(".dat")[0]+"_circle_fit.png"
+                f = os.path.join(dn, fn)
+                plt.savefig(f)
+
             except FileNotFoundError as e:
                 print(e)
                 print("could not save circle fit plot")
@@ -601,6 +608,10 @@ class CircCorralData:
                 f = os.path.join(os.path.dirname(self.file), os.path.basename(self.label).split(".dat")[0]+"_circle_fit.pdf")
                 print("trying again as: %s" %(f))
                 plt.savefig(f)
+
+                f = os.path.join(os.path.dirname(self.file), os.path.basename(self.label).split(".dat")[0]+"_circle_fit.png")
+                plt.savefig(f)
+
             print("saving figure was successful")
         plt.show()
         plt.close()
