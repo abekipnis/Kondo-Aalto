@@ -2,7 +2,7 @@ import createc
 from createc import utils
 import matplotlib.pyplot as plt
 import numpy as np
-import pdb, os
+import pdb, os, traceback
 from skimage import morphology, measure
 from numpy import empty, sqrt, square, meshgrid, linspace, dot, argmax, argmin, reshape, array
 from numpy.linalg import norm, pinv, lstsq
@@ -633,8 +633,14 @@ class CircCorralData:
 
         # if corral is occupied, remove central atoms
         if self.occupied:
-            atoms_n, center_atom_loc = self.remove_central_atom(array(self.centroids))
-            atoms_g, center_atom_loc = self.remove_central_atom(self.gauss_fit_locs.T)
+            try:
+                atoms_n, center_atom_loc = self.remove_central_atom(array(self.centroids))
+                atoms_g, center_atom_loc = self.remove_central_atom(self.gauss_fit_locs.T)
+            except Exception as e:
+                print(e)
+                print(traceback.format_exc())
+                atoms_n = array(self.centroids)
+                atoms_g = self.gauss_fit_locs.T
         else: # corral is unoccupied, don't try to remove central atom
             atoms_n = array(self.centroids)
             atoms_g = self.gauss_fit_locs.T
