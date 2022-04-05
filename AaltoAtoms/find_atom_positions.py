@@ -141,7 +141,6 @@ class CircCorralData:
         self.im -= plane
         # return plane
 
-    def get_region_centroids(self, diamond_size=5, sigmaclip=1.5, show=False):
         """
         Parameters:
         ___________
@@ -188,7 +187,7 @@ class CircCorralData:
         regions_areas = [r.area for r in regions]
         regions_area_max = max(regions_areas)
 
-        # all regions might be same size, in which case we're spot on
+# all regions might be same size, in which case we're spot on
         allsame = np.all([r == regions_areas[0] for r in regions_areas])
 
         # if we have the 'background' as a region, remove it
