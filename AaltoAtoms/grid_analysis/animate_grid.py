@@ -8,7 +8,7 @@ import matplotlib.animation as animation
 import importlib
 from ..grid_analysis import plot_params
 from  ..Kondo_data_analysis import read_vertfile
-from ..find_atom_positions import CircCorralData 
+from ..find_atom_positions import CircCorralData
 
 #plot_params = importlib.import_module("grid_analysis.plot_params")
 #read_vertfile = importlib.import_module("Kondo data analysis.read_vertfile")
@@ -327,7 +327,13 @@ class Grid:
                 self.animation = animation.FuncAnimation(self.fig, self.updatefig, frames=g.cube_array.shape[0], interval=interval, blit=True)
                 self.fig.canvas.mpl_connect('button_press_event', self.toggle_pausefig)
 
-                self.animation.save(g.file+'_cube_movie.mp4', writer="ffmpeg", fps=28)
+                try:
+                    writervideo = animation.FFMpegWriter(fps=28)
+                    self.animation.save(g.file+'_cube_movie.mp4', writer=writervideo)
+                except ValueError as e:
+                    print(e)
+                    print("could not save as .mp4, trying .avi")
+                    self.animation.save(g.file+'_cube_movie.avi', writer="ffmpeg", fps=28)
                 print("Saved animation to %s" %(g.file))
 
             def toggle_pausefig(self, *args, **kwargs):

@@ -181,7 +181,9 @@ class CircCorralData:
         regions = measure.regionprops(xim)
         if show:
             plt.figure()
-            plt.imshow(xim[0])
+            plt.imshow(maxima)
+            plt.title(self.label + "\nLocal maxima")
+            plt.imshow(xim)
             plt.close()
         regions_areas = [r.area for r in regions]
         regions_area_max = max(regions_areas)
