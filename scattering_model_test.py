@@ -48,7 +48,7 @@ if __name__=="__main__":
 
 	localdir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
 	tritondir = "/scratch/work/kipnisa1/Small Kondo corrals/"
-	delldir = "Y:\labdata\Createc\STMDATA"
+	delldir = r"Y:\labdata\Createc\STMDATA"
 
 	on_triton = "triton" in host
 	on_dell = "L21-0455" in host
