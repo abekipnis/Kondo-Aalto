@@ -9,20 +9,20 @@ basepath = "/Volumes/PROJECT/asp/labdata/Createc/STMDATA/Ag(111)/2022-03 Co Kond
 
 # .dat file and corresponding .VERT file for central Co atom fitting
 Co_Co_corrals = {
-                "03-28/A220328.182736.dat": "03-28/A220328.183230.L0015.VERT", # 2.9 nm
-                "03-24/1/A220323.115455.dat": "03-24/1/A220323.115740.VERT", # 3.34 nm
-                "03-26/A220325.102511.dat": "03-26/A220325.102649.VERT", # 4.5 nm
-                "03-29/A220329.113009.dat": "03-29/A220329.113106.VERT",  # 7.42 nm
-                "04-01/A220401.010342.dat": "04-01/A220401.011026.L0125.VERT", # 8 nm
+                "03-28/A220328.182736.dat": ["03-28/A220328.183230.L0015.VERT", -30, 30], # 2.9 nm
+                "03-24/1/A220323.115455.dat": ["03-24/1/A220323.115740.VERT", -40,20],# 3.34 nm
+                "03-26/A220325.102511.dat": ["03-26/A220325.102649.VERT", -5,20],# 4.5 nm
+                "03-29/A220329.113009.dat": ["03-29/A220329.113106.VERT", -15, 15], # 7.42 nm
+                "04-01/A220401.010342.dat": ["04-01/A220401.011026.L0125.VERT",-30, 30 ] # 8 nm
                 }
 
-
+Co_Co_data = []
 for c in list(Co_Co_corrals.keys()):
     # c = list(Co_Co_corrals.keys())[0]
 
     # get the width from the spectrum
-    S = Spec(os.path.join(basepath, Co_Co_corrals[c]))
-    r = S.fit_fano()
+    S = Spec(os.path.join(basepath, Co_Co_corrals[c][0]))
+    r = S.fit_fano(marker1=Co_Co_corrals[c][1], marker2=Co_Co_corrals[c][2])
     width = r[0][1]
 
     # get the radius from the topography
@@ -33,6 +33,8 @@ for c in list(Co_Co_corrals.keys()):
     C.get_region_centroids(diamond_size=2, sigmaclip=2)
     radius = C.get_corral_radius(1.5, savefig=False)
 
+    Co_Co_data.append([radius, width])
+np.array(Co_Co_data).T
 
 def plot_Ag_Co_corrals():
     dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/spatial extent Kondo plots/width comparison"
@@ -113,6 +115,8 @@ def fit_and_plot_functional_curve(d):
     plt.xlim(2.0, 10)
 
 d = plot_Ag_Co_corrals()
+plt.scatter(*np.array(Co_Co_data).T)
+
 fit_and_plot_functional_curve(d)
 
 # plt.ylim(0,30)
