@@ -141,7 +141,11 @@ class CircCorralData:
         self.im -= plane
         # return plane
 
+<<<<<<< HEAD
     def get_region_centroids(self, diamond_size=2, sigmaclip=4, show=True, percentile=99, edge_cutoff=0.5):
+=======
+    def get_region_centroids(self, diamond_size=2, sigmaclip=4, show=True, percentile=99, edge_cutoff=0.1):
+>>>>>>> 1cad77cc60d80e4d5e3467a2c1a7edb7b6571f74
         """
         Parameters:
         ___________
@@ -196,14 +200,23 @@ class CircCorralData:
         c = [list(reversed(r.centroid)) for r in regions]
 
         def is_far_from_edge(c, p, edge_cutoff):
+<<<<<<< HEAD
             a = edge_cutoff  # nanometers, distance from edge
+=======
+            a = edge_cutoff # nanometers, distance from edge
+>>>>>>> 1cad77cc60d80e4d5e3467a2c1a7edb7b6571f74
             x = (p[0] > c.nm_to_pix(a) and p[0] < c.imshape[0] - self.nm_to_pix(a))
             y = (p[1] > c.nm_to_pix(a) and p[1] < c.imshape[1] - self.nm_to_pix(a))
             return (x and y)
 
         # remove centroids close to the edge
+<<<<<<< HEAD
         far_from_edge = [is_far_from_edge(self, d, edge_cutoff) for d in c]
         c1 = [d for n, d in enumerate(c) if far_from_edge[n]]
+=======
+        d = [is_far_from_edge(self, d, edge_cutoff) for d in c]
+        c = [d for d in c if is_far_from_edge(self, d, edge_cutoff)]
+>>>>>>> 1cad77cc60d80e4d5e3467a2c1a7edb7b6571f74
 
         # making sure that the data points are only 2 values (x and y)
         self.centroids = [c0[0:2] for c0 in c1]
