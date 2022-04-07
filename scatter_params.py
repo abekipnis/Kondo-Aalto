@@ -13,7 +13,8 @@ Co_Co_corrals = {
                 "03-24/1/A220323.115455.dat": ["03-24/1/A220323.115740.VERT", -40,20],# 3.34 nm
                 "03-26/A220325.102511.dat": ["03-26/A220325.102649.VERT", -5,20],# 4.5 nm
                 "03-29/A220329.113009.dat": ["03-29/A220329.113106.VERT", -15, 15], # 7.42 nm
-                "04-01/A220401.010342.dat": ["04-01/A220401.011026.L0125.VERT",-30, 30 ] # 8 nm
+                "04-01/A220401.010342.dat": ["04-01/A220401.011026.L0125.VERT",-30, 30 ], # 8 nm
+                "04-05 6nm Co/A220405.181958.dat": ["04-05 6nm Co/A220405.182713.VERT", -10, 20] # 6 nm
                 }
 
 Co_Co_data = []
@@ -115,7 +116,7 @@ def fit_and_plot_functional_curve(d):
     plt.xlim(2.0, 10)
 
 d = plot_Ag_Co_corrals()
-plt.scatter(*np.array(Co_Co_data).T)
+plt.scatter(*np.array(Co_Co_data).T, c='orange')
 
 fit_and_plot_functional_curve(d)
 
