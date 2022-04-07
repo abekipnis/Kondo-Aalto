@@ -80,6 +80,9 @@ class CircCorralData:
         self.label = label
         self.image_file = createc.DAT_IMG(self.file)
 
+        self.bias = self.image_file.bias
+        self.current = self.image_file.current
+
         # pdb.set_trace()
         # topography, current, topography, current
 
@@ -623,7 +626,7 @@ class CircCorralData:
                     "   Current setpoint: %d pA"
                     % (len(self.centroids), self.pix_to_nm(self.r_n), *self.pix_to_nm(self.c_n),
                        self.pix_to_nm(self.r_g), *self.pix_to_nm(self.c_g), self.naive_to_gauss_error_angstroms,
-                       int(self.image_file.bias), int(self.image_file.current)),
+                       int(self.bias), int(self.current)),
                     bbox={'facecolor': 'w', 'alpha': 0.5, 'pad': 5}, fontsize=12)  # ,
         plt.xlabel(r"$nm$")
         plt.ylabel(r"$nm$")
@@ -718,6 +721,8 @@ class CircCorral(CircCorralData):
 
         # initially
         self.centroids = None
+        self.bias = 0.0
+        self.current = 0.0
 
 
 def round_to_even(n):
