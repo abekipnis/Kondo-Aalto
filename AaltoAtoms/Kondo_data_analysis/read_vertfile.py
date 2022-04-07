@@ -141,13 +141,25 @@ class Spec(metaclass=LoadTimeMeta):
             pdb.set_trace()
             radius = np.nan
 
+    def clip_data(self, min_mv=-np.inf, max_mv=np.inf):
+        gt_min = self.bias_mv > min_mv
+        lt_max = self.bias_mv < max_mv
+        in_range = np.array([gt_min, lt_max]).all(axis=0)
+        self.bias_mv = self.bias_mv[in_range]
+        self.dIdV = self.dIdV[in_range]
+
+    def remove_background(self, degree=3):
+        fit = np.polyfit(self.bias_mv, self.dIdV, deg=degree)
+        eval = np.polyval(fit, self.bias_mv)
+        self.dIdV = self.dIdV - eval
+
     def fit_fano(self, marker1: float = 0, marker2: float = 0,
                  savefig: bool = True, showfig: bool = True, e0_fixed_val = np.nan, w = np.nan, type_fit: str = "default", init_vals=None, actual_radius=None, dist_to_Co=None) -> list:
         # app.update()
 
         # TODO: implement a 'quit' function i.e. if we want to stop in the middle
         if marker1==0 and marker2==0: # then create / get new markers
-            fig , ax = plt.subplots()
+            fig, ax = plt.subplots()
             line = plt.plot(self.bias_mv, self.dIdV)
             lines = [line]
             markers = []
