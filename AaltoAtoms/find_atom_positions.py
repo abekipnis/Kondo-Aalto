@@ -4,7 +4,7 @@ from scipy import stats
 import numpy.ma as ma
 import matplotlib.pyplot as plt
 import numpy as np
-import pdb, os, traceback
+import pdb, os, traceback, math
 from skimage import morphology, measure
 from numpy import empty, sqrt, square, meshgrid, linspace, dot, argmax, argmin, reshape, array
 from numpy.linalg import norm, pinv, lstsq
