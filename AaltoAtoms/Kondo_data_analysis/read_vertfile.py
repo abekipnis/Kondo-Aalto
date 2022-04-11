@@ -325,8 +325,8 @@ def plot_lrs():
     ax1.legend(["2.5nm","3.8nm","4.5nm"], loc="upper right")
     ax2.legend(["2.5nm","3.8nm","4.5nm"])
     plt.xlabel("Bias (mV)")
-    ax1.set_ylabel("d$\it{I}$/d$\it{V}$ (a.u.)")
-    plt.ylabel("d$\it{I}$/d$\it{V}$ (a.u.)")
+    ax1.set_ylabel(r"d$\it{I}$/d$\it{V}$ (a.u.)")
+    plt.ylabel(r"d$\it{I}$/d$\it{V}$ (a.u.)")
     # plt.title("dI/dV spectrum of Kondo resonance on Co at corral center")
     plt.savefig("/Users/akipnis/Desktop/spectra.pdf")
     plt.show()
@@ -517,7 +517,7 @@ def plot_fano_fit_line(f):
     ax7.scatter(dists, d1["resid"])
 
     a1, a2 = fs[0].split(os.path.sep)[-3:-1]
-    fig.suptitle("Fano fits to Kondo resonance on corral central atom: %s\%s" %(a1, a2))
+    fig.suptitle(r"Fano fits to Kondo resonance on corral central atom: %s\%s" %(a1, a2))
     # add red lines across where the fit happens
 
     ax8.scatter(dists,d1["a"])
