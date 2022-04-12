@@ -666,6 +666,7 @@ def fit_data_fixed_vals(bias, dIdV, marker1, marker2, fixed_vals):
 
     # initial guess for e0, w, q, a, b, c,
     b0 = (fit_dIdV[-1]-fit_dIdV[0])/(sb[-1]-sb[0])
+    b0 = 0
     e00 = sb[np.argmin(scipy.signal.detrend(fit_dIdV))]
 
     p0 = [e00, 4, 0, 1, b0, np.mean(fit_dIdV)]
