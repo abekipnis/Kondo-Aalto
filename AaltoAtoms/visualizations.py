@@ -115,8 +115,11 @@ def show_line_spectrum(datfile, line_directory, spectrum_timestamp, biasmin, bia
         s_cmin.on_changed(update)
 
     # save the line spectrum plot in the same directory with the .dat file
+    # save as pdf
     file_name = os.path.basename(imf).strip('.dat') + '_line_spectrum_%s.pdf' %(spectrum_timestamp)
-    file_name = os.path.basename(imf).strip('.dat') + '_line_spectrum_%s.png' %(spectrum_timestamp)
+    plt.savefig(os.path.join(os.path.dirname(imf), file_name))
 
+    # save as png
+    file_name = os.path.basename(imf).strip('.dat') + '_line_spectrum_%s.png' %(spectrum_timestamp)
     plt.savefig(os.path.join(os.path.dirname(imf), file_name))
     plt.show()

@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.animation as animation
 # from matplotlib.animation import FuncAnimation
 import importlib
-read_vertfile = importlib.import_module("Kondo data analysis.read_vertfile")
+
 import createc
 import pdb
 import os
@@ -14,12 +14,13 @@ import numpy.ma as ma
 from matplotlib.widgets import Slider, Button
 from datetime import datetime
 from multiprocessing import Pool, freeze_support
-from find_atom_positions import CircCorralData
-from animate_grid import Grid
+from AaltoAtoms.find_atom_positions import CircCorralData
+from AaltoAtoms.grid_analysis.animate_grid import Grid
+from AaltoAtoms.Kondo_data_analysis import read_vertfile
 
 if __name__ == "__main__":
     # read size of image from .specgrid.dat file
-    filename = "/Users/akipnis/Desktop/A211021.201245.specgrid"
+    filename = r"Y:\labdata\Createc\STMDATA\Ag(111)\2022-03 Co Kondo corrals\04-06 6nm Ag walls\temp.specgrid"
     g = Grid(filename)
     t = g.get_topo()
     plt.imshow(t)

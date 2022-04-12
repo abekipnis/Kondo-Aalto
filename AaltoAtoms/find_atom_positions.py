@@ -75,7 +75,7 @@ class Vector:
 class CircCorralData:
     file: str
 
-    def __init__(self, file, label):
+    def __init__(self, file, label, chan=None):
         self.file = file
         self.label = label
         self.image_file = createc.DAT_IMG(self.file)
@@ -89,10 +89,10 @@ class CircCorralData:
         # have to check that the channel is correct !
         # otherwise the _crop_img line will return an empty array
         # usually the data is in channel 2 or channel 0
-
         # _crop_img will remove rows that are zeros - problematic for when plotting
-
-        chan = 2
+        # in rare cases where the channel is different
+        if chan is None:
+            chan = 2
         try:
             self.im = self.image_file._crop_img(self.image_file.img_array_list[chan][:][:])
         except:
