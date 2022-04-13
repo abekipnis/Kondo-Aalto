@@ -5,7 +5,7 @@ import numpy as np
 from scipy import optimize
 from AaltoAtoms import CircCorralData, Spec
 
-basepath = "/Volumes/PROJECT/asp/labdata/Createc/STMDATA/Ag(111)/2022-03 Co Kondo corrals"
+basepath = "Y:/labdata/Createc/STMDATA/Ag(111)/2022-03 Co Kondo corrals"
 
 # .dat file and corresponding .VERT file for central Co atom fitting
 Co_Co_corrals = {
@@ -31,7 +31,7 @@ for c in list(Co_Co_corrals.keys()):
     C.occupied = True
     C.corral = True
     C.subtract_plane()
-    C.get_region_centroids(diamond_size=2, sigmaclip=2)
+    C.get_region_centroids(percentile=98, edge_cutoff=0.01)
     radius = C.get_corral_radius(1.5, savefig=False)
 
     Co_Co_data.append([radius, width])
@@ -117,7 +117,6 @@ def fit_and_plot_functional_curve(d):
 
 d = plot_Ag_Co_corrals()
 plt.scatter(*np.array(Co_Co_data).T, c='orange')
-
 fit_and_plot_functional_curve(d)
 
 # plt.ylim(0,30)
