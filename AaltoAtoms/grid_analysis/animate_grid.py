@@ -7,7 +7,7 @@ import matplotlib.animation as animation
 # from matplotlib.animation import FuncAnimation
 import importlib
 from ..grid_analysis import plot_params
-from  ..Kondo_data_analysis import read_vertfile
+from ..Kondo_data_analysis import read_vertfile
 from ..find_atom_positions import CircCorralData
 
 #plot_params = importlib.import_module("grid_analysis.plot_params")
