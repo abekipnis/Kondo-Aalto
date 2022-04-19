@@ -142,6 +142,10 @@ class Spec(metaclass=LoadTimeMeta):
             radius = np.nan
 
     def clip_data(self, min_mv=-np.inf, max_mv=np.inf):
+        if min_mv is None:
+            min_mv=-np.inf
+        if max_mv is None:
+             max_mv=np.inf
         gt_min = self.bias_mv > min_mv
         lt_max = self.bias_mv < max_mv
         in_range = np.array([gt_min, lt_max]).all(axis=0)
@@ -149,6 +153,8 @@ class Spec(metaclass=LoadTimeMeta):
         self.dIdV = self.dIdV[in_range]
 
     def remove_background(self, degree=3):
+        if degree is None:
+            return
         fit = np.polyfit(self.bias_mv, self.dIdV, deg=degree)
         eval = np.polyval(fit, self.bias_mv)
         self.dIdV = self.dIdV - eval
