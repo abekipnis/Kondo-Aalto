@@ -154,6 +154,8 @@ class CircCorralData:
         ________
 
         """
+        if edge_cutoff is None:
+            edge_cutoff = 0
 
         # calculate the cumulative distribution function of the height data
         res = stats.cumfreq(self.im, numbins=25)
@@ -212,9 +214,8 @@ class CircCorralData:
         self.centroids = [c0[0:2] for c0 in c1]
 
         print("\t%d centroids" % (len(self.centroids)))
-        plt.close()
 
-    def remove_central_atom(self, data):
+    def remove_central_atom(self, data, show=False):
         """
         Parameters:
         ___________
@@ -252,8 +253,9 @@ class CircCorralData:
                 ccopy = np.delete(ccopy, center_idx_1, axis=0)
             return ccopy, data[center_idx_1]
         else:
-            plt.imshow(self.im)
-            plt.scatter(*np.array(data).T)
+            if show:
+                plt.imshow(self.im)
+                plt.scatter(*np.array(data).T)
             # plt.show()
             raise Exception("Something went wrong removing central atom")
 
@@ -657,11 +659,10 @@ class CircCorralData:
                 plt.savefig(f)
 
             print("saving figure was successful")
-        plt.show()
-        plt.close()
+            plt.show()
         return self.pix_to_nm(self.r_g)
 
-    def get_corral_radius(self, box_size_nm_init, savefig=True):
+    def get_corral_radius(self, box_size_nm_init, savefig=True, showfig=True):
         # box size to fit atom positions
         box_size_nm = box_size_nm_init
         box_size_pix = int(self.nm_to_pix(box_size_nm))
@@ -698,7 +699,8 @@ class CircCorralData:
         if self.im.shape[0] != self.im.shape[1]:
             print("adding zeros back since nx != ny in image pixels")
             self.im = np.concatenate((self.im, np.zeros((self.im.shape[1] - self.im.shape[0], self.im.shape[1]))))
-        self.compare_fits(savefig=savefig)
+        if showfig:
+            self.compare_fits(savefig=savefig)
         return self.pix_to_nm(self.r_g)
 
     # TODO: write function to get average radius from all lines
