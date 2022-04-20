@@ -7,6 +7,7 @@ from collections import namedtuple
 from AaltoAtoms import CircCorralData, Spec, analyze_data, plot_Ag_Co_corrals, fit_and_plot_functional_curve
 import AaltoAtoms
 from AaltoAtoms.Kondo_data_analysis.analyze_data import basepath
+from multiprocessing import Pool
 
 fields =  ['datfile', 'height_percentile','vertfile','marker1','marker2', "dataclipmin", "dataclipmax", "fit_order", "edge_cutoff", "chan"]
 corralspectrum = namedtuple('corralspectrum', fields, defaults=(None,)*len(fields))
@@ -28,6 +29,7 @@ Co_Ag_corrals = [
     corralspectrum("04-11 Ag Co\A220411.222442.dat", 99, "04-11 Ag Co\A220411.222845.L0016.VERT", -20, 15, -20, 22, 3),
     corralspectrum("04-11 Ag Co\A220411.233446.dat", 99, "04-11 Ag Co\A220411.233625.VERT", -15, 19, -20, 22, 3),
     corralspectrum("04-11 Ag Co\A220411.233446.dat", 99, "04-11 Ag Co\A220411.233844.L0015.VERT", -15, 14, -20, 22, 3),
+    corralspectrum("04-06 6nm Ag walls\A220407.155505.dat", 99, "04-06 6nm Ag walls\A220407.160008.L0071.VERT", -5, 20)
 ]
 
 Co_Co_corrals = [
@@ -56,21 +58,21 @@ Co_Co_corrals = [
     corralspectrum("04-15 Co-Co\A220415.180247.dat", 99, "04-15 Co-Co\A220415.180404.VERT", 0, 12, None, None, None, None, 0), # 8.3 nm
     corralspectrum("04-14 Co Co\A220414.194555.dat", 99, "04-14 Co Co\A220414.195507.VERT", -2, 25, -5, 30, 3, None, 0), #
     corralspectrum("04-14 Co Co\A220414.201501.dat", 98, "04-14 Co Co\A220414.201655.VERT", -2, 11, -5, 20, 3, None, 0), #
-    corralspectrum("04-14 Co Co\A220414.202552.dat", 97, "04-14 Co Co\A220414.202911.VERT", -55, 20,  None, None, None, None, 0), #
+    corralspectrum("04-14 Co Co\A220414.202552.dat", 97, "04-14 Co Co\A220414.202911.VERT", -20, 60,  -45, 60, 3, None, 0), #
     corralspectrum("04-14 Co Co\A220414.204203.dat", 99, "04-14 Co Co\A220414.204346.VERT", -10, 30, -40, 70, None, None, 0), #
     corralspectrum("04-14 Co Co\A220414.205921.dat", 99, "04-14 Co Co\A220414.210247.VERT", 0, 13, -10, 60, 1, None, 0), #
     corralspectrum("04-14 Co Co\A220414.212955.dat", 99, "04-14 Co Co\A220414.213310.VERT", -8, 25, None, None, None, None, 0) , #
     corralspectrum("04-17 Co Co\position dependence experiment\A220417.213810.dat", 99, "04-17 Co Co\position dependence experiment\A220417.214221.VERT", -18, 40, -25, 60, 3, None, 0)  #
     ]
 
-c = Co_Ag_corrals[0]
+c = Co_Co_corrals[-5]
 
 S = Spec(os.path.join(basepath, c.vertfile))
-S.clip_data(-20,60)
+S.clip_data(-45,60)
 S.remove_background(3)
-r = S.fit_fano(marker1=-5, marker2=40, type_fit="default")
+r = S.fit_fano(marker1=-20, marker2=60, type_fit="default")
 
-C = CircCorralData(os.path.join(basepath, c.datfile), c.datfile, chan=0)
+C = CircCorralData(os.path.join(basepath, c.datfile), c.datfile)
 C.occupied = True
 C.corral = True
 C.subtract_plane()
@@ -83,21 +85,42 @@ for c in Co_Co_data:
     plt.plot(c[3], c[2]/c[2][0]+c[0])
 plt.show()
 
+# with Pool() as P:
+#     ret = P.starmap(analyze_data, Co_Ag_corrals)
 Co_Co_data = np.array(analyze_data(Co_Co_corrals))
 Co_Ag_data = np.array(analyze_data(Co_Ag_corrals))
 
 
 plt.figure(figsize=(9,6))
 d = plot_Ag_Co_corrals(dist_cutoff_nm=0.1)
-plt.scatter( d.radius, d.w, c='blue')
-
+all_Co_Ag_data = np.concatenate([Co_Ag_data[:,0:2].T, np.array([d.radius, d.w])], axis=-1)
 plt.scatter(*Co_Co_data[:,0:2].T, c='orange')
-plt.scatter(*Co_Ag_data[:,0:2].T, c='blue')
+plt.scatter(*all_Co_Ag_data, c='blue')
 
+bounds = {
+    'Js': (0,1),
+    'Jd': (0,1),
+    'd1': (-np.pi, np.pi),
+    'd2': (-np.pi, np.pi),
+    'alpha': (0, 2),
+    'A': (0, 20),
+    'k': (0,2)
+}
 
-all_Co_Ag_data = []
+p0 = {
+    'Js': 0.53,
+    'Jd': 0.21,
+    'd1': -0.27,
+    'd2': -0.24,
+    'alpha': 0.88,
+    'A': 3.2,
+    'k': 0.83
+}
 
-fit_and_plot_functional_curve(*Co_Ag_data[:,0:2].T)
+p0 = [p0[l] for l in list(p0.keys())]
+bounds = np.array([bounds[b] for b in list(bounds.keys())]).T
+
+fit_and_plot_functional_curve(*all_Co_Ag_data, bounds=bounds, p0=p0)
 fit_and_plot_functional_curve(*Co_Co_data[:,0:2].T)
 
 
@@ -114,12 +137,6 @@ C.corral = True
 C.subtract_plane()
 C.get_region_centroids(percentile=98, edge_cutoff=0.01)
 radius = C.get_corral_radius(1.5, savefig=False)
-
-
-
-
-
-
 
 plt.figure(figsize=(12,6))
 for c in Co_Ag_data:
