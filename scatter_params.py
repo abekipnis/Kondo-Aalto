@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import optimize
 from collections import namedtuple
+import matplotlib
 from AaltoAtoms import CircCorralData, Spec, analyze_data, plot_Ag_Co_corrals, fit_and_plot_functional_curve
 import AaltoAtoms
 from AaltoAtoms.Kondo_data_analysis.analyze_data import basepath
@@ -79,7 +80,6 @@ C.subtract_plane()
 C.get_region_centroids(percentile=98, edge_cutoff=0.01)
 radius = C.get_corral_radius(1.5, savefig=False)
 
-
 plt.figure(figsize=(12,6))
 for c in Co_Co_data:
     plt.plot(c[3], c[2]/c[2][0]+c[0])
@@ -94,8 +94,14 @@ Co_Ag_data = np.array(analyze_data(Co_Ag_corrals))
 plt.figure(figsize=(9,6))
 d = plot_Ag_Co_corrals(dist_cutoff_nm=0.1)
 all_Co_Ag_data = np.concatenate([Co_Ag_data[:,0:2].T, np.array([d.radius, d.w])], axis=-1)
-plt.scatter(*Co_Co_data[:,0:2].T, c='orange')
-plt.scatter(*all_Co_Ag_data, c='blue')
+plt.scatter(*Co_Co_data[:,0:2].T, c='orange', label="Co walls")
+plt.scatter(*all_Co_Ag_data, c='blue', label="Ag walls")
+plt.xlabel("Corral radius (nm)")
+plt.ylabel("Kondo resonance width (w=FWHM) (mV)")
+plt.legend()
+plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\w_radius_dependence.png")
+plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\w_radius_dependence.pdf")
+plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\w_radius_dependence.svg")
 
 bounds = {
     'Js': (0,1),
@@ -139,11 +145,55 @@ C.get_region_centroids(percentile=98, edge_cutoff=0.01)
 radius = C.get_corral_radius(1.5, savefig=False)
 
 plt.figure(figsize=(12,6))
-for c in Co_Ag_data:
-    plt.plot(c[3], c[2]/c[2][-1]+c[0])
+Co_Co_data = list(sorted(Co_Co_data, key=lambda x: -x[0]))
+colors = plt.cm.copper(np.linspace(0, 1, len(Co_Co_data)))
+norm_mv = 7.5
 
+def is_standard(c):
+    t1 = int(c[4].biasVoltage) == 80
+    t2 = int(c[4].FBLogiset) == 1000
+    #t3 = int(np.round(c[4].bias_mv[0])) == 80
+    return (t1 and t2)
+
+Co_Co_data[0][4].__dict__.keys()
+def show_waterfall(Co_Co_data):
+    plt.figure(figsize=(8,8))
+    matplotlib.rcParams.update({'font.size': 22})
+    counter = 0
+
+    for n,c in enumerate(Co_Co_data):
+        if is_standard(c):
+            if n !=23 and n!=19 and n!=15 and n!=16 and n!=12:
+                norm = c[2][np.argmin(np.abs(norm_mv-c[4].bias_mv))]
+                plt.plot(c[3], c[2]/norm+c[0], color=colors[n], linewidth=5)
+                #plt.text(c[3][0], c[2][0]/norm+c[0], n)
+
+                if counter==0:
+                    plt.text(50,  c[2][0]/norm+c[0] + 0.2, "%1.1lf nm" %(c[0]))
+                if counter==2:
+                    plt.text(50,  c[2][0]/norm+c[0] - 0.6, "%1.1lf nm" %(c[0]))
+                if counter==3:
+                    plt.text(50,  c[2][0]/norm+c[0] + 0.4, "%1.1lf nm" %(c[0]))
+                if counter==6:
+                    plt.text(50,  c[2][0]/norm+c[0] + 0.2, "%1.1lf nm" %(c[0]))
+                if counter==8:
+                    plt.text(50,  c[2][0]/norm+c[0] - 0.25, "%1.1lf nm" %(c[0]))
+
+                counter += 1
+
+
+    plt.yticks([])
+    plt.xlim(-80, 80)
+    plt.xlabel("Bias (mV)")
+    plt.ylabel(r"$dI/dV$ (a.u.)")
+    plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Co-spectrum-waterfall.pdf")
+    plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Co-spectrum-waterfall.png")
+    plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Co-spectrum-waterfall.svg")
+
+show_waterfall(Co_Co_data)
 #plt.xlim(-20,20)
 
+[[c[0], c[-1].file] for c in Co_Ag_data]
 
 
 # plt.ylim(0,30)

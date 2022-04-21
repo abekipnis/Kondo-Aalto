@@ -7,6 +7,66 @@ from .Kondo_data_analysis.read_vertfile import Spec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.interpolate import interp1d
 
+from AaltoAtoms.find_atom_positions import CircCorralData
+from AaltoAtoms.Kondo_data_analysis.read_vertfile import Spec
+
+def create_waterfall():
+    dir = r"Y:\labdata\Createc\STMDATA\Ag(111)\2022-03 Co Kondo corrals\04-11 Ag Co"
+    wfall = {"A220411.133438.dat": "A220411.134351.L0013.VERT",
+    "A220411.141241.dat": "A220411.141923.L0017.VERT",
+    "A220411.145437.dat": "A220411.145852.VERT",
+    "A220411.153007.dat": "A220411.153513.VERT",
+    "A220411.161126.dat": "A220411.161806.L0017.VERT",
+    "A220411.165133.dat": "A220411.165336.VERT",
+    "A220411.173719.dat": "A220411.174011.VERT",
+    "A220411.183528.dat": "A220411.183838.VERT",
+    "A220411.193017.dat": "A220411.193232.VERT",
+    "A220411.200858.dat": "A220411.201104.VERT",
+    "A220411.204552.dat": "A220411.204741.VERT",
+    "A220411.215004.dat": "A220411.215940.L0016.VERT",
+    #"A220411.222442.dat": "A220411.222845.L0017.VERT",
+    #"A220411.233446.dat": "A220411.233625.VERT",
+    "A220412.010237.dat": "A220412.010418.VERT"}
+    cache = []
+    for n, dat in enumerate(list(wfall.keys())):
+        C = CircCorralData(os.path.join(dir, dat),"")
+        C.occupied = True
+        C.corral = True
+        C.subtract_plane()
+        C.get_region_centroids(percentile=99)
+        radius = C.get_corral_radius(1.5, savefig=False, showfig=False)
+
+        S = Spec(os.path.join(dir,wfall[dat]))
+        norm_val = S.dIdV[0]
+        norm_val = S.dIdV[np.argmin(np.abs(7.5-S.bias_mv))]
+
+        #print(wfall[dat])
+        #plt.plot(S.dIdV); plt.show()
+
+        cache.append([S.bias_mv, S.dIdV/norm_val + len(wfall.keys())-n, colors[n], radius])
+    return cache
+
+
+#help(plt.cm)
+def show_waterfall(cache):
+    plt.figure(figsize=(8,8))
+    colors = plt.cm.copper(np.linspace(0, 1, len(cache)))
+    for n, c in enumerate(cache):
+        plt.plot(c[0], c[1], color=colors[n], linewidth=5)
+
+    plt.text(47, cache[0][1][0] + 0.2,"%1.1lf nm" %(np.round(cache[0][3],1))) # 11 nm
+    plt.text(47, cache[len(cache)//2][1][0] - 0.6,"%1.1lf nm" %(np.round(cache[len(cache)//2][3],1)))
+    plt.text(47, cache[-1][1][0] - 0.9,"%1.1lf nm" %(np.round(cache[-1][3],1))) # 3.6 nm
+    plt.xlim(-80,80)
+    plt.yticks([])
+    plt.xlabel("Bias (mV)")
+    plt.ylabel(r"$dI/dV$ (a.u.)")
+    plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-spectrum-waterfall.pdf")
+    plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-spectrum-waterfall.png")
+    plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-spectrum-waterfall.svg")
+
+    plt.show()
+
 def show_line_spectrum(datfile, line_directory, spectrum_timestamp, biasmin, biasmax):
     p = line_directory
     imf = datfile
@@ -123,3 +183,9 @@ def show_line_spectrum(datfile, line_directory, spectrum_timestamp, biasmin, bia
     file_name = os.path.basename(imf).strip('.dat') + '_line_spectrum_%s.png' %(spectrum_timestamp)
     plt.savefig(os.path.join(os.path.dirname(imf), file_name))
     plt.show()
+
+if __name__=="__main__":
+
+    cache = create_waterfall()
+    matplotlib.rcParams.update({'font.size': 22})
+    show_waterfall(cache)

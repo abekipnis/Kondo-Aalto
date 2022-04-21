@@ -65,7 +65,7 @@ def show_atom_position_dependence(dir):
         C.occupied = True
         C.get_corral_radius(1, savefig=False, showfig=False)
 
-        xlocs= [S.XPos_nm ]
+        xlocs = [S.XPos_nm]
         ylocs = [S.YPos_nm]
 
         x_pix = C.nm_to_pix(np.array(xlocs)-image.offset[0]/10.+x_nm/2)
@@ -89,5 +89,9 @@ def show_atom_position_dependence(dir):
     return specs
 
 specs = show_atom_position_dependence(dir)
-
+biasmin = min(specs[0][0].bias_mv)
+biasmax = max(specs[0][0].bias_mv)
+plt.imshow([s[0].dIdV/s[0].dIdV[np.argmin(abs(0-s[0].bias_mv))] for s in specs],
+            extent=[biasmin, biasmax,0,max(np.array(specs)[:,1])],
+            aspect="auto",)
 plt.scatter(np.array(specs)[:,1], np.array(specs)[:,2])
