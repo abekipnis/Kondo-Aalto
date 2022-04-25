@@ -18,7 +18,7 @@ import os, pdb, traceback, pathlib, inspect, sys, time, re
 from itertools import product
 import createc
 from cmath import sqrt
-from ..utilities.decorators import timed_log, timing, bcolors
+from ..utils.decorators import timed_log, timing, bcolors
 # font = {'family' : 'normal',
 #         'weight' : 'normal',
 #         'size'   : 14}
