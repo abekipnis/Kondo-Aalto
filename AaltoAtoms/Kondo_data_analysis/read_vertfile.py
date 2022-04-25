@@ -14,23 +14,19 @@ from scipy import optimize
 import scipy.signal
 from scipy.interpolate import interp1d
 
-import os
-import pdb
-import traceback
-import pathlib
-import inspect
-import sys
-import time
+import os, pdb, traceback, pathlib, inspect, sys, time, re
 from itertools import product
-import re
 import createc
 from cmath import sqrt
-# import matplotlib
+from ..utilities.decorators import timed_log, timing, bcolors
 # font = {'family' : 'normal',
 #         'weight' : 'normal',
 #         'size'   : 14}
-# import matplotlib
 # matplotlib.rc('font', **font)
+
+def gaussian(x, mu, sig):
+    return 1./(np.sqrt(2.*np.pi)*sig)*np.exp(-np.power((x - mu)/sig, 2.)/2)
+
 
 kb = 8.617333262145e-5 #eV/K
 
@@ -54,8 +50,11 @@ class LoadTimeMeta(type):
         namespace["__class_load_time__"] = time.perf_counter() - LoadTimeMeta.base_time
         return super().__new__(mcs, name, bases, namespace)
 
+
 class Spec(metaclass=LoadTimeMeta):
     def __init__(self, fname):
+        """
+        """
         self.fname = fname
         f = open(fname,"rb")
         d = f.readlines()
@@ -68,63 +67,62 @@ class Spec(metaclass=LoadTimeMeta):
 
         #getting the "mystery line" with some data on it
         # only compatible with STM Version 4 or greater (?)
-        n = [n for n,b in enumerate(self.a) if "b'DATA\\r\\n'" in b][0] + 1
-        l = self.a[n][0].split(" ")
-        l.remove("b'")
-        l = [m for m in l if m != '']
-        l[-1] = l[-1].strip("\\r\\n\'")
-        l = [float(m) for m in l]
-
-        self.NPoints = l[0]
-        self.VertPosX_DAC = l[1]
-        self.VertPosY_DAC = l[2]
-        self.ChannelList = l[3]
-        self.Channelcount = l[4]
-        self.OutchannelList = l[5]
-        self.OutChannelCount = l[6]
-        self.XPos_nm = l[7]
-        self.YPos_nm = l[8]
-        self.data = self.a[data_idx+2:]
-        self.T_ADC2 = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'T_ADC2[K]"][0].strip("\\r\\n'"))
-        self.T_ADC3 = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'T_ADC3[K]"][0].strip("\\r\\n'"))
-
-        # auxadc6 is STM head temperature, auxadc7 is cryostat LHe temp
-        self.T_AUXADC6 = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'T_AUXADC6[K]"][0].strip("\\r\\n'"))
-        self.T_AUXADC7 = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'T_AUXADC7[K]"][0].strip("\\r\\n'"))
-
-        self.LockinAmpl = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'LockinAmpl"][0].strip("\\r\\n'"))
-        self.LockinFreq = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'LockinFreq"][0].strip("\\r\\n'"))
-        self.FBLogiset = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'FBLogIset"][0].strip("\\r\\n'")) # units: pA
-        # print([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'BiasVoltage / BiasVolt.[mV]"])
         try:
-            self.biasVoltage = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'BiasVoltage / BiasVolt.[mV]"][0].strip("\\r\\n'").replace(",",'.')) # mV
-        except:
-            pdb.set_trace()
-        try:
-            self.bias_mv = np.array([float(d[1].replace(",",".")) for d in self.data][19:])
-        except:
-            pdb.set_trace()
+            n = [n for n,b in enumerate(self.a) if "b'DATA\\r\\n'" in b][0] + 1
+            l = self.a[n][0].split(" ")
+            l.remove("b'")
+            l = [m for m in l if m != '']
+            l[-1] = l[-1].strip("\\r\\n\'")
+            l = [float(m) for m in l]
+
+            self.NPoints = l[0]
+            self.VertPosX_DAC = l[1]
+            self.VertPosY_DAC = l[2]
+            self.ChannelList = l[3]
+            self.Channelcount = l[4]
+            self.OutchannelList = l[5]
+            self.OutChannelCount = l[6]
+            self.XPos_nm = l[7]
+            self.YPos_nm = l[8]
+            self.data = self.a[data_idx+2:]
+            self.T_ADC2 = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'T_ADC2[K]"][0].strip("\\r\\n'"))
+            self.T_ADC3 = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'T_ADC3[K]"][0].strip("\\r\\n'"))
+
+            # auxadc6 is STM head temperature, auxadc7 is cryostat LHe temp
+            self.T_AUXADC6 = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'T_AUXADC6[K]"][0].strip("\\r\\n'"))
+            self.T_AUXADC7 = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'T_AUXADC7[K]"][0].strip("\\r\\n'"))
+
+            self.LockinAmpl = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'LockinAmpl"][0].strip("\\r\\n'"))
+            self.LockinFreq = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'LockinFreq"][0].strip("\\r\\n'"))
+            self.FBLogiset = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'FBLogIset"][0].strip("\\r\\n'")) # units: pA
+            # print([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'BiasVoltage / BiasVolt.[mV]"])
+            try:
+                self.biasVoltage = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'BiasVoltage / BiasVolt.[mV]"][0].strip("\\r\\n'").replace(",",'.')) # mV
+            except:
+                pdb.set_trace()
+            try:
+                self.bias_mv = np.array([float(d[1].replace(",",".")) for d in self.data][19:])
+            except:
+                pdb.set_trace()
         # try:
         #     self.current = np.array([float(d[4].replace(",",".")) for d in self.data][19:])
         # except:
-        self.current = np.array([float(d[4].replace(",",".")) for d in self.data][19:])
-        self.dIdV = np.array([float(d[5].replace(",",".")) for d in self.data][19:])
-
+            self.current = np.array([float(d[4].replace(",",".")) for d in self.data][19:])
+            self.dIdV = np.array([float(d[5].replace(",",".")) for d in self.data][19:])
+        except:
+            print(self.log("could not get data!"))
         try:
             self.bias_offset = interp1d(self.current, self.bias_mv)(0)
             self.bias_mv -= self.bias_offset
         except ValueError as ve:
-            print("could not calculate bias offset")
+            print(self.log("could not calculate bias offset"))
         #correcting the bias offset
 
 
+    @timing
     def get_corral_radius(self):
         rdf = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/circle fit plots/circle_fits.txt"
         radii_data = np.loadtxt(rdf, delimiter=",", dtype=object, converters={1: float})
-
-        # pdb.set_trace()
-
-        # specs = [Spec(os.path.join(dpath,f)) for f in files]
 
         #cff = correctly formatted files
         cff = [str(pathlib.PureWindowsPath(r[0])) for r in radii_data]
@@ -132,16 +130,18 @@ class Spec(metaclass=LoadTimeMeta):
         if have_radius:
             idx = cff.index(self.fname)
             datfile = radii_data[idx][0]
-            # datimg = createc.DAT_IMG(os.path.join(dpath,datfile))
+
             radius = radii_data[idx][1]
             center_x = float(radii_data[idx][2])
             center_y = float(radii_data[idx][3])
-            # plot_line(datimg, specs, [center_x,center_y])
         else:
             pdb.set_trace()
             radius = np.nan
 
+
     def clip_data(self, min_mv=-np.inf, max_mv=np.inf):
+        """
+        """
         if min_mv is None:
             min_mv=-np.inf
         if max_mv is None:
@@ -152,146 +152,178 @@ class Spec(metaclass=LoadTimeMeta):
         self.bias_mv = self.bias_mv[in_range]
         self.dIdV = self.dIdV[in_range]
 
-    def remove_background(self, degree=3):
+    @timing
+    def remove_background(self, degree=3, weights=None):
+        """
+        """
         if degree is None:
             return
-        fit = np.polyfit(self.bias_mv, self.dIdV, deg=degree)
+
+        weights = np.ones(len(self.bias_mv))
+        weights -= gaussian(self.bias_mv, 7.5, 1)
+        fit = np.polyfit(self.bias_mv, self.dIdV, deg=degree, w=weights)
         eval = np.polyval(fit, self.bias_mv)
         self.dIdV = self.dIdV - eval
 
-    def fit_fano(self, marker1: float = 0, marker2: float = 0,
-                 savefig: bool = True, showfig: bool = True, e0_fixed_val = np.nan, w = np.nan, type_fit: str = "default", init_vals=None, actual_radius=None, dist_to_Co=None) -> list:
-        # app.update()
+    @timed_log
+    def log(self, message: str) -> str:
+        return self.fname + '...' + message
+
+    @timing
+    def fit_fano(self, marker1: float = 0,
+                 marker2: float = 0,
+                 savefig: bool = True,
+                 showfig: bool = True,
+                 e0_fixed_val: float = np.nan,
+                 q_fixed_val: float = np.nan,
+                 w: float = np.nan,
+                 type_fit: str = "default",
+                 init_vals: list = None,
+                 actual_radius: float =None,
+                 dist_to_Co: float =None) -> list:
+        """
+        """
 
         # TODO: implement a 'quit' function i.e. if we want to stop in the middle
-        if marker1==0 and marker2==0: # then create / get new markers
-            fig, ax = plt.subplots()
-            line = plt.plot(self.bias_mv, self.dIdV)
-            lines = [line]
-            markers = []
-            for n, l in enumerate(lines):
-                c = "black" #l[0].get_color()
-                # initialize markers at the following two locations
-                for b in [-20, 20]:
-                    mini = np.argmin(np.abs(np.array(self.bias_mv)-b))
-                    ix = l[0].get_xdata()[mini]
-                    iy = l[0].get_ydata()[mini]
-                    d = DraggableMarker(ax=ax, lines=l,
-                                        initx=ix, inity=iy, color=c,
-                                        marker=">", dir=dir)
-                    markers.append(d)
-            plt.title(os.path.split(self.fname)[-1])
-            if showfig:
-                plt.show()
+        if showfig:
 
-            marker_vals = sorted([m.marker[0].get_xydata()[0] for m in markers],
-                                 key=lambda x: x[0])
-            marker1 = marker_vals[0][0]
-            marker2 = marker_vals[1][0]
+            if marker1==0 and marker2==0: # then create / get new markers
+                # for click-and-drag interactive marker setting of fit bounds
+                # code needs to be run on command line
+                fig, ax = plt.subplots()
+                line = plt.plot(self.bias_mv, self.dIdV)
+                lines = [line]
+                markers = []
+                for n, l in enumerate(lines):
+                    c = "black" #l[0].get_color()
+                    # initialize markers at the following two locations
+                    for b in [-20, 20]:
+                        mini = np.argmin(np.abs(np.array(self.bias_mv)-b))
+                        ix = l[0].get_xdata()[mini]
+                        iy = l[0].get_ydata()[mini]
+                        d = DraggableMarker(ax=ax, lines=l,
+                                            initx=ix, inity=iy, color=c,
+                                            marker=">", dir=dir)
+                        markers.append(d)
+                plt.title(os.path.split(self.fname)[-1])
+                if showfig:
+                    plt.show()
+
+                marker_vals = sorted([m.marker[0].get_xydata()[0] for m in markers],
+                                     key=lambda x: x[0])
+                marker1 = marker_vals[0][0]
+                marker2 = marker_vals[1][0]
 
         # e0, w, q, a, b, c
-        fixed_vals = [e0_fixed_val, np.nan, np.nan, np.nan, np.nan, np.nan]
+        # some fitting calls for fixing the fit parameters at certain values
+        fixed_vals = [e0_fixed_val, np.nan, q_fixed_val, np.nan, np.nan, np.nan]
         if type_fit == 'default':
             popt, pcov, sb, fit_dIdV, p0 = fit_data_fixed_vals(self.bias_mv, self.dIdV, marker1, marker2, fixed_vals)
+            print(self.log("successfully fit fano resonance"))
         elif type_fit == 'wtimes': #using the width*residual as thing to minimize
             popt, pcov, sb, fit_dIdV, p0 = fit_data_w_times_residual(self.bias_mv, self.dIdV, marker1,marker2, fixed_vals, init_vals=init_vals)
-        try:
-            fig = figure(figsize=(8.5,6.6)) #width, height (inches)
-            a1 = plt.subplot(2,1,1)
-            trans = plt.gcf().transFigure
-            # pdb.set_trace()
-            # if len(pcov.shape)<=1 and np.any(np.isnan(pcov)):
-            #     pcov = np.eye(pcov.shape[0])*np.zeros(pcov.shape[0])
-            # c = tuple(np.array(list(zip(popt, pcov.diagonal()))).flatten())
-            # c = tuple(np.array(list(zip(popt, np.zeros(len(popt))))).flatten())
-            c = popt
-            if dist_to_Co == None:
-                dist_to_Co=0
-            if actual_radius==None:
-                actual_radius=0
-            c = list(tuple([marker1]+[marker2]+
-                        [self.biasVoltage]+
-                        [self.FBLogiset/1000.0]+
-                        [self.bias_offset] + list(c)+p0+[actual_radius]+[dist_to_Co]))
-            c.insert(7, c[6]*1e-3/kb)
-            c = tuple(c)
-            plt.text(0.05, 0.1, "Fit Range:\n     min: %1.2lf mV\n"
-                                "     max: %1.2lf mV\n\n"
-                                "Spectrum acq. params:\n"
-                                "     Bias: %1.0lf mV\n"
-                                "     Current setpoint: %1.0lf nA\n"
-                                "     Bias offset: %1.3lf mV\n\n"
-                                "Fit equation:\n"
-                                r"    $\frac{dI}{dV}\sim a(\frac{(q+\epsilon)^2}{1+\epsilon^2}) + bV + c$" "\n"
-                                r"     $\epsilon = \frac{V-\epsilon_0}{w}$" "\n"
-                                r"    $w=2\gamma$, $\gamma=$HWHM" "\n\n"
-                                "Fit parameters:\n"
-                                r"    $\epsilon_0$" ': %1.2lf ' r"$mV$" '\n'#$\pm$%1.2lf mV\n'
-                                '    w: %1.2lf $mV$, '#\pm$%1.2lf mV, '
-                                r"$T_K=$" '%1.2lf $K$\n'
-                                '    q: %1.2lf\n'#$\pm$%1.2lf\n'
-                                '    a: %1.2lf\n'#$\pm$%1.2lf\n'
-                                '    b: %1.2lf\n'#$\pm$%1.2lf\n'
-                                '    c: %1.2lf\n\n'#$\pm$%1.2lf\n\n'
-                                r"Fit initial guess ($\epsilon_0$,w,q,a,b,c)" "\n"
-                                "     %1.2lf, %1.2lf, %1.2lf\n     %1.2lf, %1.2lf, %1.2lf\n\n"
-                                "Corral radius: %1.3lf nm\n"
-                                "Distance to Co: %1.3lf nm\n"
-                                %(c),
-                                transform=trans)
-            a1.plot(self.bias_mv, self.dIdV)
-            a1.plot(sb, fit_dIdV, "b-")
-            a1.set_ylim(min(self.dIdV), max(self.dIdV))
-            f = fano(sb, *popt)
-            # f = fix_T(T)(sb, *popt)
-            # plt.plot(bias, fix_T(T)(bias, *popt), "black")
 
-            a1.plot(self.bias_mv, fano(self.bias_mv, *popt), 'r--')
-            a1.plot(self.bias_mv, fano(self.bias_mv, *popt)-popt[4]*self.bias_mv,"m--")#-0.2*(min(self.dIdV)-popt[4]),"m--")
-            # plt.plot(sb, fano(sb, *popt1),'go', markersize=2)
+        # evaluate fano function in the given bias range using parameters
+        f = fano(sb, *popt)
 
-            residY, residtot = residual(fit_dIdV, f) #NORMALIZE THIS BY # OF FIT POINTS
+        residY, residtot = residual(fit_dIdV, f) #NORMALIZE THIS BY # OF FIT POINTS
 
-            plt.subplots_adjust(left=0.4)
-            a1.set_xlabel(r"Bias ($mV$)")
-            a1.set_ylabel(r"$dI/dV$ (a.u.)")
-
-            t1 = os.path.split(self.fname.split(dpath)[-1])
-            t = t1[-1]
-            a1.set_title("\n".join(list(t1)))
-            a1.legend(["data",r'fit data',"model","model - linear background"])
-            a1.axvline(marker1, color="b")
-            a1.axvline(marker2, color="b")
-            # if savefig:
-            #     plt.savefig(file.split(".VERT")[0]+"%s_fano_fit.png" %(t))
-            # if showfig:
-            #     plt.show()
-            a2 = plt.subplot(2, 2, 3)
-            a2.plot(sb, residY)
-            a2.set_xlabel(r"Bias ($mV$)")
-            a2.legend(["Fit residuals"])
-            a2.set_ylabel(r"$dI/dV$")
-
-            a3 = plt.subplot(2,2,4)
+        if showfig:
             try:
-                a3.hist(residY)
-                a3.set_xlabel("Residual histogram")
-                a3.yaxis.tick_right()
-                a3.set_ylabel("Counts")
-                a3.set_xlabel(r"$dI/dV$")
-                a3.legend(["Residual histogram"])
-                a3.set_xlim(min(residY),max(residY))
-                a3.yaxis.set_label_position("right")
-
-            except ValueError as e:
-                print(e)
-                print("could not plot histogram of residuals ! ! !")
-                print("something wrong with fit bounds probably")
-
-
-            # plt.tight_layout()
-            if savefig:
+                fig = figure(figsize=(8.5,6.6)) #width, height (inches)
+                a1 = plt.subplot(2,1,1)
+                trans = plt.gcf().transFigure
                 # pdb.set_trace()
+                # if len(pcov.shape)<=1 and np.any(np.isnan(pcov)):
+                #     pcov = np.eye(pcov.shape[0])*np.zeros(pcov.shape[0])
+                # c = tuple(np.array(list(zip(popt, pcov.diagonal()))).flatten())
+                # c = tuple(np.array(list(zip(popt, np.zeros(len(popt))))).flatten())
+                c = popt
+                if dist_to_Co == None:
+                    dist_to_Co=0
+                if actual_radius==None:
+                    actual_radius=0
+                c = list(tuple([marker1]+[marker2]+
+                            [self.biasVoltage]+
+                            [self.FBLogiset/1000.0]+
+                            [self.bias_offset] + list(c)+p0+[actual_radius]+[dist_to_Co]))
+                c.insert(7, c[6]*1e-3/kb)
+                c = tuple(c)
+                plt.text(0.05, 0.1, "Fit Range:\n     min: %1.2lf mV\n"
+                                    "     max: %1.2lf mV\n\n"
+                                    "Spectrum acq. params:\n"
+                                    "     Bias: %1.0lf mV\n"
+                                    "     Current setpoint: %1.0lf nA\n"
+                                    "     Bias offset: %1.3lf mV\n\n"
+                                    "Fit equation:\n"
+                                    r"    $\frac{dI}{dV}\sim a(\frac{(q+\epsilon)^2}{1+\epsilon^2}) + bV + c$" "\n"
+                                    r"     $\epsilon = \frac{V-\epsilon_0}{w}$" "\n"
+                                    r"    $w=2\gamma$, $\gamma=$HWHM" "\n\n"
+                                    "Fit parameters:\n"
+                                    r"    $\epsilon_0$" ': %1.2lf ' r"$mV$" '\n'#$\pm$%1.2lf mV\n'
+                                    '    w: %1.2lf $mV$, '#\pm$%1.2lf mV, '
+                                    r"$T_K=$" '%1.2lf $K$\n'
+                                    '    q: %1.2lf\n'#$\pm$%1.2lf\n'
+                                    '    a: %1.2lf\n'#$\pm$%1.2lf\n'
+                                    '    b: %1.2lf\n'#$\pm$%1.2lf\n'
+                                    '    c: %1.2lf\n\n'#$\pm$%1.2lf\n\n'
+                                    r"Fit initial guess ($\epsilon_0$,w,q,a,b,c)" "\n"
+                                    "     (%1.2lf, %1.2lf, %1.2lf,\n     %1.2lf, %1.2lf, %1.2lf)\n\n"
+                                    "Corral radius: %1.3lf nm\n"
+                                    "Distance to Co: %1.3lf nm\n"
+                                    %(c),
+                                    transform=trans)
+                a1.plot(self.bias_mv, self.dIdV)
+                a1.plot(sb, fit_dIdV, "b-")
+                a1.set_ylim(min(self.dIdV), max(self.dIdV))
+                # f = fix_T(T)(sb, *popt)
+                # plt.plot(bias, fix_T(T)(bias, *popt), "black")
+
+                a1.plot(self.bias_mv, fano(self.bias_mv, *popt), 'r--')
+                a1.plot(self.bias_mv, fano(self.bias_mv, *popt)-popt[4]*self.bias_mv,"m--")#-0.2*(min(self.dIdV)-popt[4]),"m--")
+                # plt.plot(sb, fano(sb, *popt1),'go', markersize=2)
+
+                plt.subplots_adjust(left=0.4)
+                a1.set_xlabel(r"Bias ($mV$)")
+                a1.set_ylabel(r"$dI/dV$ (a.u.)")
+
+                t1 = os.path.split(self.fname.split(dpath)[-1])
+                t = t1[-1]
+                a1.set_title("\n".join(list(t1)))
+                a1.legend(["data",r'fit data',"model","model - linear background"])
+                a1.axvline(marker1, color="b")
+                a1.axvline(marker2, color="b")
+                # if savefig:
+                #     plt.savefig(file.split(".VERT")[0]+"%s_fano_fit.png" %(t))
+                # if showfig:
+                #     plt.show()
+                a2 = plt.subplot(2, 2, 3)
+                a2.plot(sb, residY)
+                a2.set_xlabel(r"Bias ($mV$)")
+                a2.legend(["Fit residuals"])
+                a2.set_ylabel(r"$dI/dV$")
+
+                a3 = plt.subplot(2,2,4)
+                try:
+                    a3.hist(residY)
+                    a3.set_xlabel("Residual histogram")
+                    a3.yaxis.tick_right()
+                    a3.set_ylabel("Counts")
+                    a3.set_xlabel(r"$dI/dV$")
+                    a3.legend(["Residual histogram"])
+                    a3.set_xlim(min(residY),max(residY))
+                    a3.yaxis.set_label_position("right")
+
+                except ValueError as e:
+                    print(e)
+                    print(self.log("could not plot histogram of residuals ! ! !"))
+                    print(self.log("something wrong with fit bounds probably"))
+            except Exception:
+                self.log(traceback.format_exc())
+                # messagebox.showerror("showerror","could not plot %s" %(self.fname))
+                return [popt, pcov, marker1, marker2, self.XPos_nm, self.YPos_nm, 0]
+
+            if savefig:
                 #fp = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/spatial extent Kondo plots/width comparison"
                 fp = os.path.dirname(self.fname)
                 fig_path = os.path.join(fp,"%s_fit_residual.pdf" %(t.strip(".VERT")))
@@ -299,26 +331,19 @@ class Spec(metaclass=LoadTimeMeta):
 
                 # fig_path = os.path.join(os.path.split(self.fname)[0],"%s_fit_residual.pdf" %(t.strip(".VERT")))
                 plt.savefig(fig_path)
+                print(self.log("saved figure at %s" %(fig_path)))
             if showfig:
                 plt.show()
-
-            # plt.close()
-        except Exception:
-            plt.close()
-            # app.update()
-            print(traceback.format_exc())
-            # messagebox.showerror("showerror","could not plot %s" %(self.fname))
-            return [popt, pcov, marker1, marker2, self.XPos_nm, self.YPos_nm, 0]
         return [popt, pcov, marker1, marker2, self.XPos_nm, self.YPos_nm, residtot]
 
+
+# plot large range spectra
 def plot_lrs():
     fig, (ax1,ax2) = plt.subplots(figsize=(8,8), nrows=2)
     for n,f in enumerate(lrs):
         s = Spec(f)
         # s.get_corral_radius()
-        # print(s.__dict__["fname"])
         p = np.array(s.dIdV)/s.dIdV[np.argmin(np.abs(s.bias_mv-8))]
-        # print(p)
         ax2.plot(s.__dict__["bias_mv"], p)#, label="%1.2lf nm radius" %(radii[n]))
     ax2.set_xlim([-100,100])
     for n, f in enumerate(srs):
@@ -396,7 +421,7 @@ class DraggableMarker():
         mini = np.argmin(np.abs(x-mx))
         return x[mini], y[mini]
 
-def plot_fano_fit_line(f):
+def plot_fano_fit_line(f) -> None:
     d1 = pd.read_csv(f, delimiter="\t", index_col=False)
     try:
         covs = pd.read_csv(f.split(".txt")[0] + "_covs.txt",
@@ -555,11 +580,11 @@ def plot_fano_fit_line(f):
 
     # plt.show()
 
-def fermi_dirac(e, mu, T):
+def fermi_dirac(e: list, mu: float, T: float) -> list:
     dist = 1/(np.exp((np.array(e)-mu)/(kb*T*1e3)) + 1)
     return dist
 
-def fano(V, e0, w, q, a, b, c):
+def fano(V: list, e0: float, w: float, q: float, a: float, b: float, c:float) -> list:
     """
     Parameters
     __________
@@ -657,7 +682,9 @@ def fit_data(bias: np.array, dIdV: np.array, marker1: float, marker2: float):
 def lorentz(e, e0, gamma):
     return 1/np.pi*(gamma/2)/((x-x0)**2+(gamma/2)**2)
 
-def fit_data_fixed_vals(bias, dIdV, marker1, marker2, fixed_vals):
+def fit_data_fixed_vals(bias: list, dIdV: list,
+                        marker1: float, marker2: float,
+                        fixed_vals: list) -> list:
     """
     Parameters
     __________
@@ -682,7 +709,7 @@ def fit_data_fixed_vals(bias, dIdV, marker1, marker2, fixed_vals):
     p0 = [p for n,p in enumerate(p0) if np.isnan(fixed_vals[n]) ]
 
     # bounds for e0, w, q, a, b, c
-    bounds = np.array([ [min(sb),max(sb)],     #none                  # e0
+    bounds = np.array([ [min(sb),max(sb)],                  # e0
                         [0,50],                             # w
                         [-np.inf,np.inf],                   # q
                         [0, max(fit_dIdV)],                 # a
@@ -701,7 +728,7 @@ def fit_data_fixed_vals(bias, dIdV, marker1, marker2, fixed_vals):
                 if i%2==0:
                     wrapperName += 'args['+str(i-sum(hold))+']'
                 else:
-                    wrapperName+='args['+str(i-sum(hold))+']'
+                    wrapperName += 'args['+str(i-sum(hold))+']'
             if i<len(hold):
                 wrapperName+=','
         wrapperName+=')'
@@ -719,7 +746,10 @@ def fit_data_fixed_vals(bias, dIdV, marker1, marker2, fixed_vals):
         n = np.ones((len(p0)))*np.nan
         return n, n, sb, fit_dIdV, p0
 
-def fit_data_w_times_residual(bias, dIdV, marker1, marker2, fixed_vals, init_vals=None, scale=True):
+def fit_data_w_times_residual(bias: list, dIdV: list,
+                              marker1: float, marker2: float,
+                              fixed_vals: list, init_vals: list=None,
+                              scale: bool = True):
     """
     Parameters
     __________
@@ -732,8 +762,8 @@ def fit_data_w_times_residual(bias, dIdV, marker1, marker2, fixed_vals, init_val
     # print(locals().keys())
     # print(locals.get(locals().keys()[0]))
     # print(inspect.getargvalues(inspect.currentframe()))
-
-    smallbias = [(n,b) for (n,b) in enumerate(bias) if b>=marker1 and b<=marker2]
+    in_btw = lambda x, y, z: x >= y and x <= z
+    smallbias = [(n,b) for (n,b) in enumerate(bias) if in_btw(b, marker1,marker2)]
     nsb, sb = np.array(smallbias).T
     fit_dIdV = np.array(dIdV)[[int(n) for n in nsb]]
 
@@ -778,7 +808,7 @@ def fit_data_w_times_residual(bias, dIdV, marker1, marker2, fixed_vals, init_val
 
     def objective_function(p, bias, dIdV):
         #parameters are [e0, w, q, a, b, c] so p[1] is w
-        of = residual(dIdV, wrapper(bias, *p))[1]*abs(p[2])
+        of = residual(dIdV, wrapper(bias, *p))[1]#*abs(p[2])
         return of #residual(data, fit)
 
     try:
