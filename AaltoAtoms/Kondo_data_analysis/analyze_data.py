@@ -8,9 +8,17 @@ import matplotlib.pyplot as plt
 
 basepath = "Y:/labdata/Createc/STMDATA/Ag(111)/2022-03 Co Kondo corrals"
 
-def analyze_data(corrals, showfig=False):
+def analyze_data(corrals: list, showfig: bool=False) -> list:
     data = []
     for n, c in enumerate(corrals):
+        # get the radius from the topography
+        C = CircCorralData(os.path.join(basepath, c.datfile), c.datfile, c.chan)
+        C.occupied = True
+        C.corral = True
+        C.subtract_plane()
+        C.get_region_centroids(percentile=c.height_percentile, edge_cutoff=c.edge_cutoff)
+        radius = C.get_corral_radius(1.5, savefig=False, showfig=False)
+        C.calculate_wall_density()
 
         # get the width from the spectrum
         S = Spec(os.path.join(basepath, c.vertfile))
@@ -19,23 +27,18 @@ def analyze_data(corrals, showfig=False):
         S.clip_data(c.dataclipmin, c.dataclipmax)
         S.remove_background(c.fit_order)
 
-        r = S.fit_fano(marker1=c.marker1, marker2=c.marker2, showfig=showfig)
-        width = r[0][1]
+        r = S.fit_fano(marker1=c.marker1, marker2=c.marker2,
+                       showfig=showfig, actual_radius=radius,type_fit="wtimes")
+        width = r[0][1] #e0, w, q, a, b, c
 
-        # get the radius from the topography
-        C = CircCorralData(os.path.join(basepath, c.datfile), c.datfile, c.chan)
-        C.occupied = True
-        C.corral = True
-        C.subtract_plane()
-        C.get_region_centroids(percentile=c.height_percentile, edge_cutoff=c.edge_cutoff)
-        radius = C.get_corral_radius(1.5, savefig=False, showfig=False)
-
-        print(c.datfile, c.vertfile, radius, width)
+        r_message =  "radius: %1.1lf nm, " %(radius)
+        w_message = "width %1.1lf mV " %(width)
+        print(c.datfile, c.vertfile, r_message, w_message)
 
         data.append([radius, width, dIdV, bias_mv, S, C])
     return data
 
-def get_old_Ag_Co_corrals(dist_cutoff_nm):
+def get_old_Ag_Co_corrals(dist_cutoff_nm: float):
     dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/spatial extent Kondo plots/width comparison"
     dir = r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Kondo corrals fit data"
     Ag_Co_files = os.listdir(dir)

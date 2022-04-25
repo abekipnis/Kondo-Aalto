@@ -36,7 +36,7 @@ Co_Ag_corrals = [
 Co_Co_corrals = [
     corralspectrum("03-28/A220328.182736.dat", 96, "03-28/A220328.183230.L0015.VERT", -30, 30, None, None, None, 0.3), # 2.9 nm
     corralspectrum("03-24/1/A220323.115455.dat", 97, "03-24/1/A220323.115740.VERT", -30, 19),# 3.34 nm
-    corralspectrum("4-12 Co-Co/A220412.231331.dat", 99, "4-12 Co-Co/A220412.231512.VERT", 1, 10, -10,20,3,None), #4.42 nm
+    corralspectrum("4-12 Co-Co/A220412.231331.dat", 99, "4-12 Co-Co/A220412.231512.VERT", 1, 10, -10,20,3, None), #4.42 nm
     corralspectrum("03-26/A220325.102511.dat", 99, "03-26/A220325.102649.VERT", -5,20),# 4.5 nm
     corralspectrum("04-04/A220404.160833.dat", 99, "04-04/A220404.160935.VERT", -10, 15, -20, 45, 3),
     corralspectrum("04-05 6nm Co/A220405.181958.dat", 99, "04-05 6nm Co/A220405.182713.VERT", -10, 20), # 6 nm
@@ -59,26 +59,29 @@ Co_Co_corrals = [
     corralspectrum("04-15 Co-Co\A220415.180247.dat", 99, "04-15 Co-Co\A220415.180404.VERT", 0, 12, None, None, None, None, 0), # 8.3 nm
     corralspectrum("04-14 Co Co\A220414.194555.dat", 99, "04-14 Co Co\A220414.195507.VERT", -2, 25, -5, 30, 3, None, 0), #
     corralspectrum("04-14 Co Co\A220414.201501.dat", 98, "04-14 Co Co\A220414.201655.VERT", -2, 11, -5, 20, 3, None, 0), #
-    corralspectrum("04-14 Co Co\A220414.202552.dat", 97, "04-14 Co Co\A220414.202911.VERT", -20, 60,  -45, 60, 3, None, 0), #
+    corralspectrum("04-14 Co Co\A220414.202552.dat", 97, "04-14 Co Co\A220414.202911.VERT", -2, 60,  -2, 60, 3, None, 0), #
     corralspectrum("04-14 Co Co\A220414.204203.dat", 99, "04-14 Co Co\A220414.204346.VERT", -10, 30, -40, 70, None, None, 0), #
     corralspectrum("04-14 Co Co\A220414.205921.dat", 99, "04-14 Co Co\A220414.210247.VERT", 0, 13, -10, 60, 1, None, 0), #
     corralspectrum("04-14 Co Co\A220414.212955.dat", 99, "04-14 Co Co\A220414.213310.VERT", -8, 25, None, None, None, None, 0) , #
     corralspectrum("04-17 Co Co\position dependence experiment\A220417.213810.dat", 99, "04-17 Co Co\position dependence experiment\A220417.214221.VERT", -18, 40, -25, 60, 3, None, 0)  #
     ]
 
-c = Co_Co_corrals[-5]
+c = Co_Co_corrals[10]
 
 S = Spec(os.path.join(basepath, c.vertfile))
-S.clip_data(-45,60)
+S.clip_data(-80,80)
 S.remove_background(3)
-r = S.fit_fano(marker1=-20, marker2=60, type_fit="default")
+r = S.fit_fano(marker1=-30, marker2=30, type_fit="default", showfig=True, q_fixed_val=np.nan)
+
 
 C = CircCorralData(os.path.join(basepath, c.datfile), c.datfile)
 C.occupied = True
 C.corral = True
 C.subtract_plane()
-C.get_region_centroids(percentile=98, edge_cutoff=0.01)
+C.get_region_centroids(percentile=97, edge_cutoff=0.01)
 radius = C.get_corral_radius(1.5, savefig=False)
+2*np.pi*radius/len(C.centroids)
+plt.imshow(C.im)
 
 def plot_radial_width_dependence():
     plt.figure(figsize=(9,6))
@@ -94,20 +97,20 @@ def plot_radial_width_dependence():
     plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\w_radius_dependence.svg")
     return all_Co_Ag_data
 
-
-c = Co_Ag_corrals[6]
-
-S = Spec(os.path.join(basepath, c.vertfile))
-S.clip_data(-25,50)
-S.remove_background(3)
-r = S.fit_fano(marker1=-12, marker2=35, type_fit="default")
-
-C = CircCorralData(os.path.join(basepath, c.datfile), c.datfile, chan=0)
-C.occupied = True
-C.corral = True
-C.subtract_plane()
-C.get_region_centroids(percentile=98, edge_cutoff=0.01)
-radius = C.get_corral_radius(1.5, savefig=False)
+#
+# c = Co_Ag_corrals[6]
+#
+# S = Spec(os.path.join(basepath, c.vertfile))
+# S.clip_data(-25,50)
+# S.remove_background(3)
+# r = S.fit_fano(marker1=-12, marker2=35, type_fit="default")
+#
+# C = CircCorralData(os.path.join(basepath, c.datfile), c.datfile, chan=0)
+# C.occupied = True
+# C.corral = True
+# C.subtract_plane()
+# C.get_region_centroids(percentile=98, edge_cutoff=0.01)
+# radius = C.get_corral_radius(1.5, savefig=False)
 
 def show_waterfall(Co_Co_data):
 
@@ -119,14 +122,22 @@ def show_waterfall(Co_Co_data):
 
     plt.figure(figsize=(8,8))
     matplotlib.rcParams.update({'font.size': 22})
+
+    # counter for labeling spectra
     counter = 0
+
+    # look at possible color schemes by running help(plt.cm) in interactive python
     colors = plt.cm.copper(np.linspace(0, 1, len(Co_Co_data)))
+
+    # get the value of dIdV at the norm_mv bias
     norm_mv = 7.5
     ns = sum([is_standard(c) for c in Co_Co_data])
 
     for n,c in enumerate(Co_Co_data):
         if is_standard(c):
             if n !=23 and n!=19 and n!=15 and n!=16 and n!=12:
+
+                # get the value of dIdV at the norm_mv bias
                 norm = c[2][np.argmin(np.abs(norm_mv-c[4].bias_mv))]
                 plt.plot(c[3], c[2]/norm+ns-counter, color=colors[n], linewidth=5)
                 #plt.text(c[3][0], c[2][0]/norm+c[0], n)
@@ -143,8 +154,6 @@ def show_waterfall(Co_Co_data):
                     plt.text(50,  c[2][0]/norm+ns-counter - 0.25, "%1.1lf nm" %(c[0]))
 
                 counter += 1
-
-
     plt.yticks([])
     plt.xlim(-80, 80)
     plt.xlabel("Bias (mV)")
@@ -157,15 +166,15 @@ if __name__=="__main__":
     matplotlib.rcParams.update({'font.size': 12})
 
     Co_Co_data = np.array(analyze_data(Co_Co_corrals, showfig=False))
+    Co_Co_data = list(sorted(Co_Co_data, key=lambda x: -x[0]))
     show_waterfall(Co_Co_data)
 
-    Co_Co_data = list(sorted(Co_Co_data, key=lambda x: -x[0]))
     matplotlib.rcParams.update({'font.size': 12})
 
     Co_Ag_data = np.array(analyze_data(Co_Ag_corrals, showfig=False))
     bounds = {
-        'Js': (0,1),
-        'Jd': (0,1),
+        'Js': (0,2),
+        'Jd': (0,2),
         'd1': (-np.pi, np.pi),
         'd2': (-np.pi, np.pi),
         'alpha': (0, 2),
@@ -174,8 +183,8 @@ if __name__=="__main__":
     }
 
     p0 = {
-        'Js': 0.53,
-        'Jd': 0.21,
+        'Js': 0.5,
+        'Jd': 0.1,
         'd1': -0.27,
         'd2': -0.24,
         'alpha': 0.88,
@@ -183,17 +192,19 @@ if __name__=="__main__":
         'k': 0.83
     }
 
+
     p0 = [p0[l] for l in list(p0.keys())]
     bounds = np.array([bounds[b] for b in list(bounds.keys())]).T
     all_Co_Ag_data = plot_radial_width_dependence()
     fit_and_plot_functional_curve(*all_Co_Ag_data, bounds=bounds, p0=p0)
+    plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-w-r-fit.pdf")
+    plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-w-r-fit.png")
+    plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-w-r-fit.svg")
     fit_and_plot_functional_curve(*np.array(Co_Co_data)[:,0:2].T)
 
 #plt.xlim(-20,20)
 
 #[[c[0], c[-1].file] for c in Co_Ag_data]
-
-
 # plt.ylim(0,30)
 # d.to_csv("/Users/akipnis/Desktop/Kondo_width_scatter.txt")
 
@@ -205,6 +216,3 @@ if __name__=="__main__":
 # plt.legend()
 # plt.scatter(d["radius"],d["a"])
 # plt.scatter(d["radius"], d["q"])
-
-#further work is needed. fitted value varies slightly from position to position
-#ideally want 1 point for each corral
