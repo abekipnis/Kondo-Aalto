@@ -1,5 +1,5 @@
 from .read_vertfile import Spec
-from ..find_atom_positions import CircCorral, CircCorralData
+from ..utils.find_atom_positions import CircCorral, CircCorralData
 import pandas as pd
 import numpy as np
 import os

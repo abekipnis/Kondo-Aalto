@@ -1,6 +1,6 @@
 import datetime
 import os
-from ..find_atom_positions import CircCorralData
+from ..utils.find_atom_positions import CircCorralData
 from ..Kondo_data_analysis.read_vertfile import Spec
 from ..scattering.scattering_model import ScatteringModel
 
