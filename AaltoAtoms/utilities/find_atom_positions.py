@@ -45,33 +45,6 @@ c5 = "Ag 2021-08-13 2p5 nm radius/pm 100 mV 2p5 nm radius line spectrum/Createc2
 # image_file = createc.DAT_IMG(dpath + "Ag 2021-08-10 2p5 nm radius/2p5 nm radius pm20mV line spectrum/Createc2_210810.090437.dat")
 
 @dataclass
-class Vector:
-    x: float
-    y: float
-    norm: float
-
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.arr = array([x, y])
-        self.norm = norm(self.arr)
-        self.normed = self.arr / self.norm
-
-    def __sub__(self, other):
-        return Vector(self.x - other.x, self.y - other.y)
-
-    def __add__(self, other):
-        return Vector(self.x + other.x, self.y + other.y)
-
-    def rot(self, th):
-        rmatrix = array([[np.cos(th), -np.sin(th)], [np.sin(th), np.cos(th)]])
-        return Vector(*dot(rmatrix, self.arr))
-
-
-# need to define a class that inherits CircCorralData so we can read from the STM directly, rather than .dat file
-
-
-@dataclass
 class CircCorralData:
     file: str
 
@@ -116,13 +89,16 @@ class CircCorralData:
 
         self.centroids = None
 
+
     def nm_to_pix(self, nm):
         scale = self.ang_ppx_x  # if direction=="x" else self.ang_ppx_y
         return nm / scale * 10
 
+
     def pix_to_nm(self, pix):
         scale = self.ang_ppx_x  # if direction=="x" else self.ang_ppx_y
         return pix * scale / 10
+
 
     def subtract_plane(self):
         """
@@ -143,6 +119,7 @@ class CircCorralData:
         plane = np.reshape(dot(X, theta), (self.xPix, self.yPix))
         self.im -= plane
         # return plane
+
 
     def get_region_centroids(self, diamond_size=2, sigmaclip=4, show=True, percentile=99, edge_cutoff=0.5):
         """
@@ -215,6 +192,7 @@ class CircCorralData:
 
         print("\t%d centroids" % (len(self.centroids)))
 
+
     def remove_central_atom(self, data, show=False):
         """
         Parameters:
@@ -259,6 +237,7 @@ class CircCorralData:
             # plt.show()
             raise Exception("Something went wrong removing central atom")
 
+
     def get_central_atom(self, data):
         """
         Parameters:
@@ -289,6 +268,7 @@ class CircCorralData:
             return data[center_idx_1]
         else:
             raise Exception("Something went wrong getting central atom in corral")
+
 
     def nsphere_fit(self, x, axis=-1, scaling=False):
         r"""
@@ -357,11 +337,13 @@ class CircCorralData:
         self.r, self.c = r, c
         return r, c
 
+
     def circle(self, r, c, npoints=100):
         theta = 2 * np.pi * np.arange(0, 1, 1 / npoints)
         x = c[0] + r * np.cos(theta)
         y = c[1] + r * np.sin(theta)
         return x, y
+
 
     def plot_circle_fit(self, points, radius, center, label, pix_or_nm="nm"):
         xc, yc = self.circle(radius, center, npoints=1000)
@@ -384,6 +366,7 @@ class CircCorralData:
         plt.plot(*array([vechl_min, vechl_max]).T, c='r')
         plt.plot(*array([vecvl_min, vecvl_max]).T, c='r')
 
+
     def bbox(self):
         """
         return (x0, y0, x1, y1) defined by the min and max x, y coords of atoms making up the corral
@@ -395,6 +378,7 @@ class CircCorralData:
         else:
             xs, ys = array(self.gauss_fit_locs)
         return [min(xs), min(ys), max(xs), max(ys)]
+
 
     def make_hex_lattice(self, theta, offseta=0, offsetb=0):
         """
@@ -445,6 +429,7 @@ class CircCorralData:
         ls += array(origin)
         return ls
 
+
     def make_tri_lattice(self, theta, offset=0):
         """
         Given a corrals data object, theta, and lattice vector offset value in pixels,
@@ -481,6 +466,7 @@ class CircCorralData:
         ls += array(origin)
         return ls
 
+
     def correlate_lattice_to_atom_positions(self, angle, offseta, offsetb):
         """
         Given set of atom positions in self.gauss_fit_locs and
@@ -495,9 +481,11 @@ class CircCorralData:
         mindists = np.min(distance_matrix(gloc.T, lat), axis=1)
         return np.mean(mindists)  # np.sum()
 
+
     def get_im_square(self, x, y, sidelen):
         # return the image around x,y with sides sidelen
         return self.im[int(y) - sidelen // 2:int(y) + sidelen // 2, int(x) - sidelen // 2:int(x) + sidelen // 2]
+
 
     def fit_lattice(self, niter):
         """
@@ -549,6 +537,7 @@ class CircCorralData:
         # return lattice-matched atom locations, angle, offsets, and lattice points
         return atompoints, angle, offseta, offsetb, latt
 
+
     def fit_atom_pos_gauss(self, box_size, show=False):
         """
         Given a CircCorralData object with first-guess centroids,
@@ -594,6 +583,7 @@ class CircCorralData:
         self.gauss_fit_params = np.array(fit_params)
         self.gauss_fit_locs = fp
         return full_im, fp
+
 
     def compare_fits(self, savefig=True):
         plt.figure(figsize=(9,4.5))
@@ -662,6 +652,7 @@ class CircCorralData:
             plt.show()
         return self.pix_to_nm(self.r_g)
 
+
     def get_corral_radius(self, box_size_nm_init, savefig=True, showfig=True):
         # box size to fit atom positions
         box_size_nm = box_size_nm_init
@@ -703,8 +694,16 @@ class CircCorralData:
             self.compare_fits(savefig=savefig)
         return self.pix_to_nm(self.r_g)
 
-    # TODO: write function to get average radius from all lines
 
+    def calculate_wall_density(self) -> float:
+        try:
+            radius_nm = self.pix_to_nm(self.r_g)
+        except:
+            radius_nm = self.pix_to_nm(self.r)
+
+        density_per_nm = 2*np.pi*radius_nm/len(self.centroids)
+        self.density_per_nm = density_per_nm
+        return density_per_nm
 
 class CircCorral(CircCorralData):
     def __init__(self, topo, zconst, nmx, nmy):
@@ -747,6 +746,7 @@ def clockwiseangle(point, origin, refvec):
     # I return first the angle because that's the primary sorting criterium
     # but if two vectors have the same angle then the shorter distance should come first.
     return angle
+
 
 def round_to_even(n):
     # return n rounded up to the nearest even integer
