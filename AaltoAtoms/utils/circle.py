@@ -1,11 +1,12 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from .find_atom_positions import CircCorral, CircCorralData
 def get_perfect_circle_positions(radius_nm: float,
                                  C: CircCorral,
                                  showfig: bool=True):
+    import matplotlib.pyplot as plt
+
     """
-    
+
     """
 
     n_wall_atoms = len(C.centroids) - 1
