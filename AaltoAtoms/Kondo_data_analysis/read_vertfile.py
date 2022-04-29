@@ -25,7 +25,8 @@ from ..utils.decorators import timed_log, timing, bcolors
 # matplotlib.rc('font', **font)
 
 def gaussian(x, mu, sig):
-    return 1./(np.sqrt(2.*np.pi)*sig)*np.exp(-np.power((x - mu)/sig, 2.)/2)
+    #return 1./(np.sqrt(2.*np.pi)*sig)*
+    return np.exp(-np.power((x - mu)/sig, 2.)/2)
 
 
 kb = 8.617333262145e-5 #eV/K
@@ -153,17 +154,34 @@ class Spec(metaclass=LoadTimeMeta):
         self.dIdV = self.dIdV[in_range]
 
     @timing
-    def remove_background(self, degree=3, weights=None):
+    def remove_background(self, degree=3, weights=None, show=True):
         """
         """
         if degree is None:
             return
 
         weights = np.ones(len(self.bias_mv))
-        weights -= gaussian(self.bias_mv, 7.5, 1)
+        G = gaussian(self.bias_mv, 7.5, 4) # FWHM is 2*sigma
+
+        plt.plot(self.bias_mv, G)
+        plt.show()
+
+        weights -= G
+
+        weights += np.abs(self.bias_mv)/max(self.bias_mv)
+
+
         fit = np.polyfit(self.bias_mv, self.dIdV, deg=degree, w=weights)
         eval = np.polyval(fit, self.bias_mv)
+        old_dIdV = self.dIdV
         self.dIdV = self.dIdV - eval
+        if show:
+            plt.figure()
+            plt.plot(self.bias_mv, old_dIdV)
+            plt.plot(self.bias_mv, eval)
+            plt.plot(self.bias_mv, self.dIdV)
+            plt.show()
+
 
     @timed_log
     def log(self, message: str) -> str:
@@ -732,6 +750,7 @@ def fit_data_fixed_vals(bias: list, dIdV: list,
             if i<len(hold):
                 wrapperName+=','
         wrapperName+=')'
+    #    print(wrapperName)
         return eval(wrapperName)
     try:
         # popt, pcov = optimize.curve_fit(fix_T(T), sb, fit_dIdV, p0=p0, bounds=bounds)

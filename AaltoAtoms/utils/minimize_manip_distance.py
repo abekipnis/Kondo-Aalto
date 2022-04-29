@@ -1,11 +1,10 @@
 # Kabsch algorithm for the best rotation between two sets to minimize distance
 from scipy.spatial.transform import Rotation
 import numpy as np
-import matplotlib.pyplot as plt
 from .find_atom_positions import CircCorral, CircCorralData, clockwiseangle
 from AMRL import Createc_Controller
 from AMRL.Environment.get_atom_coordinate import pixel_to_nm
-
+from scipy.spatial.transform import Rotation
 
 def minimize_manipulation_distance(CC: Createc_Controller,
                                    C: CircCorral,
@@ -42,10 +41,12 @@ def minimize_manipulation_distance(CC: Createc_Controller,
     centroids_3D = np.array([c + center for c in centroids_3D[:,0:2]])
 
     if showfig:
+        import matplotlib.pyplot as plt
+
         plt.figure(figsize=(8,8))
         plt.imshow(dispmat);
 
-        plt.scatter(*np.array(centroids_3D).T, label="atom positions", s=40)
+        plt.scatter(*np.array(centroids_3D).T, label="atom positions", s=4)
         plt.scatter(*np.array(applied_rotation).T, label="perfect circle", s=50)
         plt.legend()
 
@@ -58,6 +59,7 @@ def minimize_manipulation_distance(CC: Createc_Controller,
         dx, dy = (np.array(applied_rotation[n]) - np.array(centroids_3D[n]))
 
         if showfig:
+            import matplotlib.pyplot as plt
             plt.text(*c,'%d' %(n), color='blue')
             plt.text(*(applied_rotation[n]-[4,0]),'%d' %(n), color='orange')
 

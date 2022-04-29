@@ -50,7 +50,6 @@ def create_waterfall():
     return cache
 
 
-#help(plt.cm)
 def show_waterfall(cache):
     plt.figure(figsize=(8,8))
     colors = plt.cm.copper(np.linspace(0, 1, len(cache)))
@@ -70,7 +69,15 @@ def show_waterfall(cache):
 
     plt.show()
 
-def show_line_spectrum(datfile, line_directory, spectrum_timestamp, biasmin, biasmax):
+
+def show_line_spectrum(datfile: str,
+                       line_directory: str,
+                       spectrum_timestamp: str,
+                       biasmin: float,
+                       biasmax: float) -> list:
+    """
+    Show line spectrum given topo file, line spec directory, and spectrum identifier
+    """
     p = line_directory
     imf = datfile
     image = createc.DAT_IMG(imf)
@@ -186,6 +193,8 @@ def show_line_spectrum(datfile, line_directory, spectrum_timestamp, biasmin, bia
     file_name = os.path.basename(imf).strip('.dat') + '_line_spectrum_%s.png' %(spectrum_timestamp)
     plt.savefig(os.path.join(os.path.dirname(imf), file_name))
     plt.show()
+
+    return specs
 
 if __name__=="__main__":
 
