@@ -27,7 +27,7 @@ def show_current_param_fit_result(c):
     r = S.fit_fano(marker1=c.marker1, marker2=c.marker2,
                    type_fit=type_fit,
                    showfig=True,
-                   q_fixed_val=np.nan,
+                   q_fixed_val=0.3,
                    actual_radius=radius)
 
 
@@ -82,7 +82,7 @@ def show_waterfall(Co_Co_data):
     plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Co-spectrum-waterfall.svg")
 
 
-def plot_radial_width_dependence():
+def plot_radial_width_dependence(Co_Ag_data):
     plt.figure(figsize=(9,6))
     d = get_old_Ag_Co_corrals(dist_cutoff_nm=0.1)
     all_Co_Ag_data = np.concatenate([Co_Ag_data[:,0:2].T, np.array([d.radius, d.w])], axis=-1)
@@ -154,7 +154,12 @@ def get_old_Ag_Co_corrals(dist_cutoff_nm: float):
     return d
 
 
-def fit_and_plot_functional_curve(radius_array, width_array, bounds=None, p0=None):
+def fit_and_plot_functional_curve(radius_array: list,
+                                  width_array: list,
+                                  bounds: list=None,
+                                  p0: list=None,
+                                  show_Li_fit=True,
+                                  show_isolated_Co=True):
     def w(x=1, jb=0.53, js=0.21, d1=-0.27, d2=-0.24, alpha=0.88, A=3.2, k=0.83, D=4480):
         rhob=0.27
         rhos0=0.125
@@ -178,15 +183,16 @@ def fit_and_plot_functional_curve(radius_array, width_array, bounds=None, p0=Non
                                       p0,
                                       bounds=bounds,
                                       maxfev=6000 )
-    rng = np.arange(min(list(radius_array)),10,0.01)
-    plt.plot(rng, np.array([w(x,*params[0]) for x in rng]), label="Co/Ag corrals (our data)")
+    rng = np.arange(min(list(radius_array)),max(radius_array),0.01)
+    plt.plot(rng, np.array([w(x,*params[0]) for x in rng]))#, label="Co/Ag corrals (our data)")
     # plt.plot(rng, np.array([w(x=x, d1=1.5, D=4000) for x in rng]), label="Fit changed" )
 
-    rng = np.arange(2.88,10,0.01)
+    if show_Li_fit:
+        plt.plot(rng, 2*np.array([w(x=x,D=4480) for x in rng]), label="Co/Co corrals (Li et. al.)" )
+        plt.fill_between(rng,2*np.array([w(x=x,D=4480+620) for x in rng]),2*np.array([w(x=x,D=4480-620) for x in rng]),facecolor=['orange'], alpha=0.5)
 
-    plt.plot(rng, 2*np.array([w(x=x,D=4480) for x in rng]), label="Co/Co corrals (Li et. al.)" )
-    plt.fill_between(rng,2*np.array([w(x=x,D=4480+620) for x in rng]),2*np.array([w(x=x,D=4480-620) for x in rng]),facecolor=['orange'], alpha=0.5)
-    plt.hlines(13.414,2,10,linestyle="dashed", label="Isolated Co")
+    if show_isolated_Co:
+        plt.hlines(13.414,2,10,linestyle="dashed", label="Isolated Co")
 
     print("jb: %lf meV" %params[0][0])
     print("js %lf mev" %params[0][1])
@@ -196,8 +202,7 @@ def fit_and_plot_functional_curve(radius_array, width_array, bounds=None, p0=Non
     print("A %lf mV" %params[0][5])
     print("k %lf nm^-1"% params[0][6])
 
-    plt.xlabel("corral radius (nm)")
-    plt.ylabel("FWHM (mV)")
-    plt.legend(fontsize="small")
-    plt.xlim(2.5, 9)
-    plt.ylim(0, 20)
+
+
+    #m = max(radius_array)
+    #plt.xlim(2.5, )
