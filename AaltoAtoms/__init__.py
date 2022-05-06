@@ -1,8 +1,12 @@
 __version__ = "0.0.0"
+
+
 from .Kondo_data_analysis import read_vertfile
 from .scattering import scattering_simulation, args
 
 from .utils.visualizations import show_line_spectrum, show_waterfall, create_waterfall
+from .utils.interpolate_dIdV_v_r import imshow_dIdV_vs_r
+
 from .utils.find_atom_positions import CircCorralData, CircCorral, clockwiseangle
 from .utils.circle import get_perfect_circle_positions
 from .utils.minimize_manip_distance import minimize_manipulation_distance
