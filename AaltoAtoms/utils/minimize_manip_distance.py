@@ -66,4 +66,4 @@ def minimize_manipulation_distance(CC: Createc_Controller,
             plt.arrow(*centroids_3D[n], dx, dy, color="white")
     if showfig:
         plt.show()
-    return centroids_3D
+    return applied_rotation, centroids_3D

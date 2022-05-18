@@ -12,7 +12,7 @@ def get_perfect_circle_positions(radius_nm: float,
     n_wall_atoms = len(C.centroids) - 1
     center = C.get_central_atom(C.centroids)
 
-    radius = 7
+    radius = radius_nm
 
     theta_vals = np.arange(0, 2*np.pi, 2*np.pi/(n_wall_atoms))
     perfect_circle = np.array([[radius*np.cos(theta), radius*np.sin(theta)]
