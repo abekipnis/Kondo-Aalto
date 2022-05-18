@@ -1,0 +1,13 @@
+radii = 2:0.01:5;
+eigs = [];
+for r = radii
+    disp(r);
+    [res_vac, model_vac] = ComputeEigenmodes(r, r, ...
+    'plotAll', 0,...
+    'HMax', 0.1);
+    eigs = [eigs res_vac.]
+    
+end
+
+
+

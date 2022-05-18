@@ -87,6 +87,10 @@ class CircCorralData:
         self.ang_ppx_y = self.image_file.nom_size.y / self.image_file.yPixel
         # nchannels = image_file.channels
 
+        self.nmx = self.xPix * self.ang_ppx_x / 10.
+        self.nmy = self.yPix * self.ang_ppx_y / 10.
+
+
         self.centroids = None
 
 

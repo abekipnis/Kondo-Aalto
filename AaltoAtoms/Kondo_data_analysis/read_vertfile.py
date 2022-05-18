@@ -14,7 +14,7 @@ from scipy import optimize
 import scipy.signal
 from scipy.interpolate import interp1d
 
-import os, pdb, traceback, pathlib, inspect, sys, time, re
+import os, pdb, traceback, pathlib, inspect, sys, time, re, pdb
 from itertools import product
 import createc
 from cmath import sqrt
@@ -161,10 +161,8 @@ class Spec(metaclass=LoadTimeMeta):
             return
 
         weights = np.ones(len(self.bias_mv))
-        G = gaussian(self.bias_mv, 7.5, 4) # FWHM is 2*sigma
+        G = gaussian(self.bias_mv, 2, 4) # FWHM is 2*sigma
 
-        plt.plot(self.bias_mv, G)
-        plt.show()
 
         weights -= G
 
@@ -177,6 +175,8 @@ class Spec(metaclass=LoadTimeMeta):
         self.dIdV = self.dIdV - eval
         if show:
             plt.figure()
+            plt.plot(self.bias_mv, G*min(self.dIdV))
+
             plt.plot(self.bias_mv, old_dIdV)
             plt.plot(self.bias_mv, eval)
             plt.plot(self.bias_mv, self.dIdV)
@@ -185,7 +185,7 @@ class Spec(metaclass=LoadTimeMeta):
 
     @timed_log
     def log(self, message: str) -> str:
-        return self.fname + '...' + message
+        return self.fname + '\n...\n' + message
 
     @timing
     def fit_fano(self, marker1: float = 0,
@@ -201,36 +201,33 @@ class Spec(metaclass=LoadTimeMeta):
                  dist_to_Co: float =None) -> list:
         """
         """
-
         # TODO: implement a 'quit' function i.e. if we want to stop in the middle
-        if showfig:
+        if showfig and marker1==0 and marker2==0: # then create / get new markers
+            # for click-and-drag interactive marker setting of fit bounds
+            # code needs to be run on command line
+            fig, ax = plt.subplots()
+            line = plt.plot(self.bias_mv, self.dIdV)
+            lines = [line]
+            markers = []
+            for n, l in enumerate(lines):
+                c = "black" #l[0].get_color()
+                # initialize markers at the following two locations
+                for b in [-20, 20]:
+                    mini = np.argmin(np.abs(np.array(self.bias_mv)-b))
+                    ix = l[0].get_xdata()[mini]
+                    iy = l[0].get_ydata()[mini]
+                    d = DraggableMarker(ax=ax, lines=l,
+                                        initx=ix, inity=iy, color=c,
+                                        marker=">", dir=dir)
+                    markers.append(d)
+            plt.title(os.path.split(self.fname)[-1])
+            #if showfig:
+            plt.show()
 
-            if marker1==0 and marker2==0: # then create / get new markers
-                # for click-and-drag interactive marker setting of fit bounds
-                # code needs to be run on command line
-                fig, ax = plt.subplots()
-                line = plt.plot(self.bias_mv, self.dIdV)
-                lines = [line]
-                markers = []
-                for n, l in enumerate(lines):
-                    c = "black" #l[0].get_color()
-                    # initialize markers at the following two locations
-                    for b in [-20, 20]:
-                        mini = np.argmin(np.abs(np.array(self.bias_mv)-b))
-                        ix = l[0].get_xdata()[mini]
-                        iy = l[0].get_ydata()[mini]
-                        d = DraggableMarker(ax=ax, lines=l,
-                                            initx=ix, inity=iy, color=c,
-                                            marker=">", dir=dir)
-                        markers.append(d)
-                plt.title(os.path.split(self.fname)[-1])
-                if showfig:
-                    plt.show()
-
-                marker_vals = sorted([m.marker[0].get_xydata()[0] for m in markers],
-                                     key=lambda x: x[0])
-                marker1 = marker_vals[0][0]
-                marker2 = marker_vals[1][0]
+            marker_vals = sorted([m.marker[0].get_xydata()[0] for m in markers],
+                                 key=lambda x: x[0])
+            marker1 = marker_vals[0][0]
+            marker2 = marker_vals[1][0]
 
         # e0, w, q, a, b, c
         # some fitting calls for fixing the fit parameters at certain values
@@ -248,6 +245,7 @@ class Spec(metaclass=LoadTimeMeta):
 
         if showfig:
             try:
+                #create the fit figure
                 fig = figure(figsize=(8.5,6.6)) #width, height (inches)
                 a1 = plt.subplot(2,1,1)
                 trans = plt.gcf().transFigure
@@ -258,15 +256,28 @@ class Spec(metaclass=LoadTimeMeta):
                 # c = tuple(np.array(list(zip(popt, np.zeros(len(popt))))).flatten())
                 c = popt
                 if dist_to_Co == None:
-                    dist_to_Co=0
+                    dist_to_Co = 0
                 if actual_radius==None:
-                    actual_radius=0
+                    actual_radius = 0
+
+                # if fixed vals, show as initial conditions
+                if len(p0) != 6:
+                    m = np.argmax([~np.isnan(f)*1 for f in fixed_vals])
+                    fv = fixed_vals[m]
+                    p0.insert(m, fv)
+
+                # string formatting for fit figure legend
                 c = list(tuple([marker1]+[marker2]+
                             [self.biasVoltage]+
                             [self.FBLogiset/1000.0]+
-                            [self.bias_offset] + list(c)+p0+[actual_radius]+[dist_to_Co]))
+                            [self.bias_offset] + list(c) +
+                            p0 +
+                            [actual_radius] +
+                            [dist_to_Co]))
                 c.insert(7, c[6]*1e-3/kb)
-                c = tuple(c)
+                c = np.array(tuple(c)).flatten()
+
+                # fit figure legend text
                 plt.text(0.05, 0.1, "Fit Range:\n     min: %1.2lf mV\n"
                                     "     max: %1.2lf mV\n\n"
                                     "Spectrum acq. params:\n"
@@ -289,9 +300,13 @@ class Spec(metaclass=LoadTimeMeta):
                                     "     (%1.2lf, %1.2lf, %1.2lf,\n     %1.2lf, %1.2lf, %1.2lf)\n\n"
                                     "Corral radius: %1.3lf nm\n"
                                     "Distance to Co: %1.3lf nm\n"
-                                    %(c),
+                                    %(tuple(c)),
                                     transform=trans)
+
+                # show data
                 a1.plot(self.bias_mv, self.dIdV)
+
+                # show the fit
                 a1.plot(sb, fit_dIdV, "b-")
                 a1.set_ylim(min(self.dIdV), max(self.dIdV))
                 # f = fix_T(T)(sb, *popt)
@@ -336,7 +351,10 @@ class Spec(metaclass=LoadTimeMeta):
                     print(e)
                     print(self.log("could not plot histogram of residuals ! ! !"))
                     print(self.log("something wrong with fit bounds probably"))
-            except Exception:
+                except Exception as e:
+                    self.log(str(e))
+            except Exception as e:
+                self.log(str(e))
                 self.log(traceback.format_exc())
                 # messagebox.showerror("showerror","could not plot %s" %(self.fname))
                 return [popt, pcov, marker1, marker2, self.XPos_nm, self.YPos_nm, 0]
@@ -641,7 +659,7 @@ def fano_t_broad(T, V, e0, w, q, a, b, c):
     # function over the space, including thermal broadening, w/no edge effects
     return np.convolve(fit, conv, mode="same")[pad_idcs:-pad_idcs]
 
-def residual(data, fit):
+def residual(data: list, fit: list) -> list:
     ld = len(data)
     r = [(data[i]-fit[i]) for i in range(ld)]
     # pdb.set_trace()
@@ -674,7 +692,8 @@ def fit_data(bias: np.array, dIdV: np.array, marker1: float, marker2: float):
     # initial guess for e0, w, q, a, b, c,
     b0 = (fit_dIdV[-1]-fit_dIdV[0])/(sb[-1]-sb[0])
     e00 = sb[np.argmin(scipy.signal.detrend(fit_dIdV))]
-    p0 = [e00, 4, 1, 1, b0, np.mean(fit_dIdV)]
+    a0 = np.max(fit_dIdV) - np.min(fit_dIdV)
+    p0 = [e00, 8, 0, a0, b0, np.mean(fit_dIdV)]
 
     # bounds for e0, w, q, a, b, c
     bounds = np.array([[min(sb),max(sb)],                   # e0

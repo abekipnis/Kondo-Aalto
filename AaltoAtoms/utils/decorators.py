@@ -2,7 +2,7 @@ from datetime import datetime
 
 def timed_log(log_msg):
     def time_added(*args, **kwargs):
-        return f'[{datetime.now()}]{log_msg(*args, **kwargs)}'
+        return f'[{datetime.now()}]:\n\t {log_msg(*args, **kwargs)}'
     return time_added
 
 from functools import wraps
@@ -27,7 +27,7 @@ def timing(f):
         result = f(*args, **kw)
         te = time()
 
-        print('func:%r args:[%r, %r] took: %2.4f sec' % \
+        print('func: %r\n\targs: [%r, %r] \n\t\ttook: %2.4f sec' % \
           (f.__name__, args, kw, te-ts))
         return result
     return wrap
