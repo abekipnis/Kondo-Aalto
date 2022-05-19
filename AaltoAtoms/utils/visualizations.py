@@ -3,17 +3,15 @@ import matplotlib.pyplot as plt
 import os, socket, sys, createc, pdb, matplotlib
 from operator import sub
 from .find_atom_positions import CircCorralData
-from ..utils.subtract_plane import subtract_plane
 from ..Kondo_data_analysis.read_vertfile import Spec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.interpolate import interp1d
 
-# try:
-#     from AaltoAtoms import CircCorralData
-#     from AaltoAtoms import Spec
-#     from AaltoAtoms import subtract_plane
-# except ImportError:
-#     pass
+try:
+    from AaltoAtoms import CircCorralData
+    from AaltoAtoms import Spec
+except ImportError:
+    pass
 
 def create_waterfall():
     dir = r"Y:\labdata\Createc\STMDATA\Ag(111)\2022-03 Co Kondo corrals\04-11 Ag Co"
@@ -33,8 +31,6 @@ def create_waterfall():
     #"A220411.233446.dat": "A220411.233625.VERT",
     "A220412.010237.dat": "A220412.010418.VERT"}
     cache = []
-    colors = plt.cm.copper(np.linspace(0, 1, len(wfall)))
-
     for n, dat in enumerate(list(wfall.keys())):
         C = CircCorralData(os.path.join(dir, dat),"")
         C.occupied = True
@@ -54,24 +50,19 @@ def create_waterfall():
     return cache
 
 
-def show_waterfall(cache: list, bias_idx: int=3, dIdV_idx: int =2) -> None:
+def show_waterfall(cache):
     plt.figure(figsize=(8,8))
-
     colors = plt.cm.copper(np.linspace(0, 1, len(cache)))
-
     for n, c in enumerate(cache):
-        r = c[5].pix_to_nm(c[5].r)
-        plt.plot(c[bias_idx], c[dIdV_idx], color=colors[n], linewidth=5, label="%1.2lf" %r)
+        plt.plot(c[0], c[1], color=colors[n], linewidth=5)
 
-    # plt.text(47, cache[0][1][0] + 0.2,"%1.1lf nm" %(np.round(cache[0][3],1))) # 11 nm
-    # plt.text(47, cache[len(cache)//2][1][0] - 0.6,"%1.1lf nm" %(np.round(cache[len(cache)//2][3],1)))
-    # plt.text(47, cache[-1][1][0] - 0.9,"%1.1lf nm" %(np.round(cache[-1][3],1))) # 3.6 nm
+    plt.text(47, cache[0][1][0] + 0.2,"%1.1lf nm" %(np.round(cache[0][3],1))) # 11 nm
+    plt.text(47, cache[len(cache)//2][1][0] - 0.6,"%1.1lf nm" %(np.round(cache[len(cache)//2][3],1)))
+    plt.text(47, cache[-1][1][0] - 0.9,"%1.1lf nm" %(np.round(cache[-1][3],1))) # 3.6 nm
     plt.xlim(-80,80)
     plt.yticks([])
     plt.xlabel("Bias (mV)")
     plt.ylabel(r"$dI/dV$ (a.u.)")
-    plt.gcf().axes[0].tick_params(direction="in")
-    plt.legend()
     plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-spectrum-waterfall.pdf")
     plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-spectrum-waterfall.png")
     plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-spectrum-waterfall.svg")
@@ -79,16 +70,11 @@ def show_waterfall(cache: list, bias_idx: int=3, dIdV_idx: int =2) -> None:
     plt.show()
 
 
-def show_line_spectrum(datfile: str,
+def show_line_spectrum(datfile:str,
                        line_directory: str,
-                       spectrum_timestamp: str,
-                       biasmin: float,
+                       spectrum_timestamp: str, biasmin: float,
                        biasmax: float,
-                       look_at_scale: bool = True,
-                       ) -> list:
-    """
-    Show line spectrum given topo file, line spec directory, and spectrum identifier
-    """
+                       look_at_scale: bool):
     p = line_directory
     imf = datfile
     image = createc.DAT_IMG(imf)
@@ -104,13 +90,22 @@ def show_line_spectrum(datfile: str,
     specs = [Spec(pj(f)) for f in files]
 
 
-
-
     dIdVs = [s.dIdV/np.mean(s.dIdV) for s in specs]
     xlocs = [s.XPos_nm for s in specs]
     ylocs = [s.YPos_nm for s in specs]
 
     dist = np.sqrt(np.sum([(xlocs[0]-xlocs[-1])**2, (ylocs[0]-ylocs[-1])**2]))*10.
+
+    def subtract_plane(im, xPix, yPix):
+        X1, X2 = np.mgrid[:xPix, :yPix]
+        nxny = xPix*yPix
+        X = np.hstack((np.reshape(X1, (nxny, 1)), np.reshape(X2, (nxny, 1))))
+        X = np.hstack((np.ones((nxny, 1)), X))
+        YY = np.reshape(im, (nxny,1))
+        theta = np.dot(np.dot(np.linalg.pinv(np.dot(X.transpose(), X)), X. transpose()), YY)
+        plane = np.reshape(np.dot(X, theta), (xPix, yPix))
+        im -= plane
+
 
     x_nm = np.round(image.size[0]/10.)
     y_nm = np.round(image.size[1]/10.)
@@ -160,7 +155,9 @@ def show_line_spectrum(datfile: str,
     cax = divider.append_axes('right', size='5%', pad=0.05)
     cbar = fig.colorbar(im2, cax=cax, orientation='vertical')#,fraction=0.046, pad=0.04)
     cbar.set_label("nm")
-    ax2.plot(np.array(xlocs)-image.offset[0]/10+x_nm/2,np.array(ylocs)-image.offset[1]/10,"r")
+    X = np.array(xlocs)-image.offset[0]/10+x_nm/2
+    Y = np.array(ylocs)-image.offset[1]/10
+    ax2.plot(X, Y,"r")
     c.nm_to_pix(np.array(xlocs)-image.offset[0]/10+x_nm/2)
 
     ax2.set_xlabel("nm")
@@ -168,8 +165,6 @@ def show_line_spectrum(datfile: str,
 
     # if changing color scale necessary:
     if look_at_scale:
-        from matplotlib.widgets import Slider, Button
-
         c_max = "%1.2lf"
         nmnd = np.nanmin(dIdVs)
         nmxd = np.nanmax(dIdVs)
@@ -189,17 +184,21 @@ def show_line_spectrum(datfile: str,
 
     # save the line spectrum plot in the same directory with the .dat file
     # save as pdf
-    file_name = os.path.basename(imf).strip('.dat') + '_line_spectrum_%s.pdf' %(spectrum_timestamp)
+    f = '_line_spectrum_%s.pdf' %(spectrum_timestamp)
+    file_name = os.path.basename(imf).strip('.dat') + f
     plt.savefig(os.path.join(os.path.dirname(imf), file_name))
 
     # save as png
-    file_name = os.path.basename(imf).strip('.dat') + '_line_spectrum_%s.png' %(spectrum_timestamp)
+    f = '_line_spectrum_%s.png' %(spectrum_timestamp)
+    file_name = os.path.basename(imf).strip('.dat') + f
     plt.savefig(os.path.join(os.path.dirname(imf), file_name))
+
+    # save as svg
+    f = '_line_spectrum_%s.svg' %(spectrum_timestamp)
+    file_name = os.path.basename(imf).strip('.dat') + f
+    plt.savefig(os.path.join(os.path.dirname(imf), file_name))
+
     plt.show()
-
-    return specs
-
-
 
 if __name__=="__main__":
 

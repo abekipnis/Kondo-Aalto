@@ -43,9 +43,17 @@ def plot(n,l,radius):
     # plt.pcolormesh(theta,np.arange(0,radius,0.01*radius), (ret**2).real)
     return ret
 
+
+def get_modes(mstar: float, E0_V: float, radius_range_nm: list, n_modes: int):
+    h_ = scipy.constants.hbar
+    e_ = scipy.constants.elementary_charge
+    E = lambda r: h_**2*(scipy.special.jn_zeros(0,n_modes)/r)**2/(2*mstar)/e_-E0_V
+    return np.array([E(r) for r in radius_range_nm])
+
+
 def show_particle_in_box_eigenmodes_vs_corral_radius():
     fig, (ax1,ax3) = plt.subplots(figsize=(11,8), nrows=2, sharex=True)
-    ax1.plot(radius_range*1e9,[scipy.constants.hbar**2*(scipy.special.jn_zeros(0,3)/r)**2/(2*mstar)/scipy.constants.elementary_charge-0.067 for r in radius_range])
+    ax1.plot(radius_range*1e9,get_modes(mstar, -67, radius_range,3))
     ylim = ax1.get_ylim()
     # ax1.vlines(2.5,-10,10,"r")
     # ax1.vlines(3.8,-10,10,"r")

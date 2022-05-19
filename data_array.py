@@ -7,17 +7,25 @@ from collections import namedtuple
 fields =  ['datfile', 'height_percentile','vertfile','marker1','marker2', "dataclipmin", "dataclipmax", "fit_order", "edge_cutoff", "chan", "type_fit"]
 corralspectrum = namedtuple('corralspectrum', fields, defaults=(None,)*len(fields))
 # fit parameters for "wtimes"
+
+# need to add to these the data that is currently taken from excel.
+
 Co_Co_corrals = [
+    corralspectrum("4-12 Co-Co/A220412.131659.dat", 99, "4-12 Co-Co/A220412.131810.VERT", -7, 30, -40, 40, None ),
     corralspectrum("03-28/A220328.182736.dat", 96, "03-28/A220328.183230.L0015.VERT", -20, 20, None, None, None, 0.3, "default"), # 2.9 nm
     corralspectrum("03-24/1/A220323.115455.dat", 97, "03-24/1/A220323.115740.VERT", -30, 13, -80, 40, 2, None, "default"),# 3.34 nm,
     corralspectrum("4-12 Co-Co/A220412.231331.dat", 99, "4-12 Co-Co/A220412.231512.VERT", 1, 10, None, None,3, None), #4.42 nm
     corralspectrum("03-26/A220325.102511.dat", 99, "03-26/A220325.102649.VERT", -5,20),# 4.5 nm
+
+    corralspectrum("03-26/A220325.102511.dat", 99, "03-26/A220325.131310.VERT", 0,18, -20, 40, 3),#
+
+    corralspectrum("03-26/A220325.132236.dat", 99, "03-26/A220325.132407.VERT",  -5,14, -20, 40, None),#
     corralspectrum("04-04/A220404.160833.dat", 99, "04-04/A220404.160935.VERT", -10, 15, -20, 45, 3), #4.478 nm
     corralspectrum("04-05 6nm Co/A220405.181958.dat", 99, "04-05 6nm Co/A220405.182713.VERT", -10, 20), # 6 nm
     corralspectrum("04-05 6nm Co/A220406.092143.dat", 99, "04-05 6nm Co/A220406.092807.L0010.VERT", -13, 20), # 6nm
     corralspectrum("4-12 Co-Co/A220412.115834.dat", 99, "4-12 Co-Co/A220412.120450.VERT", -10, 40, -60, 60, 3), # 5 nm radius
     corralspectrum("4-12 Co-Co/A220412.132510.dat", 99, "4-12 Co-Co/A220412.132822.L0017.VERT", -5, 15, -40, 40, 3, None, None, "wtimes"), # 3.8 nm
-    corralspectrum("4-12 Co-Co/A220412.154921.dat", 99, "4-12 Co-Co/A220412.160413.VERT", 0, 50, 0, 50, 3), #4.7
+    corralspectrum("4-12 Co-Co/A220412.160314.dat", 99, "4-12 Co-Co/A220412.160413.VERT", 0, 50, 0, 50, 3), #4.7
     corralspectrum("4-12 Co-Co/A220412.163342.dat", 97, "4-12 Co-Co/A220412.163523.VERT", -30, 18, None, None, 3, None, None, "default"), #3 nm
     corralspectrum("4-12 Co-Co/A220412.183001.dat", 99, "4-12 Co-Co/A220412.184138.L0025.VERT", -10, 20, None, None, None, 2.5), # 6 nm
     corralspectrum("4-12 Co-Co/A220412.223356.dat", 99, "4-12 Co-Co/A220412.223556.VERT", -16, 20, -70, 60, 3, None, None), # 6.47

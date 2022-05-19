@@ -1,11 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+
 def imshow_dIdV_vs_r(dataset: list,
                     downsample: bool=False,
                     interpolate:bool=False,
                     norm_mV: float = -75,
                     mV_step:float = 1,
-                    nm_step: float = 0.5) -> None:
+                    nm_step: float = 0.5,
+                    norm_to_one: bool = False,
+                    cmap="PiYG") -> None:
     """
 
     """
@@ -30,9 +34,13 @@ def imshow_dIdV_vs_r(dataset: list,
         Z_downsampled = [d/norm_vals_downsampled[n] for n, d in enumerate(dIdV_downsampled)]
 
     norm_vals = [c[2][np.argmin(abs(c[3]-norm_mV))] for c in ds]
-    X = ds[0][3] # bias
-    Z = [c[2]/norm_vals[n] for n,c in enumerate(ds)]
+    X = ds[0][3] # bias (has to be the same for all spectra!)
+    Z = [c[2]/norm_vals[n] for n,c in enumerate(ds)] # dI/dV signal
     Y = [c[0] for c in ds] # radii
+
+    if norm_to_one:
+        Z = [(z - min(z))/(max(z) - min(z)) for z in Z]
+
 
     if downsample and len(Z_downsampled) != 0:
         Y = np.append(Y, [c[0] for c in d2])
@@ -51,10 +59,13 @@ def imshow_dIdV_vs_r(dataset: list,
         pts = np.array([np.array(create_pt(d)) for d in ds])
         pts = pts.reshape(-1,2)
         #pts = list(itertools.product(X,Y))
-        gridZ = griddata(np.array(pts), np.array(Z).reshape(-1, 2).flatten(), (Xn, Yn), method="linear")
-        plt.pcolormesh(Xn, Yn, gridZ)
+
+        Z = np.array(Z)
+        levels = MaxNLocator(nbins=15).tick_values(Z.min(), Z.max())
+
+        gridZ = griddata(np.array(pts), Z.reshape(-1, 2).flatten(), (Xn, Yn), method="linear")
+        plt.pcolormesh(Xn, Yn, gridZ, cmap=plt.colormaps(cmap))
     else:
         plt.pcolormesh(X, Y, Z, shading="gouraud")#, norm=LogNorm(), vmin=np.array(Z).min(), vmax=np.array(Z).max())
     plt.xlabel("Bias (mV)")
     plt.ylabel("Corral radius (nm)")
-    plt.show()

@@ -135,10 +135,13 @@ def get_old_Ag_Co_corrals(dist_cutoff_nm: float):
     dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/spatial extent Kondo plots/width comparison"
     dir = r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Kondo corrals fit data"
     Ag_Co_files = os.listdir(dir)
-    Ag_Co_files = [f for f in Ag_Co_files if f[-9:] =="width.txt" or f[-11:]=="default.txt"]
+    #Ag_Co_files = [f for f in Ag_Co_files if f[-9:] =="width.txt" or f[-11:]=="default.txt"]
+    fname_is_relevant = lambda f: "kondo_fit_param_width" in f and "covs" not in f and ".pdf" not in f
+    Ag_Co_files = [f for f in Ag_Co_files if fname_is_relevant(f)]
     d = pd.DataFrame()
 
     for f in Ag_Co_files:
+        print("reading from file %s" %(f))
         data = pd.read_csv(os.path.join(dir,f), delimiter="\t", index_col=False)
         # data = data[data["radius"]<2.5]
         qcutoff = 1.5
