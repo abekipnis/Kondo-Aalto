@@ -14,5 +14,5 @@ from .utils.lattice_discretize import lattice_discretize
 from .utils.position_dependence_expt import get_latman_dest, get_atom_that_moved_the_most
 from .utils.subtract_plane import subtract_plane
 
-from .Kondo_data_analysis.read_vertfile import Spec, fit_data_fixed_vals, fit_data_w_times_residual
+from .Kondo_data_analysis.read_vertfile import Spec
 from .Kondo_data_analysis.analyze_data import analyze_data, get_old_Ag_Co_corrals, fit_and_plot_functional_curve

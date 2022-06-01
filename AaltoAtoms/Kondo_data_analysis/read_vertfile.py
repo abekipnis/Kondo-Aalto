@@ -112,12 +112,16 @@ class Spec(metaclass=LoadTimeMeta):
             self.dIdV = np.array([float(d[5].replace(",",".")) for d in self.data][19:])
         except:
             print(self.log("could not get data!"))
+
+        #correcting bias offset
         try:
             self.bias_offset = interp1d(self.current, self.bias_mv)(0)
             self.bias_mv -= self.bias_offset
         except ValueError as ve:
             print(self.log("could not calculate bias offset"))
-        #correcting the bias offset
+
+        self.background_eval = []
+        self.background_eval_mv = []
 
 
     @timing
@@ -153,8 +157,9 @@ class Spec(metaclass=LoadTimeMeta):
         self.bias_mv = self.bias_mv[in_range]
         self.dIdV = self.dIdV[in_range]
 
+
     @timing
-    def remove_background(self, degree=3, weights=None, show=True):
+    def remove_background(self, degree: int=3, weights: list=None, show: bool=True) -> list:
         """
         """
         if degree is None:
@@ -170,22 +175,28 @@ class Spec(metaclass=LoadTimeMeta):
 
 
         fit = np.polyfit(self.bias_mv, self.dIdV, deg=degree, w=weights)
-        eval = np.polyval(fit, self.bias_mv)
+        self.background_fit = fit
+        eval_ = np.polyval(fit, self.bias_mv)
         old_dIdV = self.dIdV
-        self.dIdV = self.dIdV - eval
+        self.dIdV = self.dIdV - eval_
         if show:
             plt.figure()
             plt.plot(self.bias_mv, G*min(self.dIdV))
 
             plt.plot(self.bias_mv, old_dIdV)
-            plt.plot(self.bias_mv, eval)
+            plt.plot(self.bias_mv, eval_)
             plt.plot(self.bias_mv, self.dIdV)
             plt.show()
+
+        self.background_eval = eval_
+        self.background_eval_mv = self.bias_mv
+        return eval_
 
 
     @timed_log
     def log(self, message: str) -> str:
         return self.fname + '\n...\n' + message
+
 
     @timing
     def fit_fano(self, marker1: float = 0,
@@ -233,10 +244,10 @@ class Spec(metaclass=LoadTimeMeta):
         # some fitting calls for fixing the fit parameters at certain values
         fixed_vals = [e0_fixed_val, np.nan, q_fixed_val, np.nan, np.nan, np.nan]
         if type_fit == 'default':
-            popt, pcov, sb, fit_dIdV, p0 = fit_data_fixed_vals(self.bias_mv, self.dIdV, marker1, marker2, fixed_vals)
+            popt, pcov, sb, fit_dIdV, p0, smallbias = self.fit_data_fixed_vals(marker1, marker2, fixed_vals)
             print(self.log("successfully fit fano resonance"))
         elif type_fit == 'wtimes': #using the width*residual as thing to minimize
-            popt, pcov, sb, fit_dIdV, p0 = fit_data_w_times_residual(self.bias_mv, self.dIdV, marker1,marker2, fixed_vals, init_vals=init_vals)
+            popt, pcov, sb, fit_dIdV, p0, smallbias = self.fit_data_w_times_residual(marker1,marker2, fixed_vals, init_vals=init_vals)
 
         # evaluate fano function in the given bias range using parameters
         f = fano(sb, *popt)
@@ -357,7 +368,9 @@ class Spec(metaclass=LoadTimeMeta):
                 self.log(str(e))
                 self.log(traceback.format_exc())
                 # messagebox.showerror("showerror","could not plot %s" %(self.fname))
-                return [popt, pcov, marker1, marker2, self.XPos_nm, self.YPos_nm, 0]
+                self.f = f
+                self.smallbias = smallbias
+                return [popt, pcov, marker1, marker2, self.XPos_nm, self.YPos_nm, 0, smallbias, f]
 
             if savefig:
                 #fp = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/spatial extent Kondo plots/width comparison"
@@ -370,7 +383,173 @@ class Spec(metaclass=LoadTimeMeta):
                 print(self.log("saved figure at %s" %(fig_path)))
             if showfig:
                 plt.show()
-        return [popt, pcov, marker1, marker2, self.XPos_nm, self.YPos_nm, residtot]
+        self.f = f
+        self.smallbias = smallbias
+        return [popt, pcov, marker1, marker2, self.XPos_nm, self.YPos_nm, residtot, smallbias, f]
+
+    def fit_data_fixed_vals(self, marker1: float, marker2: float,
+                            fixed_vals: list) -> list:
+        """
+        Parameters
+        __________
+
+        Returns
+        _______
+        """
+        bias = self.bias_mv
+        dIdV = self.dIdV
+        # data for which we are fitting the Fano function
+        smallbias = [(n,b) for (n,b) in enumerate(bias) if b>=marker1 and b<=marker2]
+        nsb, sb = np.array(smallbias).T
+        fit_dIdV = np.array(dIdV)[[int(n) for n in nsb]]
+
+        # initial guess for e0, w, q, a, b, c,
+        b0 = (fit_dIdV[-1]-fit_dIdV[0])/(sb[-1]-sb[0])
+        b0 = 0
+        e00 = sb[np.argmin(scipy.signal.detrend(fit_dIdV))]
+
+        p0 = [e00, 4, 0, 1, b0, np.mean(fit_dIdV)]
+        hold = [0 if np.isnan(fixed_vals[n]) else 1 for n in range(len(p0)) ]
+
+        p1 = [p if np.isnan(fixed_vals[n]) else fixed_vals[n] for n,p in enumerate(p0) ]
+        p0 = [p for n,p in enumerate(p0) if np.isnan(fixed_vals[n]) ]
+
+        # bounds for e0, w, q, a, b, c
+        bounds = np.array([ [min(sb),max(sb)],                  # e0
+                            [0,50],                             # w
+                            [-np.inf,np.inf],                   # q
+                            [0, max(fit_dIdV)],                 # a
+                            [-np.inf,np.inf],                   # b
+                            [-np.inf,np.inf]]).T                # c
+        bounds = np.array([b for n,b in enumerate(bounds.T) if np.isnan(fixed_vals[n])]).T
+
+        # https://stackoverflow.com/questions/31705327/scipy-optimize-curve-fit-setting-a-fixed-parameter
+        # fix some while fitting other Fano parameters
+        def wrapper(V, *args):
+            wrapperName = 'fano(V,'
+            for i in range(0,len(hold)):
+                if hold[i]:
+                    wrapperName +=str(p1[i])
+                else:
+                    if i%2==0:
+                        wrapperName += 'args['+str(i-sum(hold))+']'
+                    else:
+                        wrapperName += 'args['+str(i-sum(hold))+']'
+                if i<len(hold):
+                    wrapperName+=','
+            wrapperName+=')'
+        #    print(wrapperName)
+            return eval(wrapperName)
+        try:
+            # popt, pcov = optimize.curve_fit(fix_T(T), sb, fit_dIdV, p0=p0, bounds=bounds)
+            popt, pcov = optimize.curve_fit(wrapper, sb, fit_dIdV, p0=p0, bounds=bounds)
+            for i in range(0,len(hold)):
+                if hold[i]:
+                    popt = np.insert(popt, i, p1[i])
+                    pcov = np.insert(np.insert(pcov, i, 0, axis=1), i, 0, axis=0)
+            return popt, pcov, sb, fit_dIdV, p0, smallbias
+        except (RuntimeError, IndexError) as e:
+            print(e)
+            n = np.ones((len(p0)))*np.nan
+            return n, n, sb, fit_dIdV, p0, sb, fit_dIdV
+
+    def fit_data_w_times_residual(self,
+
+                                  fixed_vals: list, init_vals: list=None,
+                                  scale: bool = True) -> list:
+        """
+        Parameters
+        __________
+
+        Returns
+        _______
+        """
+        bias = self.bias_mv
+        dIdV = self.dIdV
+        assert(marker1<marker2)
+        # data for which we are fitting the Fano function
+        # print(locals().keys())
+        # print(locals.get(locals().keys()[0]))
+        # print(inspect.getargvalues(inspect.currentframe()))
+        in_btw = lambda x, y, z: x >= y and x <= z
+        smallbias = [(n,b) for (n,b) in enumerate(bias) if in_btw(b, marker1,marker2)]
+        nsb, sb = np.array(smallbias).T
+        fit_dIdV = np.array(dIdV)[[int(n) for n in nsb]]
+
+        # initial guess for e0, w, q, a, b, c,
+        b0 = (fit_dIdV[-1]-fit_dIdV[0])/(sb[-1]-sb[0])
+        e00 = sb[np.argmin(scipy.signal.detrend(fit_dIdV))]
+
+        if init_vals is None:
+            p0 = [e00, 4, 0.0001, 0.5, b0, np.mean(fit_dIdV)]
+        else:
+            p0 = init_vals
+        hold = [0 if np.isnan(fixed_vals[n]) else 1 for n in range(len(p0)) ]
+
+        p1 = [p if np.isnan(fixed_vals[n]) else fixed_vals[n] for n,p in enumerate(p0) ]
+        p0 = [p for n,p in enumerate(p0) if np.isnan(fixed_vals[n]) ]
+
+        # bounds for e0, w, q, a, b, c
+        bounds = np.array([ [min(sb),max(sb)],     #none                  # e0
+                            [2, 30],                             # w
+                            [-np.inf,np.inf],                   # q
+                            # [-0.2,0.2],
+                            [0, max(fit_dIdV)],                 # a
+                            [-np.inf,np.inf],                   # b
+                            [-np.inf,np.inf]]).T                # c
+        bounds = np.array([b for n,b in enumerate(bounds.T) if np.isnan(fixed_vals[n])]).T
+        # bounds = [(b[0], b[1]) for b in bounds.T]
+        # https://stackoverflow.com/questions/31705327/scipy-optimize-curve-fit-setting-a-fixed-parameter
+        def wrapper(V, *args):
+            wrapperName = 'fano(V,'
+            for i in range(0,len(hold)):
+                if hold[i]:
+                    wrapperName +=str(p1[i])
+                else:
+                    if i%2==0:
+                        wrapperName += 'args['+str(i-sum(hold))+']'
+                    else:
+                        wrapperName+='args['+str(i-sum(hold))+']'
+                if i<len(hold):
+                    wrapperName+=','
+            wrapperName+=')'
+            return eval(wrapperName)
+
+        def objective_function(p, bias, dIdV):
+            #parameters are [e0, w, q, a, b, c] so p[1] is w
+            of = residual(dIdV, wrapper(bias, *p))[1]#*abs(p[2])
+            return of #residual(data, fit)
+
+        try:
+            # x_scale = [8,2,1,1,1,200]
+            lsq_args = [objective_function]
+            args = ([b[1] for b in smallbias], fit_dIdV,)
+            lsq_kwargs = {"x0": p0, "args": args, "bounds": bounds, "max_nfev":4000}
+            if scale:
+                x_scale = np.abs(p0)
+                # x_cale will complain `x_scale must be 'jac' or array_like with positive numbers`
+                x_scale = [b for n,b in enumerate(x_scale) if np.isnan(fixed_vals[n])]
+                # print(x_scale, fixed_vals,p0)
+                lsq_kwargs["x_scale"] = x_scale
+
+            res = optimize.least_squares(*lsq_args, **lsq_kwargs)
+            # res = optimize.least_squares(objective_function, x0=p0,
+            #                             args=,
+            #                             bounds=bounds, max_nfev=4000,#,
+            #                            x_scale=x_scale)#, ftol=3e-16, xtol=3e-16, gtol=3e-16)
+            popt = res.x
+            pcov = res.jac
+
+            for i in range(0,len(hold)):
+                if hold[i]:
+                    popt = np.insert(popt, i, p1[i])
+                    pcov = np.insert(np.insert(pcov, i, 0, axis=1), i, 0, axis=0)
+            return popt, pcov, sb, fit_dIdV, p0, smallbias
+
+        except (RuntimeError, IndexError, ValueError) as e:
+            print(e)
+            n = np.ones((len(p0)))*np.nan
+            return n, n, sb, fit_dIdV, p0, smallbias
 
 
 # plot large range spectra
@@ -688,6 +867,7 @@ def fit_data(bias: np.array, dIdV: np.array, marker1: float, marker2: float):
     smallbias = [(n,b) for (n,b) in enumerate(bias) if b>=marker1 and b<=marker2]
     nsb, sb = np.array(smallbias).T
     fit_dIdV = np.array(dIdV)[[int(n) for n in nsb]]
+    del nsb
 
     # initial guess for e0, w, q, a, b, c,
     b0 = (fit_dIdV[-1]-fit_dIdV[0])/(sb[-1]-sb[0])
@@ -718,167 +898,6 @@ def fit_data(bias: np.array, dIdV: np.array, marker1: float, marker2: float):
 
 def lorentz(e, e0, gamma):
     return 1/np.pi*(gamma/2)/((x-x0)**2+(gamma/2)**2)
-
-def fit_data_fixed_vals(bias: list, dIdV: list,
-                        marker1: float, marker2: float,
-                        fixed_vals: list) -> list:
-    """
-    Parameters
-    __________
-
-    Returns
-    _______
-    """
-    # data for which we are fitting the Fano function
-    smallbias = [(n,b) for (n,b) in enumerate(bias) if b>=marker1 and b<=marker2]
-    nsb, sb = np.array(smallbias).T
-    fit_dIdV = np.array(dIdV)[[int(n) for n in nsb]]
-
-    # initial guess for e0, w, q, a, b, c,
-    b0 = (fit_dIdV[-1]-fit_dIdV[0])/(sb[-1]-sb[0])
-    b0 = 0
-    e00 = sb[np.argmin(scipy.signal.detrend(fit_dIdV))]
-
-    p0 = [e00, 4, 0, 1, b0, np.mean(fit_dIdV)]
-    hold = [0 if np.isnan(fixed_vals[n]) else 1 for n in range(len(p0)) ]
-
-    p1 = [p if np.isnan(fixed_vals[n]) else fixed_vals[n] for n,p in enumerate(p0) ]
-    p0 = [p for n,p in enumerate(p0) if np.isnan(fixed_vals[n]) ]
-
-    # bounds for e0, w, q, a, b, c
-    bounds = np.array([ [min(sb),max(sb)],                  # e0
-                        [0,50],                             # w
-                        [-np.inf,np.inf],                   # q
-                        [0, max(fit_dIdV)],                 # a
-                        [-np.inf,np.inf],                   # b
-                        [-np.inf,np.inf]]).T                # c
-    bounds = np.array([b for n,b in enumerate(bounds.T) if np.isnan(fixed_vals[n])]).T
-
-    # https://stackoverflow.com/questions/31705327/scipy-optimize-curve-fit-setting-a-fixed-parameter
-    # fix some while fitting other Fano parameters
-    def wrapper(V, *args):
-        wrapperName = 'fano(V,'
-        for i in range(0,len(hold)):
-            if hold[i]:
-                wrapperName +=str(p1[i])
-            else:
-                if i%2==0:
-                    wrapperName += 'args['+str(i-sum(hold))+']'
-                else:
-                    wrapperName += 'args['+str(i-sum(hold))+']'
-            if i<len(hold):
-                wrapperName+=','
-        wrapperName+=')'
-    #    print(wrapperName)
-        return eval(wrapperName)
-    try:
-        # popt, pcov = optimize.curve_fit(fix_T(T), sb, fit_dIdV, p0=p0, bounds=bounds)
-        popt, pcov = optimize.curve_fit(wrapper, sb, fit_dIdV, p0=p0, bounds=bounds)
-        for i in range(0,len(hold)):
-            if hold[i]:
-                popt = np.insert(popt, i, p1[i])
-                pcov = np.insert(np.insert(pcov, i, 0, axis=1), i, 0, axis=0)
-        return popt, pcov, sb, fit_dIdV, p0
-    except (RuntimeError, IndexError) as e:
-        print(e)
-        n = np.ones((len(p0)))*np.nan
-        return n, n, sb, fit_dIdV, p0
-
-def fit_data_w_times_residual(bias: list, dIdV: list,
-                              marker1: float, marker2: float,
-                              fixed_vals: list, init_vals: list=None,
-                              scale: bool = True):
-    """
-    Parameters
-    __________
-
-    Returns
-    _______
-    """
-    assert(marker1<marker2)
-    # data for which we are fitting the Fano function
-    # print(locals().keys())
-    # print(locals.get(locals().keys()[0]))
-    # print(inspect.getargvalues(inspect.currentframe()))
-    in_btw = lambda x, y, z: x >= y and x <= z
-    smallbias = [(n,b) for (n,b) in enumerate(bias) if in_btw(b, marker1,marker2)]
-    nsb, sb = np.array(smallbias).T
-    fit_dIdV = np.array(dIdV)[[int(n) for n in nsb]]
-
-    # initial guess for e0, w, q, a, b, c,
-    b0 = (fit_dIdV[-1]-fit_dIdV[0])/(sb[-1]-sb[0])
-    e00 = sb[np.argmin(scipy.signal.detrend(fit_dIdV))]
-
-    if init_vals is None:
-        p0 = [e00, 4, 0.0001, 0.5, b0, np.mean(fit_dIdV)]
-    else:
-        p0 = init_vals
-    hold = [0 if np.isnan(fixed_vals[n]) else 1 for n in range(len(p0)) ]
-
-    p1 = [p if np.isnan(fixed_vals[n]) else fixed_vals[n] for n,p in enumerate(p0) ]
-    p0 = [p for n,p in enumerate(p0) if np.isnan(fixed_vals[n]) ]
-
-    # bounds for e0, w, q, a, b, c
-    bounds = np.array([ [min(sb),max(sb)],     #none                  # e0
-                        [2, 30],                             # w
-                        [-np.inf,np.inf],                   # q
-                        # [-0.2,0.2],
-                        [0, max(fit_dIdV)],                 # a
-                        [-np.inf,np.inf],                   # b
-                        [-np.inf,np.inf]]).T                # c
-    bounds = np.array([b for n,b in enumerate(bounds.T) if np.isnan(fixed_vals[n])]).T
-    # bounds = [(b[0], b[1]) for b in bounds.T]
-    # https://stackoverflow.com/questions/31705327/scipy-optimize-curve-fit-setting-a-fixed-parameter
-    def wrapper(V, *args):
-        wrapperName = 'fano(V,'
-        for i in range(0,len(hold)):
-            if hold[i]:
-                wrapperName +=str(p1[i])
-            else:
-                if i%2==0:
-                    wrapperName += 'args['+str(i-sum(hold))+']'
-                else:
-                    wrapperName+='args['+str(i-sum(hold))+']'
-            if i<len(hold):
-                wrapperName+=','
-        wrapperName+=')'
-        return eval(wrapperName)
-
-    def objective_function(p, bias, dIdV):
-        #parameters are [e0, w, q, a, b, c] so p[1] is w
-        of = residual(dIdV, wrapper(bias, *p))[1]#*abs(p[2])
-        return of #residual(data, fit)
-
-    try:
-        # x_scale = [8,2,1,1,1,200]
-        lsq_args = [objective_function]
-        args = ([b[1] for b in smallbias], fit_dIdV,)
-        lsq_kwargs = {"x0": p0, "args": args, "bounds": bounds, "max_nfev":4000}
-        if scale:
-            x_scale = np.abs(p0)
-            # x_cale will complain `x_scale must be 'jac' or array_like with positive numbers`
-            x_scale = [b for n,b in enumerate(x_scale) if np.isnan(fixed_vals[n])]
-            # print(x_scale, fixed_vals,p0)
-            lsq_kwargs["x_scale"] = x_scale
-
-        res = optimize.least_squares(*lsq_args, **lsq_kwargs)
-        # res = optimize.least_squares(objective_function, x0=p0,
-        #                             args=,
-        #                             bounds=bounds, max_nfev=4000,#,
-        #                            x_scale=x_scale)#, ftol=3e-16, xtol=3e-16, gtol=3e-16)
-        popt = res.x
-        pcov = res.jac
-
-        for i in range(0,len(hold)):
-            if hold[i]:
-                popt = np.insert(popt, i, p1[i])
-                pcov = np.insert(np.insert(pcov, i, 0, axis=1), i, 0, axis=0)
-        return popt, pcov, sb, fit_dIdV, p0
-
-    except (RuntimeError, IndexError, ValueError) as e:
-        print(e)
-        n = np.ones((len(p0)))*np.nan
-        return n, n, sb, fit_dIdV, p0
 
 def save_fano_fits(files: list, opts: list, covs: list, m1: list, m2: list, path: str, xs: list, ys: list, resid: list, radii: list, dists: list):
     """
