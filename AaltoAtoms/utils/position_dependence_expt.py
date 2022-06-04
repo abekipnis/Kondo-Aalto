@@ -1,6 +1,13 @@
 import numpy as np
+from os import path
 from .find_atom_positions import CircCorral
-from AMRL import Createc_Controller
+try:
+    from AMRL import Createc_Controller
+except Exception as e:
+    print(e)
+    print("Createc_Controller is None")
+    print(path.basename(__file__) + " will not work")
+    Createc_Controller = None
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment
 import random

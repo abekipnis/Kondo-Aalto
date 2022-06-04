@@ -1,8 +1,16 @@
 # Kabsch algorithm for the best rotation between two sets to minimize distance
 from scipy.spatial.transform import Rotation
 import numpy as np
+from os import path
 from .find_atom_positions import CircCorral, CircCorralData, clockwiseangle
-from AMRL import Createc_Controller
+try:
+    from AMRL import Createc_Controller
+except Exception as e:
+    print(e)
+    print("Createc_Controller is None")
+    print(path.basename(__file__) + " will not work")
+
+    Createc_Controller = None
 from AMRL.Environment.get_atom_coordinate import pixel_to_nm
 from scipy.spatial.transform import Rotation
 
