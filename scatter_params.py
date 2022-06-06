@@ -29,7 +29,16 @@ from AaltoAtoms.utils.particle_in_a_box import get_modes, mstar
 
 c = Co_Co_corrals[6]
 
-def show_current_param_fit_result(c):
+def show_current_param_fit_result(c: corralspectrum) -> None:
+    """
+    See how current setup for single corralspectrum works for fit.
+
+    Parameters:
+        c: corralspectrum
+    Returns:
+        None
+    """
+
     matplotlib.rcParams.update({'font.size': 10})
     S = Spec(os.path.join(basepath, c.vertfile))
     S.clip_data(c.dataclipmin, c.dataclipmax)
@@ -76,7 +85,10 @@ plt.imshow(C.im)
 # C.get_region_centroids(percentile=98, edge_cutoff=0.01)
 # radius = C.get_corral_radius(1.5, savefig=False)
 
-def create_waterfall():
+def create_waterfall() -> list:
+    """
+        Create array with information to plot dIdv for Ag corrals
+    """
     dir = r"Y:\labdata\Createc\STMDATA\Ag(111)\2022-03 Co Kondo corrals\04-11 Ag Co"
     wfall = {"A220411.133438.dat": "A220411.134351.L0013.VERT",
     "A220411.141241.dat": "A220411.141923.L0017.VERT",
@@ -115,6 +127,17 @@ def create_waterfall():
     return cache
 
 def show_waterfall(cache: list, bias_idx: int=3, dIdV_idx: int =2) -> None:
+    """
+        Plot the data created by create_waterfall
+
+    Parameters:
+        cache: list of [bias, dIdV + offset, color, radius]
+        bias_idx:
+        dIdV_ idx:
+
+    Returns:
+        None
+    """
     plt.figure(figsize=(8,8))
 
     colors = plt.cm.copper(np.linspace(0, 1, len(cache)))
@@ -155,7 +178,14 @@ if __name__=="__main__":
     Co_Co_data_loc = r'C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Kondo corrals fit data\Co_Co_data.pickle'
     Co_Ag_data_loc = r'C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Kondo corrals fit data\Co_Ag_data.pickle'
 
+    Co_Co_data_loc = r'data\Co_Co_data.pickle'
+    Co_Ag_data_loc = r'data\Co_Co_data.pickle'
+
     def save_data():
+        """
+        Analyze data defined by corraspectrum arrays in data_array
+        Save to location defined in Co_Co_data_loc and Co_Ag_data_loc
+        """
         global Co_Co_data
         Co_Co_data = np.array(analyze_data(Co_Co_corrals, showfig=True))
         global Co_Ag_data
@@ -172,6 +202,10 @@ if __name__=="__main__":
     save_data()
 
     def load_data():
+        """
+        Load data saved in Co_Co_data_loc
+        """
+
         global Co_Co_data
         with open(Co_Co_data_loc, "rb") as handle:
             Co_Co_data = pickle.load(handle)
@@ -181,6 +215,8 @@ if __name__=="__main__":
             Co_Ag_data = pickle.load(handle)
 
     load_data()
+
+    
     [plt.plot(c[3], c[2]/c[2][-1]+c[0]) for c in Co_Co_data if len(c[3]) ==502 and c[3][0]==80]
     plt.scatter([c[0] for c in Co_Co_data],  [c[1] for c in Co_Co_data])
     plt.ylim(0, 20)
@@ -314,18 +350,3 @@ plt.xlim(-20, 20)
     # plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-w-r-fit.pdf")
     # plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-w-r-fit.png")
     fit_and_plot_functional_curve(*np.array(Co_Ag_data)[:,0:2].T)
-
-#plt.xlim(-20,20)
-
-#[[c[0], c[-1].file] for c in Co_Ag_data]
-# plt.ylim(0,30)
-# d.to_csv("/Users/akipnis/Desktop/Kondo_width_scatter.txt")
-
-# plt.savefig("/Users/akipnis/Desktop/Li_fit.png")
-# plt.axvline(2.88)h
-# for k in np.arange(0.6,2,0.2):
-#     plt.plot(rng,10.*np.array([w(x=x,k=k) for x in rng]),label=k)
-# plt.plot(rng,np.array([w(x=x,k=k) for x in rng]),label=k)
-# plt.legend()
-# plt.scatter(d["radius"],d["a"])
-# plt.scatter(d["radius"], d["q"])
