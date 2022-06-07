@@ -247,6 +247,7 @@ class Spec(metaclass=LoadTimeMeta):
             popt, pcov, sb, fit_dIdV, p0, smallbias = self.fit_data_fixed_vals(marker1, marker2, fixed_vals)
             print(self.log("successfully fit fano resonance"))
         elif type_fit == 'wtimes': #using the width*residual as thing to minimize
+            print(init_vals)
             popt, pcov, sb, fit_dIdV, p0, smallbias = self.fit_data_w_times_residual(marker1,marker2, fixed_vals, init_vals=init_vals)
 
         # evaluate fano function in the given bias range using parameters
@@ -387,7 +388,9 @@ class Spec(metaclass=LoadTimeMeta):
         self.smallbias = smallbias
         return [popt, pcov, marker1, marker2, self.XPos_nm, self.YPos_nm, residtot, smallbias, f]
 
-    def fit_data_fixed_vals(self, marker1: float, marker2: float,
+    def fit_data_fixed_vals(self,
+                            marker1: float,
+                            marker2: float,
                             fixed_vals: list) -> list:
         """
         Parameters
@@ -454,8 +457,10 @@ class Spec(metaclass=LoadTimeMeta):
             return n, n, sb, fit_dIdV, p0, sb, fit_dIdV
 
     def fit_data_w_times_residual(self,
-
-                                  fixed_vals: list, init_vals: list=None,
+                                  marker1,
+                                  marker2,
+                                  fixed_vals: list,
+                                  init_vals: list=None,
                                   scale: bool = True) -> list:
         """
         Parameters

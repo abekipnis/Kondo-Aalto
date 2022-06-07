@@ -1,4 +1,5 @@
 # %% codecell
+# option-shift-enter to Hydrogen - run cell
 import os, scipy
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -25,7 +26,7 @@ import pandas as pd
 
 import matplotlib
 from AaltoAtoms.utils.particle_in_a_box import get_modes, mstar
-
+# %%
 
 c = Co_Co_corrals[6]
 
@@ -60,7 +61,7 @@ def show_current_param_fit_result(c: corralspectrum) -> None:
     return r
 
 res = show_current_param_fit_result(c)
-
+# %%
 C = CircCorralData(os.path.join(basepath, c.datfile), c.datfile)
 C.occupied = True
 C.corral = True
@@ -69,6 +70,7 @@ C.get_region_centroids(percentile=97, edge_cutoff=0.01)
 radius = C.get_corral_radius(1.5, savefig=False)
 2*np.pi*radius/len(C.centroids)
 plt.imshow(C.im)
+# %%
 
 #
 # c = Co_Ag_corrals[6]
@@ -85,26 +87,27 @@ plt.imshow(C.im)
 # C.get_region_centroids(percentile=98, edge_cutoff=0.01)
 # radius = C.get_corral_radius(1.5, savefig=False)
 
+# %%
 def create_waterfall() -> list:
     """
         Create array with information to plot dIdv for Ag corrals
     """
     dir = r"Y:\labdata\Createc\STMDATA\Ag(111)\2022-03 Co Kondo corrals\04-11 Ag Co"
     wfall = {"A220411.133438.dat": "A220411.134351.L0013.VERT",
-    "A220411.141241.dat": "A220411.141923.L0017.VERT",
-    "A220411.145437.dat": "A220411.145852.VERT",
-    "A220411.153007.dat": "A220411.153513.VERT",
-    "A220411.161126.dat": "A220411.161806.L0017.VERT",
-    "A220411.165133.dat": "A220411.165336.VERT",
-    "A220411.173719.dat": "A220411.174011.VERT",
-    "A220411.183528.dat": "A220411.183838.VERT",
-    "A220411.193017.dat": "A220411.193232.VERT",
-    "A220411.200858.dat": "A220411.201104.VERT",
-    "A220411.204552.dat": "A220411.204741.VERT",
-    "A220411.215004.dat": "A220411.215940.L0016.VERT",
-    #"A220411.222442.dat": "A220411.222845.L0017.VERT",
-    #"A220411.233446.dat": "A220411.233625.VERT",
-    "A220412.010237.dat": "A220412.010418.VERT"}
+            "A220411.141241.dat": "A220411.141923.L0017.VERT",
+            "A220411.145437.dat": "A220411.145852.VERT",
+            "A220411.153007.dat": "A220411.153513.VERT",
+            "A220411.161126.dat": "A220411.161806.L0017.VERT",
+            "A220411.165133.dat": "A220411.165336.VERT",
+            "A220411.173719.dat": "A220411.174011.VERT",
+            "A220411.183528.dat": "A220411.183838.VERT",
+            "A220411.193017.dat": "A220411.193232.VERT",
+            "A220411.200858.dat": "A220411.201104.VERT",
+            "A220411.204552.dat": "A220411.204741.VERT",
+            "A220411.215004.dat": "A220411.215940.L0016.VERT",
+            #"A220411.222442.dat": "A220411.222845.L0017.VERT",
+            #"A220411.233446.dat": "A220411.233625.VERT",
+            "A220412.010237.dat": "A220412.010418.VERT"}
     cache = []
     colors = plt.cm.copper(np.linspace(0, 1, len(wfall)))
 
@@ -166,7 +169,7 @@ def show_waterfall(cache: list, bias_idx: int=3, dIdV_idx: int =2) -> None:
     plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-spectrum-waterfall.svg")
 
     plt.show()
-
+# %%
 cache = create_waterfall()
 matplotlib.rcParams.update({'font.size': 22})
 show_waterfall(cache, 0, 1)
@@ -200,8 +203,7 @@ if __name__=="__main__":
             pickle.dump(Co_Ag_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     save_data()
-
-    def load_data():
+‚‚    def load_data():
         """
         Load data saved in Co_Co_data_loc
         """
@@ -216,13 +218,13 @@ if __name__=="__main__":
 
     load_data()
 
-    
+
     [plt.plot(c[3], c[2]/c[2][-1]+c[0]) for c in Co_Co_data if len(c[3]) ==502 and c[3][0]==80]
     plt.scatter([c[0] for c in Co_Co_data],  [c[1] for c in Co_Co_data])
     plt.ylim(0, 20)
 
     atol = 0.2
-    radius = 4.5
+    radius = 4.5‚
     dataset = Co_Ag_data
 
     def show_eigenval_and_kondo_spectrum(data: str, interpolate:bool=False):
