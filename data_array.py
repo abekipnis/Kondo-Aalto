@@ -1,4 +1,4 @@
-/# this file just stores the arrays with the corral/spectrum dat file and analysis information
+# this file just stores the arrays with the corral/spectrum dat file and analysis information
 # these arrays are used by the file scatter_params.py, which calls the functions in analyze_data.py
 
 
