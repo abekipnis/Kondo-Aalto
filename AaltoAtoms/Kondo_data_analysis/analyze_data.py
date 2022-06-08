@@ -98,13 +98,46 @@ def plot_radial_width_dependence(Co_Ag_data):
     plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\w_radius_dependence.svg")
     return all_Co_Ag_data
 
-
+import pdb
 def analyze_data(corrals: list, showfig: bool=False, fit_type="default") -> list:
     data = []
+    import shutil
+    alldatapath = r"Z:\Documents\AaltoAtoms\data"
+    # enumerate over items in the list
     for n, c in enumerate(corrals):
+        # for migrating dat files to data\ folder
+        source_dat = os.path.join(basepath, c.datfile)
+        datfiledir = os.path.dirname(c.datfile)
+
+        dir = os.path.join(alldatapath, datfiledir)
+        dir_exists = os.path.exists(dir)
+
+        if not dir_exists:
+            os.makedirs(dir)
+        dest_path = os.path.join(alldatapath, datfiledir)
+        dest_dat = os.path.join(dest_path, os.path.basename(c.datfile))
+
+        if not os.path.exists(dest_dat):
+            print("saving to " + dest_dat)
+            shutil.copyfile(source_dat, dest_dat)
+
+        # for migrating vert files to data\ folder
+        source_vert = os.path.join(basepath, c.vertfile)
+        vertfiledir = os.path.dirname(c.vertfile)
+        dir = os.path.join(alldatapath, vertfiledir)
+        dir_exists = os.path.exists(dir)
+
+        if not dir_exists:
+            os.makedirs(dir) #need to use makedirs instead of mkdir
+        dest_path = os.path.join(alldatapath, vertfiledir)
+        dest_vert = os.path.join(dest_path, os.path.basename(c.vertfile))
+        if not os.path.exists(dest_vert):
+            print("saving to " + dest_vert)
+            shutil.copyfile(source_vert, dest_vert)
+
         print("ANALYZING (zero-indexed) ELEMENT #%d of %d IN ARRAY:" %(n, len(corrals)))
         # get the radius from the topography
-        C = CircCorralData(os.path.join(basepath, c.datfile), c.datfile, c.chan)
+        C = CircCorralData(source_dat, c.datfile, c.chan)
         C.occupied = True
         C.corral = True
         C.subtract_plane()
@@ -112,8 +145,8 @@ def analyze_data(corrals: list, showfig: bool=False, fit_type="default") -> list
         radius = C.get_corral_radius(1.5, savefig=False, showfig=False)
         C.calculate_wall_density()
 
-        # get the width from the spectrum
-        S = Spec(os.path.join(basepath, c.vertfile))
+        # get Kondo width from spectrum
+        S = Spec(source_vert)
         dIdV = S.dIdV
         bias_mv = S.bias_mv + S.bias_offset
         S.clip_data(c.dataclipmin, c.dataclipmax)
