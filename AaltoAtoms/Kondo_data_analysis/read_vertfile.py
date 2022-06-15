@@ -18,7 +18,10 @@ import os, pdb, traceback, pathlib, inspect, sys, time, re, pdb
 from itertools import product
 import createc
 from cmath import sqrt
-from ..utils.decorators import timed_log, timing, bcolors
+try:
+    from ..utils.decorators import timed_log, timing, bcolors
+except:
+    from AaltoAtoms.utils.decorators import timed_log, timing, bcolors
 # font = {'family' : 'normal',
 #         'weight' : 'normal',
 #         'size'   : 14}
@@ -209,7 +212,9 @@ class Spec(metaclass=LoadTimeMeta):
                  type_fit: str = "default",
                  init_vals: list = None,
                  actual_radius: float =None,
-                 dist_to_Co: float =None) -> list:
+                 dist_to_Co: float =None,
+                 p0: list=None,
+                 bounds: list=None) -> list:
         """
         """
         # TODO: implement a 'quit' function i.e. if we want to stop in the middle
@@ -243,12 +248,16 @@ class Spec(metaclass=LoadTimeMeta):
         # e0, w, q, a, b, c
         # some fitting calls for fixing the fit parameters at certain values
         fixed_vals = [e0_fixed_val, np.nan, q_fixed_val, np.nan, np.nan, np.nan]
+        args = [marker1, marker2, fixed_vals]
         if type_fit == 'default':
-            popt, pcov, sb, fit_dIdV, p0, smallbias = self.fit_data_fixed_vals(marker1, marker2, fixed_vals)
+            rets = self.fit_data_fixed_vals(*args)
             print(self.log("successfully fit fano resonance"))
         elif type_fit == 'wtimes': #using the width*residual as thing to minimize
             print(init_vals)
-            popt, pcov, sb, fit_dIdV, p0, smallbias = self.fit_data_w_times_residual(marker1,marker2, fixed_vals, init_vals=init_vals)
+            rets = self.fit_data_w_times_residual(*args, init_vals=init_vals)
+
+        # get the returned values
+        popt, pcov, sb, fit_dIdV, p0, smallbias = rets
 
         # evaluate fano function in the given bias range using parameters
         f = fano(sb, *popt)
@@ -318,11 +327,19 @@ class Spec(metaclass=LoadTimeMeta):
                 # show data
                 a1.plot(self.bias_mv, self.dIdV)
 
+                # do 'monte carlo' to show goodness of fit
+                kwargs = {'mean':popt, 'cov': pcov, 'allow_singular':False}
+                mvar = scipy.stats.multivariate_normal(**kwargs)
+                for i in range(20):
+                    gauss_sampled_vals = mvar.rvs()
+                    mv = np.arange(min(self.bias_mv), max(self.bias_mv), 0.05)
+                    plt.plot(mv, fano(mv, *gauss_sampled_vals), alpha=0.005, color='red')
+                    
                 # show the fit
                 a1.plot(sb, fit_dIdV, "b-")
                 a1.set_ylim(min(self.dIdV), max(self.dIdV))
-                # f = fix_T(T)(sb, *popt)
-                # plt.plot(bias, fix_T(T)(bias, *popt), "black")
+
+
 
                 a1.plot(self.bias_mv, fano(self.bias_mv, *popt), 'r--')
                 a1.plot(self.bias_mv, fano(self.bias_mv, *popt)-popt[4]*self.bias_mv,"m--")#-0.2*(min(self.dIdV)-popt[4]),"m--")
@@ -391,7 +408,9 @@ class Spec(metaclass=LoadTimeMeta):
     def fit_data_fixed_vals(self,
                             marker1: float,
                             marker2: float,
-                            fixed_vals: list) -> list:
+                            fixed_vals: list,
+                            init_vals: list=None,
+                            bounds: list=None,) -> list:
         """
         Parameters
         __________
@@ -461,6 +480,7 @@ class Spec(metaclass=LoadTimeMeta):
                                   marker2,
                                   fixed_vals: list,
                                   init_vals: list=None,
+                                  bounds: list=None,
                                   scale: bool = True) -> list:
         """
         Parameters
@@ -491,6 +511,7 @@ class Spec(metaclass=LoadTimeMeta):
             p0 = init_vals
         hold = [0 if np.isnan(fixed_vals[n]) else 1 for n in range(len(p0)) ]
 
+        # used for fixing values
         p1 = [p if np.isnan(fixed_vals[n]) else fixed_vals[n] for n,p in enumerate(p0) ]
         p0 = [p for n,p in enumerate(p0) if np.isnan(fixed_vals[n]) ]
 

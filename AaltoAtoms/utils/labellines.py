@@ -55,6 +55,8 @@ def labelLine(line,x,label=None,align=True,**kwargs):
     if 'zorder' not in kwargs:
         kwargs['zorder'] = 2.5
 
+    kwargs['alpha'] = 0.5
+
     ax.text(x,y,label,rotation=trans_angle,**kwargs)
 
 def labelLines(lines,align=True,xvals=None,**kwargs):

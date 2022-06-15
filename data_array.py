@@ -30,13 +30,13 @@ Co_Co_corrals = [
     corralspectrum("4-12 Co-Co/A220413.103724.dat", 95, "4-12 Co-Co/A220413.103854.VERT", -20, 20, -50, 60, None, None, None), # 2.9 nm
     corralspectrum("4-12 Co-Co/A220413.105651.dat", 96, "4-12 Co-Co/A220413.105932.VERT", -13, 31), # 2.65 nm
     corralspectrum("4-12 Co-Co/A220413.113527.dat", 99, "4-12 Co-Co/A220413.113654.VERT", -15, 15, -45, 60, 3), # 6.4 nm
-    corralspectrum("03-29/A220329.113009.dat", 99, "03-29/A220329.113106.VERT", -20, 40, -20, 40, 3, None, None, "wtimes"), # 7.42 nm
+    corralspectrum("03-29/A220329.113009.dat", 99, "03-29/A220329.113106.VERT", -20, 40, -20, 40, None, None, None, "default"), # 7.51 nm
     corralspectrum("04-01/A220401.010342.dat", 99, "04-01/A220401.011026.L0125.VERT",-2, 40, -5, 40, 3), # 8 nm
     corralspectrum("04-15 Co-Co/A220415.180247.dat", 99, "04-15 Co-Co/A220415.180404.VERT", 0, 12, None, None, None, None, 0), # 8.3 nm
     corralspectrum("04-14 Co Co/A220414.194555.dat", 99, "04-14 Co Co/A220414.195507.VERT", -2, 25, None, None, None, None, 0), # 4.19 nm
     corralspectrum("04-14 Co Co/A220414.201501.dat", 98, "04-14 Co Co/A220414.201655.VERT", -2, 11, None, None, 3, None, 0), # 3.7 nm
     corralspectrum("04-14 Co Co/A220414.202552.dat", 97, "04-14 Co Co/A220414.202911.VERT", -2, 60,  -20, 30, None, None, 0), # 3.38 nm
-    corralspectrum("04-14 Co Co/A220414.204203.dat", 99, "04-14 Co Co/A220414.204346.VERT", -2, 12, -10, 70, None, None, 0, "wtimes"), # 3.9 nm
+    corralspectrum("04-14 Co Co/A220414.204203.dat", 99, "04-14 Co Co/A220414.204346.VERT", -2, 30, -10, 70, None, None, 0, "default"), # 3.9 nm
     corralspectrum("04-14 Co Co/A220414.205921.dat", 99, "04-14 Co Co/A220414.210247.VERT", 0, 13, -60, 60, 3, None, 0), # 4.4 nm
     corralspectrum("04-14 Co Co/A220414.212955.dat", 99, "04-14 Co Co/A220414.213310.VERT", -8, 25, None, None, None, None, 0) , # 5.35 nm
     corralspectrum("04-17 Co Co/position dependence experiment/A220417.213810.dat", 99, "04-17 Co Co/position dependence experiment/A220417.214221.VERT", -25, 18, -50, 30, 3, None, 0)  # 6.9 nm
@@ -96,23 +96,23 @@ H2Pc_corrals_center = [
 ]
 
 H2Pc_corrals_edge = [
-    corralspectrum(r"2022-05-25 second deposition after noise issue/9p5 nm corral/A220527.000351.dat", 99,  r"2022-05-25 second deposition after noise issue/9p5 nm corral/A220527.001034.L0045.VERT" , -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-25 second deposition after noise issue/9 nm corral/A220527.131257.dat", 99, r"2022-05-25 second deposition after noise issue/9 nm corral/A220527.132244.L0019.VERT", -20, 20, -20, 20, None, None, None, None ),
-    corralspectrum(r"2022-05-25 second deposition after noise issue/8p57 nm corral/A220527.173842.dat", 99, r"2022-05-25 second deposition after noise issue/8p57 nm corral/A220527.174243.L0020.VERT", -20, 20, -20, 20, None, None, None, None ),
-    corralspectrum(r"2022-05-25 second deposition after noise issue/8p08 nm corral/A220527.185403.dat", 99,  r"2022-05-25 second deposition after noise issue/8p08 nm corral/A220527.185837.L0019.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-25 second deposition after noise issue/7p5 nm corral/A220527.212711.dat", 99,  r"2022-05-25 second deposition after noise issue/7p5 nm corral/A220527.214240.L0019.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/8 nm/A220524.132718.dat", 95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/8 nm/A220524.133236.L0023.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/7.3 nm corral/A220523.182042.dat", 94,r"2022-05-16 H2Pc (2 min 300 C -130 C)/7.3 nm corral/A220523.182756.L0015.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/7 nm corral/A220523.234720.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/7 nm corral/A220523.235603.L0017.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/6p07 nm Monday corral/A220523.145912.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/6p07 nm Monday corral/A220523.150635.L0016.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/6.7 nm corral/A220524.015654.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/6.7 nm corral/A220524.084536.L0014.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/6.3nm corral/A220524.094612.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/6.3nm corral/A220524.095007.L0016.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/6.1nm radius corral/A220524.105814.dat",99, r"2022-05-16 H2Pc (2 min 300 C -130 C)/6.1nm radius corral/A220524.110432.L0023.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/5p5 nm corral/A220522.235140.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/5p5 nm corral/A220522.235730.L0026.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/5nm corral/A220520.173130.dat",99, r"2022-05-16 H2Pc (2 min 300 C -130 C)/5nm corral/A220520.175130.L0047.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/4p5 nm corral/A220520.142331.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/4p5 nm corral/A220520.142629.L0030.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/4 nm corral/A220518.151648.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/4 nm corral/A220518.153129.L0026.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/3p5nm corral/A220518.181143.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/3p5nm corral/A220518.182241.L0020.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/3nm radius/A220519.211852.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/3nm radius/A220519.213027.L0020.VERT", -20, 20, -20, 20, None, None, None, None),
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/3.93 nm radius corral/A220520.094659.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/3.93 nm radius corral\A220520.095212.L0009.VERT", -20, 20, -20, 20, None, None, None, None),
+    corralspectrum(r"2022-05-25 second deposition after noise issue/9p5 nm corral/A220527.000351.dat", 99,  r"2022-05-25 second deposition after noise issue/9p5 nm corral/A220527.001034.L0045.VERT" , -20, 20, -20, 20, None, None, None, None), #9.48 nm
+    corralspectrum(r"2022-05-25 second deposition after noise issue/9 nm corral/A220527.131257.dat", 99, r"2022-05-25 second deposition after noise issue/9 nm corral/A220527.132244.L0019.VERT", -20, 20, -20, 20, None, None, None, None ), #9.03 nm
+    corralspectrum(r"2022-05-25 second deposition after noise issue/8p57 nm corral/A220527.173842.dat", 99, r"2022-05-25 second deposition after noise issue/8p57 nm corral/A220527.174243.L0020.VERT", -20, 20, -20, 20, None, None, None, None ), #8.55 nm
+    corralspectrum(r"2022-05-25 second deposition after noise issue/8p08 nm corral/A220527.185403.dat", 99,  r"2022-05-25 second deposition after noise issue/8p08 nm corral/A220527.185837.L0019.VERT", -20, 20, -20, 20, None, None, None, None), #8.05 nm
+    corralspectrum(r"2022-05-25 second deposition after noise issue/7p5 nm corral/A220527.212711.dat", 99,  r"2022-05-25 second deposition after noise issue/7p5 nm corral/A220527.214240.L0019.VERT", -20, 20, -20, 20, None, None, None, None), #7.5 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/8 nm/A220524.132718.dat", 95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/8 nm/A220524.133236.L0023.VERT", -20, 20, -20, 20, None, None, None, None), #8 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/7.3 nm corral/A220523.182042.dat", 94,r"2022-05-16 H2Pc (2 min 300 C -130 C)/7.3 nm corral/A220523.182756.L0015.VERT", -20, 20, -20, 20, None, None, None, None), #7.4 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/7 nm corral/A220523.234720.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/7 nm corral/A220523.235603.L0017.VERT", -20, 20, -20, 20, None, None, None, None), # 6.96 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/6p07 nm Monday corral/A220523.145912.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/6p07 nm Monday corral/A220523.150635.L0016.VERT", -20, 20, -20, 20, None, None, None, None), #6.05 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/6.7 nm corral/A220524.015654.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/6.7 nm corral/A220524.084536.L0014.VERT", -20, 20, -20, 20, None, None, None, None), # 6.67 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/6.3nm corral/A220524.094612.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/6.3nm corral/A220524.095007.L0016.VERT", -20, 20, -20, 20, None, None, None, None), #6.28 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/6.1nm radius corral/A220524.105814.dat",99, r"2022-05-16 H2Pc (2 min 300 C -130 C)/6.1nm radius corral/A220524.110432.L0023.VERT", -20, 20, -20, 20, None, None, None, None), # 6.10 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/5p5 nm corral/A220522.235140.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/5p5 nm corral/A220522.235730.L0026.VERT", -20, 20, -20, 20, None, None, None, None), #5.55 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/5nm corral/A220520.173130.dat",99, r"2022-05-16 H2Pc (2 min 300 C -130 C)/5nm corral/A220520.175130.L0047.VERT", -20, 20, -20, 20, None, None, None, None), # 5.10 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/4p5 nm corral/A220520.142331.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/4p5 nm corral/A220520.142629.L0026.VERT", -20, 20, -20, 20, None, None, None, None), # 4.53 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/4 nm corral/A220518.151648.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/4 nm corral/A220518.153129.L0026.VERT", -20, 20, -20, 20, None, None, None, None), #4.10 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/3p5nm corral/A220518.181143.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/3p5nm corral/A220518.182241.L0020.VERT", -20, 20, -20, 20, None, None, None, None), # 3.56 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/3nm radius/A220519.211852.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/3nm radius/A220519.213027.L0020.VERT", -20, 20, -20, 20, None, None, None, None), #3.62 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/3.93 nm radius corral/A220520.094659.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/3.93 nm radius corral\A220520.095212.L0009.VERT", -20, 20, -20, 20, None, None, None, None), #3.93 nm
 ]

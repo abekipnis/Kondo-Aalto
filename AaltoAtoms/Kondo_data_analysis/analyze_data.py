@@ -21,7 +21,8 @@ def show_current_param_fit_result(c):
     C.occupied = True
     C.corral = True
     C.subtract_plane()
-    C.get_region_centroids(percentile=c.height_percentile, edge_cutoff=c.edge_cutoff)
+    kwargs = {'percentile':c.height_percentile, 'edge_cutoff':c.edge_cutoff}
+    C.get_region_centroids(**kwargs)
     radius = C.get_corral_radius(1.5, savefig=False, showfig=False)
 
     S.remove_background(c.fit_order)
@@ -100,13 +101,21 @@ def plot_radial_width_dependence(Co_Ag_data):
 
 import pdb
 def analyze_data(corrals: list, showfig: bool=False, fit_type="default") -> list:
+    """
+        Process arrays of corralspectrum objects (defined in data_array.py file)
+        Save files to local data directory for storing on github if not there already
+        Get corral radius and calculate wall density
+        Get Kondo width from spectrum, performing background subtractions, etc.
+        Append data to array to be further processed
+    """
     data = []
     import shutil
     alldatapath = r"Z:\Documents\AaltoAtoms\data"
+    basepath = alldatapath
     # enumerate over items in the list
     for n, c in enumerate(corrals):
         # for migrating dat files to data\ folder
-        source_dat = os.path.join(basepath, c.datfile)
+        source_dat = os.path.join(basepath, str(c.datfile))
         datfiledir = os.path.dirname(c.datfile)
 
         dir = os.path.join(alldatapath, datfiledir)
@@ -122,13 +131,14 @@ def analyze_data(corrals: list, showfig: bool=False, fit_type="default") -> list
             shutil.copyfile(source_dat, dest_dat)
 
         # for migrating vert files to data\ folder
-        source_vert = os.path.join(basepath, c.vertfile)
+        source_vert = os.path.join(basepath, str(c.vertfile))
         vertfiledir = os.path.dirname(c.vertfile)
         dir = os.path.join(alldatapath, vertfiledir)
         dir_exists = os.path.exists(dir)
 
         if not dir_exists:
             os.makedirs(dir) #need to use makedirs instead of mkdir
+
         dest_path = os.path.join(alldatapath, vertfiledir)
         dest_vert = os.path.join(dest_path, os.path.basename(c.vertfile))
         if not os.path.exists(dest_vert):
@@ -136,7 +146,8 @@ def analyze_data(corrals: list, showfig: bool=False, fit_type="default") -> list
             shutil.copyfile(source_vert, dest_vert)
 
         print("ANALYZING (zero-indexed) ELEMENT #%d of %d IN ARRAY:" %(n, len(corrals)))
-        # get the radius from the topography
+
+        # get radius from the topography
         C = CircCorralData(source_dat, c.datfile, c.chan)
         C.occupied = True
         C.corral = True
@@ -160,7 +171,6 @@ def analyze_data(corrals: list, showfig: bool=False, fit_type="default") -> list
         r_message =  "radius: %1.1lf nm, " %(radius)
         w_message = "width %1.1lf mV " %(width)
         print(c.datfile, c.vertfile, r_message, w_message)
-
 
         data.append([radius, width, dIdV, bias_mv, S, C, c, r])
     return data
@@ -191,38 +201,48 @@ def get_old_Ag_Co_corrals(dist_cutoff_nm: float):
         d = pd.concat([d,cut_data])
     return d
 
+def w(r, jb=0.53, js=0.21, d1=-0.27, A=3.2, k=0.83):
+    rhob = 0.27 # 1/eV
+    rhos0 = 0.125 # 1/eV
+    D = 4480
+    return D*np.exp(-1./(jb*rhob+js*rhos0*(1+A*np.cos(2*k*r+d1))))
 
 def fit_and_plot_functional_curve(radius_array: list,
                                   width_array: list,
                                   bounds: list=None,
                                   p0: list=None,
+                                  sigma: list=None,
                                   show_Li_fit=True,
                                   show_isolated_Co=True):
-    def w(x=1, jb=0.53, js=0.21, d1=-0.27, d2=-0.24, alpha=0.88, A=3.2, k=0.83, D=4480):
-        rhob=0.27
-        rhos0=0.125
-        return D*np.exp(-1./(jb*rhob+js*rhos0*(1+A*np.cos(2*k*x+d1+d2)/(k*x)**alpha)))
-    rng = np.arange(2.5,4.8,0.01)
 
+    param_dict = {'Jb':'meV',
+              'Js':'meV',
+              'd1':'',
+              'A':'',
+              'k':'nm^-1',
+              }
     if p0 is None:
-        p0 = (0.530, 0.210, -0.27,-0.24,0.88, 3.2, 0.83)
+        p0 = (0.530, 0.210, -0.27, -0.24, 3.2, 0.83)
 
     if bounds is None:
         bounds = np.array([(0,1), #Jb
                 (0,1), #Js
                 (-3.14,3.14), #d1
-                (-3.14,3.14), #d2
-                (0,2), #alpha
                 (0,10), #A
-                (0,2) #k
+                (0,2), #k
                 ]).T
 
-    params = scipy.optimize.curve_fit(w, radius_array, width_array,
+    params, pcov = scipy.optimize.curve_fit(w,
+                                      radius_array,
+                                      width_array,
                                       p0,
                                       bounds=bounds,
-                                      maxfev=6000 )
+                                      maxfev=10000,
+                                      sigma=sigma,
+                                      absolute_sigma=False,
+                                      loss='cauchy' )
     rng = np.arange(min(list(radius_array)),max(radius_array),0.01)
-    plt.plot(rng, np.array([w(x,*params[0]) for x in rng]))#, label="Co/Ag corrals (our data)")
+    plt.plot(rng, np.array([w(x,*params) for x in rng]))#, label="Co/Ag corrals (our data)")
     # plt.plot(rng, np.array([w(x=x, d1=1.5, D=4000) for x in rng]), label="Fit changed" )
 
     if show_Li_fit:
@@ -232,15 +252,18 @@ def fit_and_plot_functional_curve(radius_array: list,
     if show_isolated_Co:
         plt.hlines(13.414,2,10,linestyle="dashed", label="Isolated Co")
 
-    print("jb: %lf meV" %params[0][0])
-    print("js %lf mev" %params[0][1])
-    print("d1 %lf" %params[0][2])
-    print("d2 %lf" %params[0][3])
-    print("alpha %lf" %params[0][4])
-    print("A %lf mV" %params[0][5])
-    print("k %lf nm^-1"% params[0][6])
-
-
+    #https://stackoverflow.com/questions/14581358/getting-standard-errors-on-fitted-parameters-using-the-optimize-leastsq-method-i
+    error = []
+    print(params)
+    for i in range(len(params)):
+        try:
+            error.append(np.sqrt(pcov[i][i]))
+        except:
+            error.append(0.00)
+    print(error)
+    for n, p in enumerate(list(param_dict.keys())):
+        print("%s: %lf pm %lf %s" %(p, params[n], error[n], param_dict[p]))
+    return params, pcov
 
     #m = max(radius_array)
     #plt.xlim(2.5, )

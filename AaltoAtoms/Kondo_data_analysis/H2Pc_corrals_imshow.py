@@ -12,9 +12,10 @@ import matplotlib.pyplot as plt
 
 # %% Load data
 basepath = r"Y:\labdata\Createc\STMDATA\Ag(111)\2022-05-16 Pc depositions"
-H2Pc_data = []
+H2Pc_edge_data = []
+H2Pc_center_data = []
 #for p in H2Pc_corrals_center:
-for p in H2Pc_corrals_edge:
+for n, p in enumerate(H2Pc_corrals_edge):
 
     S = Spec(os.path.join(basepath, p.vertfile))
     args = [os.path.join(basepath, p.datfile), p.datfile, None]
@@ -30,9 +31,22 @@ for p in H2Pc_corrals_edge:
 
     dIdV, bias_mv = S.dIdV, S.bias_mv
 
-    H2Pc_data.append([radius, width, dIdV, bias_mv, S, C, None, None])
+    H2Pc_edge_data.append([radius, width, dIdV, bias_mv, S, C, None, None])
 
-H2Pc_data = sorted(H2Pc_data, key=lambda x: x[0])
+
+    p = H2Pc_corrals_center[n]
+    S = Spec(os.path.join(basepath, p.vertfile))
+    dIdV, bias_mv = S.dIdV, S.bias_mv
+    H2Pc_center_data.append([radius, width, dIdV, bias_mv, S, C, None, None])
+
+
+H2Pc_edge_data = sorted(H2Pc_edge_data, key=lambda x: x[0])
+H2Pc_center_data = sorted(H2Pc_center_data, key=lambda x: x[0])
+# %%
+for n, p in enumerate(H2Pc_center_data):
+    plt.plot(p[3], (p[2] - H2Pc_edge_data[n][2])/p[2][np.argmin(np.abs(p[3]+79))] + p[0])
+
+
 # %%
 
 for p in H2Pc_data:
