@@ -1,10 +1,12 @@
 from AaltoAtoms import Spec
+import numpy as np
+
+test_file = r"tests\Createc2_210811.113827.L0001.VERT"
 
 class TestSpec():
-    import numpy as np
-    test_file = r"tests\Createc2_210811.113827.L0001.VERT"
 
     def test_init(self):
+        global test_file
         S = Spec(test_file)
         assert(S.fname==test_file)
         assert(S.NPoints==512)

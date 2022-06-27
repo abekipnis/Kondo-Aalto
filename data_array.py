@@ -8,9 +8,9 @@ fields =  ['datfile', 'height_percentile','vertfile','marker1','marker2', "datac
 corralspectrum = namedtuple('corralspectrum', fields, defaults=(None,)*len(fields))
 Co_Co_corrals = [
     corralspectrum("4-12 Co-Co/A220412.131659.dat", 99, "4-12 Co-Co/A220412.131810.VERT", -7, 30, -40, 40, None ), # 3.89 nm
-    corralspectrum("03-28/A220328.182736.dat", 96, "03-28/A220328.183230.L0015.VERT", -20, 20, None, None, None, 0.3, "default"), # 2.9 nm
+    corralspectrum("03-28/A220328.182736.dat", 96, "03-28/A220328.183230.L0015.VERT", -20, 15, -30, 30, None, 0.3, "default"), # 2.9 nm
     corralspectrum("03-24/1/A220323.115455.dat", 97, "03-24/1/A220323.115740.VERT", -30, 13, -80, 40, 2, None, "default"),# 3.34 nm,
-    corralspectrum("4-12 Co-Co/A220412.231331.dat", 99, "4-12 Co-Co/A220412.231512.VERT", 1, 10, None, None,3, None), #4.42 nm
+    corralspectrum("4-12 Co-Co/A220412.231331.dat", 99, "4-12 Co-Co/A220412.231512.VERT", 1, 10, -30, 30, None, None), #4.42 nm
     corralspectrum("03-26/A220325.102511.dat", 99, "03-26/A220325.102649.VERT", -5,20),# 4.5 nm
     corralspectrum("03-26/A220325.102511.dat", 99, "03-26/A220325.131310.VERT", 0,18, -20, 40, 3),# 4.51 nm
     corralspectrum("03-26/A220325.132236.dat", 99, "03-26/A220325.132407.VERT",  -5,14, -20, 40, None),# 4.5 nm
@@ -20,7 +20,7 @@ Co_Co_corrals = [
     corralspectrum("4-12 Co-Co/A220412.115834.dat", 99, "4-12 Co-Co/A220412.120450.VERT", -10, 40, -60, 60, 3), # 5 nm radius
     corralspectrum("4-12 Co-Co/A220412.132510.dat", 99, "4-12 Co-Co/A220412.132822.L0017.VERT", -5, 15, -40, 40, None, None, None, "default"), # 3.8 nm
     corralspectrum("4-12 Co-Co/A220412.160314.dat", 99, "4-12 Co-Co/A220412.160413.VERT", 0, 50, 0, 50, 3), # 4.7 nm
-    corralspectrum("4-12 Co-Co/A220412.163342.dat", 97, "4-12 Co-Co/A220412.163523.VERT", -30, 18, None, None, None, None, None, "default"), #3 nm
+    corralspectrum("4-12 Co-Co/A220412.163342.dat", 97, "4-12 Co-Co/A220412.163523.VERT", -30, 25, None, None, None, None, None, "default"), #3 nm
     corralspectrum("4-12 Co-Co/A220412.183001.dat", 99, "4-12 Co-Co/A220412.184138.L0025.VERT", -10, 20, None, None, None, 2.5), # 6 nm
     corralspectrum("4-12 Co-Co/A220412.223356.dat", 99, "4-12 Co-Co/A220412.223556.VERT", -16, 20, -70, 60, 3, None, None), # 6.47
     corralspectrum("4-12 Co-Co/A220412.224607.dat", 99, "4-12 Co-Co/A220412.224743.VERT", -20, 15, -20, 45, None, None), # 7 nm
@@ -59,10 +59,13 @@ Co_Ag_corrals = [
     corralspectrum("04-11 Ag Co/A220411.204552.dat", 99, "04-11 Ag Co/A220411.204741.VERT", -8, 17), # 5.14 nm
     corralspectrum("04-11 Ag Co/A220411.214417.dat", 99, "04-11 Ag Co/A220411.214626.VERT", -4, 15, -10, 22, 3), # 4.61 nm
     corralspectrum("04-11 Ag Co/A220411.222442.dat", 99, "04-11 Ag Co/A220411.222845.L0016.VERT", -4, 15, -80, 50, 3), # 4.08 nm
-    corralspectrum("04-11 Ag Co/A220411.233446.dat", 99, "04-11 Ag Co/A220411.233625.VERT", -15, 19, -20, 22, 3), # 5.04 nm
-    corralspectrum("04-11 Ag Co/A220411.233446.dat", 99, "04-11 Ag Co/A220411.233844.L0015.VERT", -15, 14, -20, 22, 3), # 4.19 nm
-    corralspectrum("04-06 6nm Ag walls/A220407.155505.dat", 99, "04-06 6nm Ag walls/A220407.160008.L0071.VERT", -5, 20), # 5.95 nm
+    corralspectrum("04-11 Ag Co/A220411.233446.dat", 99, "04-11 Ag Co/A220411.233625.VERT", -18, 19, -20, 22, 3), # 5.04 nm
+    #corralspectrum("04-11 Ag Co/A220411.233446.dat", 99, "04-11 Ag Co/A220411.233844.L0015.VERT", -10, 20, -40, 40, None), # 4.19 nm
 
+    corralspectrum("04-11 Ag Co/A220411.233446.dat", 99, "04-11 Ag Co/A220411.233844.L0015.VERT", -12, 30, -30, 30, 3), # 4.19 nm
+
+
+    corralspectrum("04-06 6nm Ag walls/A220407.155505.dat", 99, "04-06 6nm Ag walls/A220407.160008.L0071.VERT", -5, 20), # 5.95 nm
     corralspectrum(r"Ag 2021-08-13 2p5 nm radius/2p5nm radius pm 20mV line spectrum/Createc2_210813.161840.dat", 97, r"Ag 2021-08-13 2p5 nm radius/2p5nm radius pm 20mV line spectrum/Createc2_210813.165557.L0030.VERT", -15, 20), # 2.44 nm
     corralspectrum(r"Ag 2021-08-13 2p5 nm radius/pm 100 mV 2p5 nm radius line spectrum/Createc2_210813.172359.dat", 97, r"Ag 2021-08-13 2p5 nm radius/pm 100 mV 2p5 nm radius line spectrum/Createc2_210813.173235.L0030.VERT", -20, 20), # 2.46 nm
     corralspectrum(r"Ag 2021-08-13 2p5 nm radius/300mV to -200mV line/Createc2_210813.231030.dat", 97, r"Ag 2021-08-13 2p5 nm radius/300mV to -200mV line/Createc2_210813.231403.L0030.VERT", -20, 20), # 2.46 nm

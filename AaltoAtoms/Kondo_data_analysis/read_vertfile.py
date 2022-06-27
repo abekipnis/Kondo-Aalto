@@ -14,8 +14,8 @@ from scipy import optimize
 import scipy.signal
 from scipy.interpolate import interp1d
 
-import os, pdb, traceback, pathlib, inspect, sys, time, re, pdb
-from itertools import product
+import os, pdb, traceback, pathlib, inspect, sys, time, re
+from itertools import product, repeat
 import createc
 from cmath import sqrt
 try:
@@ -251,18 +251,32 @@ class Spec(metaclass=LoadTimeMeta):
         args = [marker1, marker2, fixed_vals]
         if type_fit == 'default':
             rets = self.fit_data_fixed_vals(*args)
-            print(self.log("successfully fit fano resonance"))
+            #print(self.log("successfully fit fano resonance"))
         elif type_fit == 'wtimes': #using the width*residual as thing to minimize
             print(init_vals)
             rets = self.fit_data_w_times_residual(*args, init_vals=init_vals)
 
-        # get the returned values
-        popt, pcov, sb, fit_dIdV, p0, smallbias = rets
+        try:
+            # get the returned values
+            popt, pcov, sb, fit_dIdV, p0, smallbias = rets
 
-        # evaluate fano function in the given bias range using parameters
-        f = fano(sb, *popt)
+            # evaluate fano function in the given bias range using parameters
+            f = fano(sb, *popt)
 
-        residY, residtot = residual(fit_dIdV, f) #NORMALIZE THIS BY # OF FIT POINTS
+            residY, residtot = residual(fit_dIdV, f) #NORMALIZE THIS BY # OF FIT POINTS
+
+        except:
+            print("did not fit!!")
+            popt = list(repeat(np.nan, 6))
+            pcov = np.ones((6,6))*np.nan
+            sb = np.nan
+            fit_dIdV = np.nan
+            p0 = fixed_vals
+            smallbias = np.nan
+            f = np.nan
+            residY = np.nan
+            residtot = np.nan
+
 
         if showfig:
             try:
@@ -330,19 +344,20 @@ class Spec(metaclass=LoadTimeMeta):
                 # do 'monte carlo' to show goodness of fit
                 kwargs = {'mean':popt, 'cov': pcov, 'allow_singular':False}
                 mvar = scipy.stats.multivariate_normal(**kwargs)
-                for i in range(20):
+                for i in range(500):
                     gauss_sampled_vals = mvar.rvs()
                     mv = np.arange(min(self.bias_mv), max(self.bias_mv), 0.05)
                     plt.plot(mv, fano(mv, *gauss_sampled_vals), alpha=0.005, color='red')
-                    
+
                 # show the fit
                 a1.plot(sb, fit_dIdV, "b-")
                 a1.set_ylim(min(self.dIdV), max(self.dIdV))
 
+                fit =  fano(self.bias_mv, *popt)
+                fit_minus_bckgrnd = fit - popt[4]*self.bias_mv
 
-
-                a1.plot(self.bias_mv, fano(self.bias_mv, *popt), 'r--')
-                a1.plot(self.bias_mv, fano(self.bias_mv, *popt)-popt[4]*self.bias_mv,"m--")#-0.2*(min(self.dIdV)-popt[4]),"m--")
+                a1.plot(self.bias_mv, fit, 'r--')
+                a1.plot(self.bias_mv, fit_minus_bckgrnd,"m--")
                 # plt.plot(sb, fano(sb, *popt1),'go', markersize=2)
 
                 plt.subplots_adjust(left=0.4)
@@ -366,6 +381,7 @@ class Spec(metaclass=LoadTimeMeta):
                 a2.set_ylabel(r"$dI/dV$")
 
                 a3 = plt.subplot(2,2,4)
+
                 try:
                     a3.hist(residY)
                     a3.set_xlabel("Residual histogram")
@@ -375,16 +391,14 @@ class Spec(metaclass=LoadTimeMeta):
                     a3.legend(["Residual histogram"])
                     a3.set_xlim(min(residY),max(residY))
                     a3.yaxis.set_label_position("right")
-
                 except ValueError as e:
                     print(e)
                     print(self.log("could not plot histogram of residuals ! ! !"))
                     print(self.log("something wrong with fit bounds probably"))
                 except Exception as e:
                     self.log(str(e))
-            except Exception as e:
-                self.log(str(e))
-                self.log(traceback.format_exc())
+            except:
+                print(traceback.format_exc())
                 # messagebox.showerror("showerror","could not plot %s" %(self.fname))
                 self.f = f
                 self.smallbias = smallbias
@@ -460,15 +474,27 @@ class Spec(metaclass=LoadTimeMeta):
                 if i<len(hold):
                     wrapperName+=','
             wrapperName+=')'
-        #    print(wrapperName)
             return eval(wrapperName)
         try:
             # popt, pcov = optimize.curve_fit(fix_T(T), sb, fit_dIdV, p0=p0, bounds=bounds)
             popt, pcov = optimize.curve_fit(wrapper, sb, fit_dIdV, p0=p0, bounds=bounds)
+            # reinsert back into popt
             for i in range(0,len(hold)):
                 if hold[i]:
                     popt = np.insert(popt, i, p1[i])
-                    pcov = np.insert(np.insert(pcov, i, 0, axis=1), i, 0, axis=0)
+                    # problem that pcov matrix becomes singular
+                    # if we insert zeros back in.
+                    # pcov = np.insert(np.insert(pcov, i, 0, axis=1), i, 0, axis=0)
+
+                    # try putting 1 for diagonal value in pcov and 0 for the rest
+                    # this seems to return reasonable results for multivariate gaussian emission monte carlo goodness of fit visualizations
+                    # but is this really the correct thing to do ?
+                    row = np.zeros(len(popt)-1)
+                    col = np.zeros(len(popt)); col[i] = 0.1
+                    pcov = np.insert(np.insert(pcov, i, row, axis=1), i, col, axis=0)
+            assert(len(popt) == 6)
+            assert(pcov.shape[0]==pcov.shape[1])
+            assert(pcov.shape[0]==6)
             return popt, pcov, sb, fit_dIdV, p0, smallbias
         except (RuntimeError, IndexError) as e:
             print(e)

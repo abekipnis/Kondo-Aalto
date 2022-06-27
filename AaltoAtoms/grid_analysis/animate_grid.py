@@ -1,3 +1,4 @@
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
 from pdb import set_trace
@@ -6,13 +7,9 @@ import pandas as pd
 import matplotlib.animation as animation
 # from matplotlib.animation import FuncAnimation
 import importlib
-from ..grid_analysis import plot_params
-from ..Kondo_data_analysis import read_vertfile
-from ..find_atom_positions import CircCorralData
-
-#plot_params = importlib.import_module("grid_analysis.plot_params")
-#read_vertfile = importlib.import_module("Kondo data analysis.read_vertfile")
-
+from AaltoAtoms.Kondo_data_analysis import read_vertfile
+from AaltoAtoms.utils.find_atom_positions import CircCorralData
+from AaltoAtoms.grid_analysis import plot_params
 import createc
 import pdb
 import os
@@ -21,7 +18,16 @@ from matplotlib.widgets import Slider, Button
 from datetime import datetime
 from multiprocessing import Pool, freeze_support
 from itertools import repeat
+# %%
+from ..grid_analysis import plot_params
+from ..Kondo_data_analysis import read_vertfile
+from ..find_atom_positions import CircCorralData
 
+#plot_params = importlib.import_module("grid_analysis.plot_params")
+#read_vertfile = importlib.import_module("Kondo data analysis.read_vertfile")
+
+
+# %%
 # need wrapper around pool.starmap to use kw arguments
 def starmap_with_kwargs(pool, fn, args_iter, kwargs_iter):
     args_for_starmap = zip(repeat(fn), args_iter, kwargs_iter)
@@ -190,6 +196,9 @@ class Grid:
 
         # popt, pcov, sb, fit_dIdV, p0 = fit_data_fixed_vals(bias_mv, self.dIdV, marker1, marker2, fixed_vals)
         with Pool() as pool:
+            # fit_data_fixed_vals is now a class function in read_vertfile.Spec
+            # so maybe need to do the same thing that nos works for CircCorral and CircCorralData
+            # create a SpecData class that inherits Spec but only takes i.e. bias and dIdV
             L = pool.starmap(read_vertfile.fit_data_fixed_vals, args_iter)
 
         g = self.save_data_and_get_plot_limits(L, nx, ny, xpmn_nm, xpmx_nm, ypmn_nm, ypmx_nm, self.file_marker+"_init_")
@@ -386,8 +395,8 @@ def analyze_Kondo_corral_grid():
     Returns
     _______
     """
-    dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Summer 2021 Corrals Exp data/"
-    filename= dir +r"Ag 2021-08-13 2p5 nm radius/grid/Createc2_210814.214635.specgrid"
+    dir = r'Y:\labdata\Createc_new\STMDATA\Ag\Small Kondo corrals'
+    filename= dir +r"\Ag 2021-08-13 2p5 nm radius\grid\Createc2_210814.214635.specgrid"
     g = Grid(filename)
     # range of pixels over which to plot Fano fit in grid
     # # TODO: turn this into nm to more easily change
@@ -404,7 +413,7 @@ def analyze_nb_reconstruction_specgrid():
     ppts = [[3.3, 3.6],[3.3, 3.8], [3.3, 4.0], [3.3, 4.2], [3.3, 4.4], [3.3, 4.6], [3.3, 4.8]]
     g.animate_cube(plotpoints=ppts, title="Reconstructed Au on Nb110")
     plt.show()
-
+# %%
 dpath = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/grid analysis"
 if __name__ == "__main__":
 

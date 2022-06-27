@@ -27,6 +27,7 @@ def show_current_param_fit_result(c):
 
     S.remove_background(c.fit_order)
     type_fit = c.type_fit if c.type_fit is not None else "default"
+
     r = S.fit_fano(marker1=c.marker1, marker2=c.marker2,
                    type_fit=type_fit,
                    showfig=True,
@@ -100,13 +101,18 @@ def plot_radial_width_dependence(Co_Ag_data):
     return all_Co_Ag_data
 
 import pdb
-def analyze_data(corrals: list, showfig: bool=False, fit_type="default") -> list:
+def analyze_data(corrals: list, # list of corralspectrum objects in data_array.py
+                 showfig: bool=False, # show the fit figures as they are created
+                 savefig: bool=False,
+                 fit_type="default",
+                 e0_fixed_val=np.nan) -> list:
     """
         Process arrays of corralspectrum objects (defined in data_array.py file)
-        Save files to local data directory for storing on github if not there already
-        Get corral radius and calculate wall density
-        Get Kondo width from spectrum, performing background subtractions, etc.
-        Append data to array to be further processed
+        - for each element in corralspectrum array:
+            - Save files to data directory for storing on github if not there already
+            - Get corral radius and calculate wall density
+            - Perform background subtractions, etc, get Kondo width from spectrum
+            - Append data to array to be further processed
     """
     data = []
     import shutil
@@ -152,7 +158,8 @@ def analyze_data(corrals: list, showfig: bool=False, fit_type="default") -> list
         C.occupied = True
         C.corral = True
         C.subtract_plane()
-        C.get_region_centroids(percentile=c.height_percentile, edge_cutoff=c.edge_cutoff)
+        kwargs = {'percentile':c.height_percentile, 'edge_cutoff':c.edge_cutoff}
+        C.get_region_centroids(**kwargs)
         radius = C.get_corral_radius(1.5, savefig=False, showfig=False)
         C.calculate_wall_density()
 
@@ -164,8 +171,14 @@ def analyze_data(corrals: list, showfig: bool=False, fit_type="default") -> list
         S.remove_background(c.fit_order)
         type_fit = "default" if c.type_fit is None else c.type_fit
 
+        # if the e0 fixed val is less than marker1
+        if e0_fixed_val < c.marker1: #np.abs(c.marker1-e0_fixed_val)<0.5 and"
+            # need c._replace() since corralspectrum is an immutable namedtuple
+            c = c._replace(marker1=c.marker1 - np.abs(c.marker1-e0_fixed_val) - 2)
         r = S.fit_fano(marker1=c.marker1, marker2=c.marker2,
-                       showfig=showfig, actual_radius=radius, type_fit=type_fit)
+                       showfig=showfig, savefig=savefig,
+                       actual_radius=radius, type_fit=type_fit,
+                       e0_fixed_val=e0_fixed_val)
         width = r[0][1] #e0, w, q, a, b, c
 
         r_message =  "radius: %1.1lf nm, " %(radius)
@@ -218,7 +231,6 @@ def fit_and_plot_functional_curve(radius_array: list,
     param_dict = {'Jb':'meV',
               'Js':'meV',
               'd1':'',
-              'A':'',
               'k':'nm^-1',
               }
     if p0 is None:

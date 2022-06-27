@@ -54,7 +54,7 @@ for p in H2Pc_data:
 plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\H2Pc_corrals_edge-line.png")
 
 plt.legend()
-imshow_dIdV_vs_r(H2Pc_data, enforce_conformity=False, interpolate=True, mV_step=0.1, nm_step=0.1, norm_to_one=True, norm_mV=-79, cmap_str="plasma")
+imshow_dIdV_vs_r(H2Pc_edge_data, enforce_conformity=False, interpolate=True, mV_step=0.1, nm_step=0.1, norm_to_one=True, norm_mV=-79, cmap_str="plasma")
 # plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\H2Pc_corrals_center.png")
 # plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\H2Pc_corrals_center.pdf")
 # plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\H2Pc_corrals_center.svg")
