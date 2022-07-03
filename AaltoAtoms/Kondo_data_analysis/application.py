@@ -16,7 +16,7 @@ class Application(tk.Frame):
         self.master = master
         self.master.title('Fano fitter')
         self.pack()
-        self.d = pd.read_excel("/Users/akipnis/Desktop/Aalto Atomic Scale Physics/Small Kondo corral inventory - OneDrive copy.xlsx", header=2)
+        self.d = pd.read_excel(r"Z:\Documents\AaltoAtoms\data\Small Kondo corral inventory - OneDrive copy.xlsx", header=2)
 
         self.create_widgets()
 

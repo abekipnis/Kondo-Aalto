@@ -50,6 +50,9 @@ class bcolors:
 # TODO: enable ability to adjust colorscale in simulated line spectra data
 # TODO: create line spectrum class object
 
+# paper: Electron states in quantum corrals by Crampin, equations 2.5, 2.10
+
+
 ureg = pint.UnitRegistry()
 set_application_registry(ureg)
 Q_ = ureg.Quantity

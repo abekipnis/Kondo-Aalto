@@ -67,13 +67,16 @@ class CircCorralData:
         if chan is None:
             chan = 2
         try:
-            self.im = self.image_file._crop_img(self.image_file.img_array_list[chan][:][:])
+            arg = self.image_file.img_array_list[chan][:][:]
+            self.im = self.image_file._crop_img(arg)
         except:
-            self.im = self.image_file._crop_img(self.image_file.img_array_list[0][:][:])
+            arg = self.image_file.img_array_list[0][:][:]
+            self.im = self.image_file._crop_img(arg)
         if self.im.shape[0] == 0:
             print("using channel 0 instead of channel 2!")
             chan = 0
-            self.im = self.image_file._crop_img(self.image_file.img_array_list[chan][:][:])
+            arg = self.image_file.img_array_list[chan][:][:]
+            self.im = self.image_file._crop_img(arg)
         zconst = self.image_file.zPiezoConst  # angstroms/V
 
         self.im = DAC_V_conv(self.im) * zconst
@@ -89,7 +92,6 @@ class CircCorralData:
 
         self.nmx = self.xPix * self.ang_ppx_x / 10.
         self.nmy = self.yPix * self.ang_ppx_y / 10.
-
 
         self.centroids = None
 
@@ -125,7 +127,11 @@ class CircCorralData:
         # return plane
 
 
-    def get_region_centroids(self, diamond_size=2, sigmaclip=4, show=True, percentile=99, edge_cutoff=0.5):
+    def get_region_centroids(self, diamond_size: int=2,
+                                   sigmaclip: float=4,
+                                   show: bool=True,
+                                   percentile: float=99,
+                                   edge_cutoff: float=0.5):
         """
         Parameters:
         ___________

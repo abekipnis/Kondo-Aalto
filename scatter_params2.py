@@ -5,7 +5,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 from scipy import optimize
 import matplotlib
 from AaltoAtoms import CircCorralData, Spec, analyze_data, get_old_Ag_Co_corrals, fit_and_plot_functional_curve
@@ -14,19 +13,86 @@ from AaltoAtoms import show_waterfall, imshow_dIdV_vs_r
 from AaltoAtoms.utils import labellines
 from AaltoAtoms.Kondo_data_analysis.analyze_data import basepath
 from AaltoAtoms.utils.particle_in_a_box import get_modes, mstar
-
+from AaltoAtoms.Kondo_data_analysis.analyze_data import w
 from importlib import reload
 from scipy.signal import decimate
 from matplotlib.colors import LogNorm
 from scipy.interpolate import interp2d
 from itertools import combinations, repeat
-# .dat file and corresponding .VERT file for central Co atom fitting
 import data_array
 reload(data_array)
+
+from AaltoAtoms.Kondo_data_analysis import read_vertfile
+#read_vertfile = reload(read_vertfile)
+#Spec = read_vertfile.Spec
+
 from data_array import Co_Co_corrals, Co_Ag_corrals, corralspectrum
+
+# %% quick restart after restarting kernel and loading packages
+e0_fixed_val = 7
+def save_data(e0_fixed_val: float = np.nan):
+    """
+    Analyze data defined by corraspectrum arrays in data_array
+    Save to location defined in Co_Co_data_loc and Co_Ag_data_loc
+    """
+    e0_fixed_str = str(e0_fixed_val) if not np.isnan(e0_fixed_val) else ""
+
+    CC_data_loc = Co_Co_data_loc.strip(".pickle") + "_e0_" + e0_fixed_str+ '.pickle'
+    CA_data_loc = Co_Ag_data_loc.strip(".pickle") + "_e0_" + e0_fixed_str+ '.pickle'
+
+    global Co_Co_data
+    Co_Co_data = np.array(analyze_data(Co_Co_corrals,
+                                        showfig=False,
+                                        savefig=False,
+                                        e0_fixed_val=e0_fixed_val,
+                                        fit_type="default"))
+    global Co_Ag_data
+    Co_Ag_data = np.array(analyze_data(Co_Ag_corrals,
+                                        showfig=False,
+                                        savefig=False,
+                                        e0_fixed_val=e0_fixed_val,
+                                        fit_type="default"))
+
+    # sort by the radius from smallest to largest
+    Co_Ag_data = list(sorted(Co_Ag_data, key=lambda x: -x[0]))
+    Co_Co_data = list(sorted(Co_Co_data, key=lambda x: -x[0]))
+
+    # save the Cobalt-Cobalt corrals in different pickle files
+    with open(CC_data_loc, "wb") as handle:
+        pickle.dump(Co_Co_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    with open(CA_data_loc, "wb") as handle:
+        pickle.dump(Co_Ag_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+def load_data():
+    """
+    Load data saved in Co_Co_data_loc
+    """
+
+    global Co_Co_data
+    with open(Co_Co_data_loc, "rb") as handle:
+        Co_Co_data = pickle.load(handle)
+
+    global Co_Ag_data
+    with open(Co_Ag_data_loc, "rb") as handle:
+        Co_Ag_data = pickle.load(handle)
+
+Co_Co_data_loc = r'data\Co_Co_data.pickle'
+Co_Ag_data_loc = r'data\Co_Ag_data.pickle'
+save_data()
+load_data()
+Co_Co_data[0]
 # %%
 
-c = H2Pc_corrals_edge[8]
+Co_Co_corrals[0]._replace(marker1=1 )
+e0range = np.arange(0, 10, 0.25)
+for e0 in e0range:
+    save_data(e0_fixed_val=e0)
+*# %%
+
+
+
+c = Co_Co_corrals[13]
 
 def show_current_param_fit_result(c: corralspectrum) -> None:
     """
@@ -55,14 +121,13 @@ def show_current_param_fit_result(c: corralspectrum) -> None:
     r = S.fit_fano(marker1=c.marker1, marker2=c.marker2,
                    type_fit=type_fit,
                    showfig=True,
-                   q_fixed_val=np.nan,
+                   e0_fixed_val=7,
                    actual_radius=radius)
     return r
 
 res = show_current_param_fit_result(c)
+
 # %%
-
-
 def get_corralspec(datfile: str, l: list):
     """
     Given a datfile string and a list of corralspectrum objects (i.e. imported from data_array.py)
@@ -113,12 +178,13 @@ def get_total_fit_dIdV(c: corralspectrum):
 
     return fit_bias, fit_dIdV
 
+
 def create_Co_waterfall():
     cache = []
     colors = plt.cm.copper(np.linspace(0, 1, len(Co_Co_data)))
 
     # omit these indices from Co_Co_corrals
-    omit_n = [2, 5, 8, 11, 17, 22, 23, 27, 28,20,31]
+    omit_n = [2, 5, 8, 11,13, 17, 22, 23, 27, 28,20,31]
 
     for n, c in enumerate(Co_Co_data):
         # only show those spectra from -80 to 80 mV
@@ -126,7 +192,7 @@ def create_Co_waterfall():
             #only show those spectra we've decided not to omit
             if n not in omit_n:
                 bias = c[3]
-                norm_val = c[2][np.argmin([d+80 for d in c[2]])]
+                norm_val = c[2][np.argmin([d+7.5 for d in c[2]])]
                 dIdV = c[2]/norm_val + c[0]
                 radius = c[0]
                 d = get_corralspec(c[5].label, Co_Co_corrals)
@@ -135,8 +201,10 @@ def create_Co_waterfall():
                 cache.append([bias, dIdV, colors[n], radius, fit_bias, fit_dIdV])
     return cache
 
+
 def show_Co_waterfall(cache: list):
     plt.figure(figsize=(2, 3))
+    matplotlib.rcParams.update({'font.size': 7})
     for n,c in enumerate(cache):
         bias = c[0]
         dIdV = c[1]
@@ -164,11 +232,14 @@ def show_Co_waterfall(cache: list):
     plt.xlabel("Bias (mV)")
     plt.ylabel(r"$dI/dV$ (a.u.)")
     plt.xlim(-80,80)
+    plt.axvline(7.3)
     plt.xticks([-80, -60, -40, -20, 0, 20, 40, 60, 80])
     plt.gcf().axes[0].tick_params(direction="in")
 
     plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\Co-Co-spectrum-waterfall.pdf")
     #return lines
+
+# %%
 
 Co_waterfall_cache = create_Co_waterfall()
 show_Co_waterfall(Co_waterfall_cache)
@@ -233,7 +304,7 @@ def show_Ag_waterfall(cache: list, bias_idx: int=3, dIdV_idx: int =2) -> None:
         None
     """
     plt.figure(figsize=(2, 3))
-
+    matplotlib.rcParams.update({'font.size': 7})
     colors = plt.cm.copper(np.linspace(0, 1, len(cache)))
 
     for n, c in enumerate(cache):
@@ -255,6 +326,7 @@ def show_Ag_waterfall(cache: list, bias_idx: int=3, dIdV_idx: int =2) -> None:
     plt.xlabel("Bias (mV)")
     plt.ylabel(r"$dI/dV$ (a.u.)")
     plt.gcf().axes[0].tick_params(direction="in")
+    plt.axvline(7.3)
 
     xvals = [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50 ]
     labellines.labelLines(plt.gca().get_lines(), align=False,fontsize=12, xvals=xvals)
@@ -277,50 +349,6 @@ show_Ag_waterfall(Ag_waterfall_cache, 0, 1)
 
 if __name__=="__main__":
     matplotlib.rcParams.update({'font.size': 12})
-
-
-    Co_Co_data_loc = r'C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Kondo corrals fit data\Co_Co_data.pickle'
-    Co_Ag_data_loc = r'C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Kondo corrals fit data\Co_Ag_data.pickle'
-
-    # %%
-    Co_Co_data_loc = r'data\Co_Co_data.pickle'
-    Co_Ag_data_loc = r'data\Co_Ag_data.pickle'
-
-    def save_data():
-        """
-        Analyze data defined by corraspectrum arrays in data_array
-        Save to location defined in Co_Co_data_loc and Co_Ag_data_loc
-        """
-        global Co_Co_data
-        Co_Co_data = np.array(analyze_data(Co_Co_corrals, showfig=True))
-        global Co_Ag_data
-        Co_Ag_data = np.array(analyze_data(Co_Ag_corrals, showfig=True))
-        Co_Ag_data = list(sorted(Co_Ag_data, key=lambda x: -x[0]))
-        Co_Co_data = list(sorted(Co_Co_data, key=lambda x: -x[0]))
-
-        with open(Co_Co_data_loc, "wb") as handle:
-            pickle.dump(Co_Co_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-        with open(Co_Ag_data_loc, "wb") as handle:
-            pickle.dump(Co_Ag_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    save_data()
-    # %%
-    def load_data():
-        """
-        Load data saved in Co_Co_data_loc
-        """
-
-        global Co_Co_data
-        with open(Co_Co_data_loc, "rb") as handle:
-            Co_Co_data = pickle.load(handle)
-
-        global Co_Ag_data
-        with open(Co_Ag_data_loc, "rb") as handle:
-            Co_Ag_data = pickle.load(handle)
-
-    load_data()
-
 
     [plt.plot(c[3], c[2]/c[2][-1]+c[0]) for c in Co_Co_data if len(c[3]) ==502 and c[3][0]==80]
     np.isclose(40, Co_Co_data[0][3][0], 0.1)
@@ -400,59 +428,111 @@ if __name__=="__main__":
     retr = investigate_radius_range(4,1, Co_Ag_data)
     plt.scatter([len(r[5].centroids) for r in retr], [r[1] for r in retr])
     [r[4].fname for r in retr]
-plt.xlim(-20, 20)
 
-    plt.xticks([2,3,4,5,6,7,8])
 
     AaltoAtoms.utils.visualizations.create_waterfall()
     plt.plot(Co_Co_data[0][3],Co_Co_data[0][2])
-    show_waterfall(Co_Co_data, )
+    show_waterfall(Co_Co_data)
 
-    matplotlib.rcParams.update({'font.size': 12})
 
     plt.scatter([c[0] for c in Co_Ag_data],  [c[1] for c in Co_Ag_data])
 
-    bounds = {
-        'Js': (0,2),
-        'Jd': (0,2),
-        'd1': (-np.pi, np.pi),
-        'd2': (-np.pi, np.pi),
-        'alpha': (0, 2),
-        'A': (0, 20),
-        'k': (0.7,0.9)
-    }
-
-    p0 = {
-        'Js': 0.5,
-        'Jd': 0.1,
-        'd1': -0.27,
-        'd2': -0.24,
-        'alpha': 0.88,
-        'A': 3.2,
-        'k': 0.83
-    }
+# %%
+def w(r, jb, js, d1, k):
+    rhob = 0.27 # 1/eV
+    rhos0 = 0.125 # 1/eV
+    D = 4480
+    A = 1
+    return D*np.exp(-1.0/(jb*rhob+js*rhos0*(1+A*np.cos(2*k*r+d1))))
 
 
-    p0 = [p0[l] for l in list(p0.keys())]
-    bounds = np.array([bounds[b] for b in list(bounds.keys())]).T
+def fit_and_plot_functional_curve(radius_array: list,
+                                  width_array: list,
+                                  bounds: list=None,
+                                  p0: list=None,
+                                  sigma: list=None,
+                                  show_Li_fit=True,
+                                  show_isolated_Co=True):
+    param_dict = {'Jb':'meV',
+              'Js':'meV',
+              'd1':'',
+              'k':'nm^-1',
+              }
+    params, pcov = scipy.optimize.curve_fit(w,
+                                      radius_array,
+                                      width_array,
+                                      p0,
+                                      bounds=bounds,
+                                      maxfev=100000,
+                                      absolute_sigma=True,
+                                      loss="linear",
+                                     # x_scale='jac',
+                                      f_scale=5,
+                                      method='trf' )
+    rng = np.arange(min(list(radius_array)),max(radius_array),0.01)
+    plt.plot(rng, np.array([w(x,*params) for x in rng]))#, label="Co/Ag corrals (our data)")
+    # plt.plot(rng, np.array([w(x=x, d1=1.5, D=4000) for x in rng]), label="Fit changed" )
 
-#    d = get_old_Ag_Co_corrals(dist_cutoff_nm=0.1)
+    #https://stackoverflow.com/questions/14581358/getting-standard-errors-on-fitted-parameters-using-the-optimize-leastsq-method-i
+    error = []
+    for i in range(len(params)):
+        try:
+            error.append(np.sqrt(pcov[i][i]))
+        except:
+            error.append(0.00)
+    for n, p in enumerate(list(param_dict.keys())):
+        print("%s: %lf pm %lf %s" %(p, params[n], error[n], param_dict[p]))
+    return params, pcov
+
+# %%
+bounds = {
+    'Jb': (0.,0.8),
+    'Js': (0,0.7),
+    'd1': (0, 2*np.pi),
+    'k': (0,0.85),
+}
+
+p0 = {
+    'Jb': 0.5,
+    'Js': 0.1,
+    'd1': 0.27,
+    'k': 0.83,
+}
+
+p0 = [p0[l] for l in list(p0.keys())]
+bounds = np.array([bounds[b] for b in list(bounds.keys())]).T
 #    all_Co_Ag_data = np.concatenate([np.array(Co_Ag_data)[:,0:2].T, np.array([d.radius, d.w])], axis=-1)
 
-    fig = plt.figure(figsize=(6,6))
-
-    plt.scatter(*np.array([c[0:2] for c in Co_Ag_data]).T, label="Ag walls")
-    plt.scatter(*np.array([c[0:2] for c in Co_Co_data]).T, label="Co walls")
+fig = plt.figure(figsize=(6,6))
+all_data = np.concatenate([Co_Ag_data, Co_Co_data], axis=0)
+plt.scatter(*np.array([c[0:2] for c in Co_Ag_data]).T, label="Ag walls")
+plt.scatter(*np.array([c[0:2] for c in Co_Co_data]).T, label="Co walls")
 #    all_Co_Ag_data = plot_radial_width_dependence(Co_Ag_data)
-    plt.legend()
-    kwargs = {"bounds": bounds, "p0": p0, "show_Li_fit": False, "show_isolated_Co": False}
+plt.legend()
+kwargs = {"bounds": bounds, "p0": p0, "show_Li_fit": False, "show_isolated_Co": False}
 
-    Co = np.array([c[0:2] for c in Co_Co_data]).T
-    Ag = np.array([c[0:2] for c in Co_Ag_data]).T
-    f = np.concatenate([Co, Ag], axis=1)
-    fit_and_plot_functional_curve(*Ag,**kwargs)
+Co = np.array([c[0:2] for c in Co_Co_data]).T
+Ag = np.array([c[0:2] for c in Co_Ag_data]).T
+f = np.concatenate([Co, Ag], axis=1)
+plt.gcf().axes[0].tick_params(direction="in")
+
+#https://stackoverflow.com/questions/14581358/getting-standard-errors-on-fitted-parameters-using-the-optimize-leastsq-method-i
+w_sigma = [c[7][1][1][1] for c in all_data]
+kwargs["sigma"] = w_sigma
+params, pcov = fit_and_plot_functional_curve(*f,**kwargs)
+multivar = scipy.stats.multivariate_normal(mean=params, cov=pcov, allow_singular=False)
+rmin = min(f[0])
+rmax = max(f[0])
+for i in range(1000):
+    gauss_sampled_vals = multivar.rvs()
+    radius_range = np.arange(rmin, rmax, 0.05)
+    plt.plot(radius_range, w(radius_range, *gauss_sampled_vals), alpha=0.005, color='red')
+    plt.ylim(0,30)
+
+# %%
+    gauss_sampled_vals
+    pcov
     fit_and_plot_functional_curve(*Co,**kwargs)
-
 
     plt.gcf().axes[0].tick_params(direction="in")
     plt.xlabel("Corral radius (nm)")
@@ -465,6 +545,10 @@ plt.xlim(-20, 20)
 
     fit_and_plot_functional_curve(*np.array(Co_Ag_data)[:,0:2].T)
 
+    np.mean([c[-1][0][0] for c in Co_Co_data])
+
+    plt.scatter([c[0] for c in Co_Ag_data], [c[-1][0][2] for c in Co_Ag_data])
+    plt.scatter([c[0] for c in Co_Co_data], [c[-1][0][2] for c in Co_Co_data])
 
     plt.scatter([c[0] for c in Co_Ag_data], [c[-1][0][2] for c in Co_Ag_data])
     plt.scatter([c[0] for c in Co_Co_data], [c[-1][0][2] for c in Co_Co_data])
