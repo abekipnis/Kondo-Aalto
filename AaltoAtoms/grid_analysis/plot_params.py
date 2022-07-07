@@ -110,7 +110,9 @@ def show_radial_decay(im, Xs, Ys, title,disc):
             # cut_data = data[np.abs(data["q"])<qcutoff]
             # cut_data = cut_data[cut_data["dist"]<dcutoff]
             denom = [1 if title!="a" else data["a"].iloc[np.argmin(data["dist"])]]
-            scatter = plt.scatter(data["dist"], data[title]/denom, c=data["radius"].iloc[0],cmap="summer")
+            args = [data["dist"], data[title]/denom ]
+            kwargs = {'c':data["radius"].iloc[0],'cmap':"summer"}
+            scatter = plt.scatter(*args,**kwargs)
             r = np.round(data["radius"].iloc[0],2)
             if r not in radii:
                 scatter.set_label(r)

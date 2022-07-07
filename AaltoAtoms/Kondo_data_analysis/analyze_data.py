@@ -254,7 +254,7 @@ def fit_and_plot_functional_curve(radius_array: list,
                                       absolute_sigma=False,
                                       loss='cauchy' )
     rng = np.arange(min(list(radius_array)),max(radius_array),0.01)
-    plt.plot(rng, np.array([w(x,*params) for x in rng]))#, label="Co/Ag corrals (our data)")
+    line = plt.plot(rng, np.array([w(x,*params) for x in rng]))#, label="Co/Ag corrals (our data)")
     # plt.plot(rng, np.array([w(x=x, d1=1.5, D=4000) for x in rng]), label="Fit changed" )
 
     if show_Li_fit:
@@ -275,7 +275,7 @@ def fit_and_plot_functional_curve(radius_array: list,
     print(error)
     for n, p in enumerate(list(param_dict.keys())):
         print("%s: %lf pm %lf %s" %(p, params[n], error[n], param_dict[p]))
-    return params, pcov
+    return params, pcov, line
 
     #m = max(radius_array)
     #plt.xlim(2.5, )

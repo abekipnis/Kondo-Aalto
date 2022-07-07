@@ -54,34 +54,34 @@ class Grid:
         self.version = a[0]
         self.nx = a[1]
         self.ny = a[2]
-        self.dx=a[3]
-        self.dy=a[4]
-        self.specxgrid=a[5]
-        self.specygrid=a[6]
-        self.vertpoints=a[7]
-        self.vertmandelay=a[8]
-        self.vertmangain=a[9]
-        self.biasvoltage=b[10]
-        self.tunnelcurrent=b[11]
-        self.imagedatasize=a[12]
-        self.specgriddatasize=a[13]
-        self.specgridchan=a[14]
-        self.specgridchannelselectval=a[15]
-        self.specgriddatasize64=np.int64(a[17])
-        self.specgriddatasize64=(self.specgriddatasize64 << 32) + a[16]
-        self.xstart=a[18]
-        self.xend=a[19]
-        self.ystart=a[20]
-        self.yend=a[21]
-        self.specgridchannelselectval2=a[22]
-        self.specgridnx=a[23]
-        self.specgridny=a[24]
-        self.specgriddx=a[25]
-        self.specgriddy=a[26]
-        self.specgridcenterx=a[27]
+        self.dx = a[3]
+        self.dy = a[4]
+        self.specxgrid = a[5]
+        self.specygrid = a[6]
+        self.vertpoints = a[7]
+        self.vertmandelay = a[8]
+        self.vertmangain = a[9]
+        self.biasvoltage = b[10]
+        self.tunnelcurrent = b[11]
+        self.imagedatasize = a[12]
+        self.specgriddatasize = a[13]
+        self.specgridchan = a[14]
+        self.specgridchannelselectval = a[15]
+        self.specgriddatasize64 = np.int64(a[17])
+        self.specgriddatasize64 = (self.specgriddatasize64 << 32) + a[16]
+        self.xstart = a[18]
+        self.xend = a[19]
+        self.ystart = a[20]
+        self.yend = a[21]
+        self.specgridchannelselectval2 = a[22]
+        self.specgridnx = a[23]
+        self.specgridny = a[24]
+        self.specgriddx = a[25]
+        self.specgriddy = a[26]
+        self.specgridcenterx = a[27]
         self.specgridcentery = a[28]
 
-        self.count3=self.vertpoints*3
+        self.count3 = self.vertpoints*3
 
         self.specvz = np.fromfile(f, dtype=np.float32,count=self.count3)
         self.specvz3 = self.specvz.reshape(self.vertpoints,3)
@@ -89,11 +89,15 @@ class Grid:
         f.close
 
         self.a, self.b = int(self.nx/self.specgriddx), int(self.ny/self.specgriddy)
+        I = int(len(self.data)/self.a/self.b/len(self.specvz3))
+        args = [self.a,self.b,len(self.specvz3),I]
         try:
-            self.specdata = self.data.reshape(self.a,self.b,len(self.specvz3),int(len(self.data)/self.a/self.b/len(self.specvz3)))
+            self.specdata = self.data.reshape(*args)
         except:
             self.a, self.b = self.xend, self.yend
-            self.specdata = self.data.reshape(self.a,self.b,len(self.specvz3),int(len(self.data)/self.a/self.b/len(self.specvz3)))
+            I = int(len(self.data)/self.a/self.b/len(self.specvz3))
+            args = [self.a,self.b,len(self.specvz3),I]
+            self.specdata = self.data.reshape(*args)
         self.cube_array = self.specdata[:,:,:,1].T
 
         _, self.xpix, self.ypix = self.cube_array.shape
@@ -103,7 +107,8 @@ class Grid:
         f = open(self.file+".dat","rb")
         d = f.readlines()
         a = [str(b).split('\\t') for b in d]
-        ls = [float(b.split("=")[-1].rstrip(" \\r\\n'")) for b in np.array(a[0:600]).T[0] if "Length" in b]
+        proc = lambda x: float(x.split("=")[-1].rstrip(" \\r\\n'"))
+        ls = [proc(b) for b in np.array(a[0:600]).T[0] if "Length" in b]
         return ls #in angstroms
 
     def save_data_and_get_plot_limits(self, L, nx, ny,
@@ -113,8 +118,9 @@ class Grid:
 
         """
         # [popt, pcov, marker1, marker2, self.XPos_nm, self.YPos_nm, residtot, smallbias, f]
-        pdb.set_tracs()
-        Lm = np.array(L).flatten().reshape(nx,ny,9)
+        pdb.set_trace()
+        Lm = np.array(L).flatten().reshape(nx,ny,9) # this doesnt work bc the last index is a tuple rather than np array
+        plt.imshow(np.array([l[0][1] for l in L]).reshape(ny, nx)); plt.colorbar()
         m = ma.masked_array(Lm[:,:,0], mask=np.any(pd.isnull(Lm),axis=-1))
         c_max = "%1.2lf"
         labels = [r"$\epsilon_0$","w","q","a","b","c"]
@@ -122,8 +128,8 @@ class Grid:
             ax = plt.subplot(111)
             plt.subplots_adjust(left=0.25, bottom=0.25)
             dat = np.concatenate(m.data.flatten()).reshape(ny,nx,6)[:,:,n]
-            img = ax.imshow(dat,
-                       extent=[xpmn_nm/10., xpmx_nm/10.,ypmn_nm/10., ypmx_nm/10.,]);
+            kwargs = {'extent':[xpmn_nm/10., xpmx_nm/10.,ypmn_nm/10., ypmx_nm/10.]}
+            img = ax.imshow(dat,**kwargs);
             plt.title(l)
             plt.xlabel("nm")
             plt.ylabel("nm")
@@ -160,8 +166,10 @@ class Grid:
             # plt.savefig(l+".png")
         return g + file_marker + today + "_"
 
+
     def fit_Fano_to_grid_data(self, xpixmin: int, xpixmax: int,
-                                    ypixmin: int, ypixmax: int, file_marker):
+                                    ypixmin: int, ypixmax: int,
+                                    file_marker: str):
         """
 
         Parameters
@@ -205,15 +213,15 @@ class Grid:
                         repeat(lbound),
                         repeat(ubound),
                         repeat(p_fixed))
-
+        import multiprocessing
         # popt, pcov, sb, fit_dIdV, p0 = fit_data_fixed_vals(bias_mv, self.dIdV, marker1, marker2, fixed_vals)
-        with Pool() as pool:
+        with Pool(processes=multiprocessing.cpu_count()) as pool:
             # fit_data_fixed_vals is now a class function in read_vertfile.Spec
-            # so maybe need to do the same thing that nos works for CircCorral and CircCorralData
-            # create a SpecData class that inherits Spec but only takes i.e. bias and dIdV
+            # so need to do same thing as for CircCorral and CircCorralData:
+            # create SpecData class that inherits Spec but takes only bias and dIdV
             # [popt, pcov, marker1, marker2, self.XPos_nm, self.YPos_nm, residtot, smallbias, f]
             L = pool.starmap(read_vertfile.Spec.fit_data_fixed_vals, args_iter)
-
+        print("starmap Pool finished")
         args = [L, nx, ny,
                    xpmn_nm, xpmx_nm, ypmn_nm, ypmx_nm,
                    self.file_marker+"_init_"]

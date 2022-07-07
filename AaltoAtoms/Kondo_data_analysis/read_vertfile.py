@@ -16,7 +16,10 @@ from scipy.interpolate import interp1d
 
 import os, pdb, traceback, pathlib, inspect, sys, time, re
 from itertools import product, repeat
-import createc
+try:
+    import createc
+except:
+    print("did not import createc")
 from cmath import sqrt
 try:
     from ..utils.decorators import timed_log, timing, bcolors
@@ -54,6 +57,12 @@ class LoadTimeMeta(type):
         namespace["__class_load_time__"] = time.perf_counter() - LoadTimeMeta.base_time
         return super().__new__(mcs, name, bases, namespace)
 
+# need a class that inherits Spec (i.e. inherits all the functions included in Spec)
+# but that doesn't generate the spectrum data from a file
+# rather, it generates the spectrum data from inputs (i.e. from a grid)
+# this allows us to use the same fit_fano function that is used by the Spec class
+# a function which usually operates only on data from files.
+
 
 class Spec(metaclass=LoadTimeMeta):
     def __init__(self, fname):
@@ -89,19 +98,22 @@ class Spec(metaclass=LoadTimeMeta):
             self.XPos_nm = l[7]
             self.YPos_nm = l[8]
             self.data = self.a[data_idx+2:]
-            self.T_ADC2 = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'T_ADC2[K]"][0].strip("\\r\\n'"))
-            self.T_ADC3 = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'T_ADC3[K]"][0].strip("\\r\\n'"))
+            has = lambda b, s: b[0].split("=")[0]==s
+            get = lambda b: b[0].split('=')[1]
+            an = self.a[0:n-2]
+            self.T_ADC2 = float([get(b) for b in an if has(b,"b'T_ADC2[K]")][0].strip("\\r\\n'"))
+            self.T_ADC3 = float([b[0].split("=")[1] for b in an if has(b, "b'T_ADC3[K]")][0].strip("\\r\\n'"))
 
             # auxadc6 is STM head temperature, auxadc7 is cryostat LHe temp
-            self.T_AUXADC6 = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'T_AUXADC6[K]"][0].strip("\\r\\n'"))
-            self.T_AUXADC7 = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'T_AUXADC7[K]"][0].strip("\\r\\n'"))
+            self.T_AUXADC6 = float([get(b) for b in an if has(b,"b'T_AUXADC6[K]")][0].strip("\\r\\n'"))
+            self.T_AUXADC7 = float([get(b) for b in an if has(b,"b'T_AUXADC7[K]")][0].strip("\\r\\n'"))
 
-            self.LockinAmpl = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'LockinAmpl"][0].strip("\\r\\n'"))
-            self.LockinFreq = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'LockinFreq"][0].strip("\\r\\n'"))
-            self.FBLogiset = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'FBLogIset"][0].strip("\\r\\n'")) # units: pA
+            self.LockinAmpl = float([get(b) for b in an if has(b,"b'LockinAmpl")][0].strip("\\r\\n'"))
+            self.LockinFreq = float([get(b) for b in an if has(b,"b'LockinFreq")][0].strip("\\r\\n'"))
+            self.FBLogiset = float([get(b) for b in an if has(b,"b'FBLogIset")][0].strip("\\r\\n'")) # units: pA
             # print([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'BiasVoltage / BiasVolt.[mV]"])
             try:
-                self.biasVoltage = float([b[0].split("=")[1] for b in self.a[0:n-2] if b[0].split("=")[0]=="b'BiasVoltage / BiasVolt.[mV]"][0].strip("\\r\\n'").replace(",",'.')) # mV
+                self.biasVoltage = float([get(b) for b in an if has(b,"b'BiasVoltage / BiasVolt.[mV]")][0].strip("\\r\\n'").replace(",",'.')) # mV
             except:
                 pdb.set_trace()
             try:
@@ -162,7 +174,8 @@ class Spec(metaclass=LoadTimeMeta):
 
 
     @timing
-    def remove_background(self, degree: int=3, weights: list=None, show: bool=True) -> list:
+    def remove_background(self, degree: int=3, weights: list=None,
+                          show: bool=True) -> list:
         """
         """
         if degree is None:
@@ -447,7 +460,7 @@ class Spec(metaclass=LoadTimeMeta):
         p0 = [e00, 4, 0, 1, b0, np.mean(fit_dIdV)]
         hold = [0 if np.isnan(fixed_vals[n]) else 1 for n in range(len(p0)) ]
 
-        p1 = [p if np.isnan(fixed_vals[n]) else fixed_vals[n] for n,p in enumerate(p0) ]
+        p1 = [p if np.isnan(fixed_vals[n]) else fixed_vals[n] for n,p in enumerate(p0)]
         p0 = [p for n,p in enumerate(p0) if np.isnan(fixed_vals[n]) ]
 
         # bounds for e0, w, q, a, b, c
@@ -457,7 +470,14 @@ class Spec(metaclass=LoadTimeMeta):
                             [0, max(fit_dIdV)],                 # a
                             [-np.inf,np.inf],                   # b
                             [-np.inf,np.inf]]).T                # c
-        bounds = np.array([b for n,b in enumerate(bounds.T) if np.isnan(fixed_vals[n])]).T
+        bounds = [b for n,b in enumerate(bounds.T) if np.isnan(fixed_vals[n])]
+        bounds = np.array(bounds).T
+
+        # if the initial guess is not within the bounds then we need to
+        # set the initial guess within the bounds
+        for n,p in enumerate(p0):
+            if p<bounds[0][n] or p>bounds[1][n]:
+                p0[n]=0
 
         # https://stackoverflow.com/questions/31705327/scipy-optimize-curve-fit-setting-a-fixed-parameter
         # fix some while fitting other Fano parameters
@@ -487,7 +507,8 @@ class Spec(metaclass=LoadTimeMeta):
                     # pcov = np.insert(np.insert(pcov, i, 0, axis=1), i, 0, axis=0)
 
                     # try putting 1 for diagonal value in pcov and 0 for the rest
-                    # this seems to return reasonable results for multivariate gaussian emission monte carlo goodness of fit visualizations
+                    # this seems to return reasonable results for
+                    # multivar gauss emission monte carlo goodness of fit viz
                     # but is this really the correct thing to do ?
                     row = np.zeros(len(popt)-1)
                     col = np.zeros(len(popt)); col[i] = 0.1
@@ -495,15 +516,15 @@ class Spec(metaclass=LoadTimeMeta):
             assert(len(popt) == 6)
             assert(pcov.shape[0]==pcov.shape[1])
             assert(pcov.shape[0]==6)
-            return popt, pcov, sb, fit_dIdV, p0, smallbias
+            return np.array([popt, pcov, sb, fit_dIdV, p0, smallbias])
         except (RuntimeError, IndexError) as e:
             print(e)
             n = np.ones((len(p0)))*np.nan
-            return n, n, sb, fit_dIdV, p0, sb, fit_dIdV
+            return np.array([n, n, sb, fit_dIdV, p0, sb, fit_dIdV])
 
     def fit_data_w_times_residual(self,
-                                  marker1,
-                                  marker2,
+                                  marker1: float,
+                                  marker2: float,
                                   fixed_vals: list,
                                   init_vals: list=None,
                                   bounds: list=None,
@@ -603,6 +624,10 @@ class Spec(metaclass=LoadTimeMeta):
             n = np.ones((len(p0)))*np.nan
             return n, n, sb, fit_dIdV, p0, smallbias
 
+class SpecData(Spec):
+    def __init__(self, bias_mv, dIdV):
+        self.dIdV = dIdV
+        self.bias_mv = bias_mv
 
 # plot large range spectra
 def plot_lrs():
@@ -696,7 +721,10 @@ def plot_fano_fit_line(f) -> None:
     except Exception as e:
         print(e)
     #total length of line in nm:
-    len_nm = np.linalg.norm(np.array(d1.iloc[0][["x(nm)","y(nm)"]])-np.array(d1.iloc[-1][["x(nm)","y(nm)"]]))
+    xy1 = np.array(d1.iloc[0][["x(nm)","y(nm)"]])
+    xy2 = np.array(d1.iloc[-1][["x(nm)","y(nm)"]])
+    len_nm = xy1-xy2
+    len_nm = np.linalg.norm(len_nm)
     dists = [np.linalg.norm(np.array(d1.iloc[0][["x(nm)","y(nm)"]])-np.array(d1.iloc[i][["x(nm)","y(nm)"]])) for i in range(len(d1))]
 
     fs = d1["file"]
