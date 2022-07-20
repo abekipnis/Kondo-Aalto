@@ -200,7 +200,6 @@ def create_Ag_cache() -> list:
         cache.append([bias, dIdV, colors[n], radius, fit_bias, fit_dIdV])
     return cache
 
-
 def show_Ag_waterfall(cache: list, bias_idx: int=3, dIdV_idx: int =2) -> None:
     """
     Plot the data created by create_waterfall
@@ -349,7 +348,7 @@ for e0 in e0range:
     save_data(e0_fixed_val=7)
 
 # %% Test how params in data_array work to fit Fano to specific spectrum
-c = Co_Ag_corrals[2] # select an object from data_array to test
+c = Co_Co_corrals[-1] # select an object from data_array to test
 res = show_current_param_fit_result(c) # see how fit works in this case
 
 # %% Create figure 3: i.e. radius-dependence of width
@@ -358,8 +357,6 @@ show_Co_waterfall(Co_waterfall_cache)
 Ag_waterfall_cache = create_Ag_cache()
 show_Ag_waterfall(Ag_waterfall_cache, 0, 1)
 
-#matplotlib.rcParams.update({'font.size': 12})
-
 # %% Show the interpolated spectra (i.e. SI figs 3, 4 )
 def show_interpolated_spectra(data: str, interpolate:bool=False):
     imshow_dIdV_vs_r(data, downsample=False,
@@ -367,24 +364,25 @@ def show_interpolated_spectra(data: str, interpolate:bool=False):
                     mV_step=0.1,  norm_mV=-67, norm_to_one=True)
 
 
-show_interpolated_spectra(Co_Co_data, interpolate=True)
-show_interpolated_spectra(Co_Co_data, interpolate=False)
+fortum for e & insurance
+register to telia.
 
+
+show_interpolated_spectra(Co_Ag_data, interpolate=True)
+plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\interpolated_Co-Ag_corral_spectra.png", dpi=600)
+plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\interpolated_Co-Ag_corral_spectra.svg")
+plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\interpolated_Co-Ag_corral_spectra.pdf")
+
+show_interpolated_spectra(Co_Co_data, interpolate=True)
 plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\interpolated_Co-Co_corral_spectra.png", dpi=600)
 plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\interpolated_Co-Co_corral_spectra.svg")
 plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\interpolated_Co-Co_corral_spectra.pdf")
 # %%
 
-
-command = '''start matlab -nosplash -nodesktop -r "cd('Z:\Documents\AaltoAtoms\AaltoAtoms\MATLAB\eigenmode_solvers'); plot_eigenspectra(2,10,1)" -logfile log.txt'''
-os.system(command)
-
-# %%
 # investigate_radius_range(5.5, 0.2, Co_Ag_data)
 def investigate_radius_range(radius: float,
                              atol: float,
                              dataset: list) -> list:
-
     """
     radius: nm
     atol: nm (tolerance around which will get corrals w this radius)
@@ -407,7 +405,7 @@ def investigate_radius_range(radius: float,
 
 retr = investigate_radius_range(4,0.5, Co_Ag_data)
 
-# %% Define functions ot make manuscript Figure 3, Make manuscript Figure 3
+# %% Define functions ot make manuscript Figure 3, make manuscript Figure 3
 
 def w(r: list, jb: float, js: float, d1: float, k: float) -> list:
     """
@@ -444,7 +442,7 @@ def fit_and_plot_functional_curve(radius_array: list,
                         #              f_scale=5,
                         #              method='trf'
                         )
-    rng = np.arange(min(list(radius_array)),max(radius_array),0.01)
+    rng = np.arange(min(list(radius_array)),max(radius_array),0.05)
     plt.plot(rng, np.array([w(x,*params) for x in rng]))#, label="Co/Ag corrals (our data)")
     # plt.plot(rng, np.array([w(x=x, d1=1.5, D=4000) for x in rng]), label="Fit changed" )
 
@@ -463,7 +461,7 @@ bounds = {
     'Jb': (0.,0.8),
     'Js': (0,0.7),
     'd1': (0, 2*np.pi),
-    'k': (0,0.85),
+    'k': (0,2),
 }
 
 p0 = {
@@ -476,7 +474,7 @@ p0 = {
 p0 = [p0[l] for l in list(p0.keys())]
 bounds = np.array([bounds[b] for b in list(bounds.keys())]).T
 cm = 1/2.54  # centimeters in inches
-fig = plt.figure(figsize=(8*cm,8*cm))
+fig = plt.figure(figsize=(9*cm,6.6*cm))
 ax = fig.add_subplot(111)
 ax.spines['top'].set_color('none')
 ax.spines['bottom'].set_color('none')
@@ -484,8 +482,8 @@ ax.spines['left'].set_color('none')
 ax.spines['right'].set_color('none')
 ax.tick_params(labelcolor='w', top=False, bottom=False, left=False, right=False)
 # subplots((nrows, ncols, index))
-ax1 = fig.add_subplot(121)
-ax2 = fig.add_subplot(122)#, sharey=ax1)
+ax1 = fig.add_subplot(122)
+ax2 = fig.add_subplot(121)#, sharey=ax1)
 #fig, (ax1,ax2) = plt.subplots(1,2,, sharey=True) #  fig size for publ. (80 mm x 80 mm)
 ax.set_xlabel("r (nm)", size=7)
 all_data = np.concatenate([Co_Ag_data, Co_Co_data], axis=0)
@@ -493,12 +491,23 @@ all_data = np.concatenate([Co_Ag_data, Co_Co_data], axis=0)
 # use scatter or errobar ? errorbars are very small for fits
 # plt.scatter(*np.array([c[0:2] for c in Co_Ag_data]).T, label="Ag walls", marker="D")
 # plt.scatter(*np.array([c[0:2] for c in Co_Co_data]).T, label="Co walls", marker="s")
-
-ax1.errorbar(*np.array([c[0:2] for c in Co_Co_data]).T, yerr=[c[7][1][1][1] for c in Co_Co_data], fmt="o", c="orange", label="Co walls", markersize=1.5, solid_capstyle='butt', capsize=2, elinewidth=0.1, capthick=0.1)
-ax2.errorbar(*np.array([c[0:2] for c in Co_Ag_data]).T, yerr=[c[7][1][1][1] for c in Co_Ag_data], fmt="o", c='b',label="Ag walls", markersize=1.5, solid_capstyle='butt', capsize=2, elinewidth=0.1, capthick=0.1)
-_font = matplotlib.font_manager.FontProperties(family='arial', style='normal', size=7, weight='normal', stretch='normal')
-ax1.legend(fontsize=7, )
-ax2.legend(fontsize=7, )
+msize = 2
+capsize = 4
+elinewidth = 1
+kwargs = {'fmt':"o",
+          'markersize':msize,
+          'solid_capstyle':'butt',
+          'capsize':capsize,
+          'elinewidth':elinewidth,
+          'capthick':elinewidth}
+r = np.array([c[0:2] for c in Co_Co_data]).T
+ax1.errorbar(*r, yerr=[c[7][1][1][1] for c in Co_Co_data], c="orange", label="Co walls", **kwargs)
+r = np.array([c[0:2] for c in Co_Ag_data]).T
+ax2.errorbar(*r, yerr=[c[7][1][1][1] for c in Co_Ag_data], c='b',label="Ag walls", **kwargs)
+font_kwargs = {'family':'arial', 'style':'normal', 'size':7, 'weight':'normal', 'stretch':'normal'}
+_font = matplotlib.font_manager.FontProperties(**font_kwargs)
+# ax1.legend(fontsize=7, )
+# ax2.legend(fontsize=7, )
 kwargs = {"bounds": bounds, "p0": p0, "show_Li_fit": False, "show_isolated_Co": False}
 Co = np.array([c[0:2] for c in Co_Co_data]).T
 Ag = np.array([c[0:2] for c in Co_Ag_data]).T
@@ -541,40 +550,58 @@ for i in range(nsamples):
     radius_range = np.arange(rmin, rmax, r_step)
     args = radius_range, w(radius_range, *gauss_sampled_vals)
     ax1.plot(*args, alpha=alpha, color='orange', zorder=0)
-ax1.set_ylim(2,26)
-ax2.set_ylim(2,26)
+ax1.set_ylim(2,25)
+ax2.set_ylim(2,25)
 xticks = ax2.set_xticks(np.arange(2,12,1), fontsize=7,fontproperties=_font)
 xticks = ax1.set_xticks(np.arange(2,9,1), fontsize=7,fontproperties=_font)
 yticks = ax1.set_yticks(np.arange(5,25,5), fontsize=7, fontproperties=_font)
-ylabel = ax1.set_ylabel(r"$\Gamma_0$ (mV)")
+ylabel = ax2.set_ylabel(r"$\Gamma_0$ (mV)")
 ylabel.set_font_properties(_font)
-ax1.tick_params(axis='y', which='both', bottom=False, top=False, labelbottom=False, right=False, reset=True, labelsize=7)
-ax2.tick_params(axis='y', which='both', bottom=False, left=False, labelleft=False, right=False, labelright=False)
+ax2.tick_params(axis='y', which='both', bottom=False, top=False,
+                                        labelbottom=False, right=False,
+                                        reset=True, labelsize=7)
+ax1.tick_params(axis='y', which='both', bottom=False, left=False,
+                                        labelleft=False, right=False,
+                                        labelright=False)
 ax1.tick_params(axis='x',  labelsize=7, direction='in')
 ax2.tick_params(axis='x',  labelsize=7, direction='in')
-
-plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\Fig3.png", dpi=600)
-plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\Fig3.pdf")
-[c[4].fname for c in Co_Co_data if c[1] >17]
+plt.tight_layout()
+plt.subplots_adjust(left=None,
+                    bottom=None,
+                    right=None,
+                    top=None,
+                    wspace=0.05,
+                    hspace=None)
+plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\Fig3-python-output.png", dpi=600, bbox_inches="tight")
+plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\Fig3-python-output.pdf", bbox_inches="tight")
+#[c[4].fname for c in Co_Co_data if c[1] >17]
 # %%
 
-    fit_and_plot_functional_curve(*Co,**kwargs)
+fit_and_plot_functional_curve(*Co,**kwargs)
 
-    plt.xlabel("Corral radius (nm)")
-    plt.ylabel("Central Co atom Kondo resonance width (mV)")
-    plt.legend(fontsize="small")
+plt.xlabel("Corral radius (nm)")
+plt.ylabel("Central Co atom Kondo resonance width (mV)")
+plt.legend(fontsize="small")
 
-    # plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-w-r-fit.svg")
-    # plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-w-r-fit.pdf")
-    # plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-w-r-fit.png")
+# plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-w-r-fit.svg")
+# plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-w-r-fit.pdf")
+# plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Co-Ag-w-r-fit.png")
 
-    fit_and_plot_functional_curve(*np.array(Co_Ag_data)[:,0:2].T)
+fit_and_plot_functional_curve(*np.array(Co_Ag_data)[:,0:2].T)
 
-    np.mean([c[-1][0][0] for c in Co_Co_data])
+np.mean([c[-1][0][0] for c in Co_Co_data])
 
-    plt.scatter([c[0] for c in Co_Ag_data], [c[-1][0][0] for c in Co_Ag_data])
-    plt.scatter([c[0] for c in Co_Co_data], [c[-1][0][0] for c in Co_Co_data])
-    plt.legend(["Ag", "Co"])
+plt.scatter([c[0] for c in Co_Ag_data], [c[-1][0][0] for c in Co_Ag_data])
+plt.scatter([c[0] for c in Co_Co_data], [c[-1][0][0] for c in Co_Co_data])
+plt.legend(["Ag", "Co"])
 
-    plt.scatter([c[0] for c in Co_Ag_data], [c[-1][0][2] for c in Co_Ag_data])
-    plt.scatter([c[0] for c in Co_Co_data], [c[-1][0][2] for c in Co_Co_data])
+plt.scatter([c[0] for c in Co_Ag_data], [c[-1][0][2] for c in Co_Ag_data])
+plt.scatter([c[0] for c in Co_Co_data], [c[-1][0][2] for c in Co_Co_data])
+
+
+
+# %%
+command = '''start matlab -nosplash -nodesktop -r "cd('Z:\Documents\AaltoAtoms\AaltoAtoms\MATLAB\eigenmode_solvers'); plot_eigenspectra(2,10,1)" -logfile log.txt'''
+os.system(command)
+
+# %%

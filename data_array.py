@@ -45,7 +45,7 @@ Co_Co_corrals = [
 Co_Ag_corrals = [
     corralspectrum("04-11 Ag Co/A220411.215004.dat", 99, "04-11 Ag Co/A220411.215940.L0015.VERT", -5, 10, -30, 20, None, None, None, "default"), # 4.6 nm
     corralspectrum("04-11 Ag Co/A220412.010237.dat", 97, "04-11 Ag Co/A220412.010418.VERT", -2, 40, -10, 60, None ), # 3.63 nm
-    corralspectrum("04-11 Ag Co/A220411.133438.dat", 99, "04-11 Ag Co/A220411.134351.L0013.VERT", -18, 20, -40, 40, None, None, None), # 11.9 nm
+    corralspectrum("04-11 Ag Co/A220411.133438.dat", 99, "04-11 Ag Co/A220411.134351.L0013.VERT", -15, 25, -15, 25, 3, None, None), # 11.9 nm
     corralspectrum("04-11 Ag Co/A220411.141643.dat", 99, "04-11 Ag Co/A220411.141923.L0017.VERT", -7, 15, -80, 80, 3), # 10.07 nm
     corralspectrum("04-11 Ag Co/A220411.145437.dat", 99, "04-11 Ag Co/A220411.145852.VERT", -2, 15), # 9.16 nm
     corralspectrum("04-11 Ag Co/A220411.153007.dat", 99, "04-11 Ag Co/A220411.153513.VERT", -2, 12, -15, 28, 3), # 8.16 nm
