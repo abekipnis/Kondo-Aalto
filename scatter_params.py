@@ -363,11 +363,6 @@ def show_interpolated_spectra(data: str, interpolate:bool=False):
                     interpolate=interpolate, nm_step=0.1,
                     mV_step=0.1,  norm_mV=-67, norm_to_one=True)
 
-
-fortum for e & insurance
-register to telia.
-
-
 show_interpolated_spectra(Co_Ag_data, interpolate=True)
 plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\interpolated_Co-Ag_corral_spectra.png", dpi=600)
 plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\interpolated_Co-Ag_corral_spectra.svg")
