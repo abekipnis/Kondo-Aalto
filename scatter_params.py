@@ -282,9 +282,8 @@ def show_current_param_fit_result(c: corralspectrum) -> None:
                    actual_radius=radius)
     return r
 
-
-Co_Co_data_loc = r'data\Co_Co_data.pickle'
-Co_Ag_data_loc = r'data\Co_Ag_data.pickle'
+Co_Co_data_loc = os.path.join('data','Co_Co_data.pickle')
+Co_Ag_data_loc = os.path.join('data','Co_Ag_data.pickle')
 def save_data(e0_fixed_val: float = np.nan) -> None:
     """
     Analyze data defined by corraspectrum arrays in data_array
@@ -339,6 +338,7 @@ load_data()
 
 # %% Look at the mean wall density (atoms/ nm) of corrals
 #np.mean(np.append([c[-3].density_per_nm for c in Co_Ag_data],[c[-3].density_per_nm for c in Co_Co_data]))
+
 # %% rerun all data analysis (i.e. Fano fits from data_array.py)
 save_data()
 

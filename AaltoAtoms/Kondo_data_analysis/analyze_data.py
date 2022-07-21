@@ -116,7 +116,11 @@ def analyze_data(corrals: list, # list of corralspectrum objects in data_array.p
     """
     data = []
     import shutil
-    alldatapath = r"Z:\Documents\AaltoAtoms\data"
+    import platform
+    if platform.system() == "Darwin":
+        alldatapath = r"/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/data"
+    else:
+        alldatapath = r"Z:\Documents\AaltoAtoms\data"
     basepath = alldatapath
     # enumerate over items in the list
     for n, c in enumerate(corrals):
