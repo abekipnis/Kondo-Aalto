@@ -1,8 +1,25 @@
 # AaltoAtoms Python analysis package
 <img src="https://github.com/abekipnis/Atoms/blob/master/logo.png" alt="drawing" style="width:100px;" align="right"/>
-For doing data analysis of Createc files for measurement of the Kondo resonance on magnetic atoms inside circular quantum corrals
-These scripts are for analyzing Createc STM/SPS data files containing topographies / LDOS maps / spectra over quantum corrals on Ag111
+For doing data analysis of Createc STM-AFM spectrum and topography files for measurement of the Kondo resonance on magnetic Co atoms inside circular quantum corrals on Ag(111).
 
+Example notebooks for data analysis and for automated experimentation: 
+    Data analysis: 
+    - line_spectrum_plot
+        Display spectroscopic data at various spatial positions
+        
+    - measure_corral_radius_from_scan
+        Load a topography scan from the instrument software and analyze the topography to extract the corral radius in nm
+        
+    - fit_fano_resonance_to_spectrum
+        Load a .VERT (spectroscopy) file and fit a Fano resonance using the given initial conditions
+        
+    Automated experiments:
+    - freeform_manipulation_GUI
+        Detect atom positions from a topography scan, click to program manipulation paths, shift-enter to run procedure
+    
+    - expand_or_contract_corral
+        Detect atom positions from topography scan, fit atom positions to circle, determine size of new 
+    
 Example usage found in, i.e. measure_corral_radius_from_scan.ipynb
 
 Several scripts within:
