@@ -7,10 +7,8 @@ import scipy
 import matplotlib
 
 import matplotlib.pyplot as plt
+basepath = r"/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/data"
 
-basepath = "Y:/labdata/Createc/STMDATA/Ag(111)/2022-03 Co Kondo corrals"
-if not os.path.exists(basepath):
-    basepath = "/Volumes/PROJECT/asp/labdata/Createc/STMDATA/Ag(111)/2022-03 Co Kondo corrals"
 
 def show_current_param_fit_result(c):
     matplotlib.rcParams.update({'font.size': 10})
@@ -117,10 +115,7 @@ def analyze_data(corrals: list, # list of corralspectrum objects in data_array.p
     data = []
     import shutil
     import platform
-    if platform.system() == "Darwin":
-        alldatapath = r"/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/data"
-    else:
-        alldatapath = r"Z:\Documents\AaltoAtoms\data"
+
     basepath = alldatapath
     # enumerate over items in the list
     for n, c in enumerate(corrals):
