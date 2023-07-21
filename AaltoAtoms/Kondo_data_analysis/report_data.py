@@ -24,9 +24,11 @@ from scipy.signal import decimate
 from matplotlib.colors import LogNorm
 from scipy.interpolate import interp2d
 from itertools import combinations, repeat
-
-from . import data_array
-from .data_array import Co_Co_corrals, Co_Ag_corrals, corralspectrum
+try:
+    from . import data_array
+    from .data_array import Co_Co_corrals, Co_Ag_corrals, corralspectrum
+except:
+    print("could not open data_array in %s" %(__file__))
 
 def load_data(Co_Co_data_loc, Co_Ag_data_loc) -> None:
     """
@@ -114,18 +116,18 @@ def create_Co_cache() -> list:
 
     for n, c in enumerate(Co_Co_data):
         # only show those spectra from -80 to 80 mV
-        if np.isclose(80, c[3][0], 0.1):
+        if np.isclose(80, c['bias_mv'][0], 0.1):
             #only show those spectra we've decided not to omit
             if n not in omit_n:
-                bias = c[3]
-                norm_val = c[2][np.argmin([d+7.5 for d in c[2]])]
-                dIdV = c[2]/norm_val + c[0]
-                radius = c[0]
-                print(c[5].label)
-                d = get_corralspec(c[5].label, Co_Co_corrals)
+                bias = c['bias_mv']
+                norm_val = c['dIdV'][np.argmin([d+7.5 for d in c['dIdV']])]
+                dIdV = c['dIdV']/norm_val + c['radius']
+                radius = c['radius']
+                print(c['corralObj'].label)
+                d = get_corralspec(c['corralObj'].label, Co_Co_corrals)
                 fit_bias, fit_dIdV = get_total_fit_dIdV(d)
-                fit_dIdV = fit_dIdV/norm_val + c[0]
-                cache.append([bias, dIdV, colors[n], radius, fit_bias, fit_dIdV])
+                fit_dIdV = fit_dIdV/norm_val + c['radius']
+                cache.append({'bias':bias, 'dIdV':dIdV, 'colors':colors[n], 'radius':radius, 'fit_bias': fit_bias, 'fit_dIdV': fit_dIdV})
     return cache
 
 
@@ -139,12 +141,12 @@ def show_Co_waterfall(cache: list) -> None:
     plt.figure(figsize=(2, 3))
     matplotlib.rcParams.update({'font.size': 7})
     for n,c in enumerate(cache):
-        bias = c[0]
-        dIdV = c[1]
-        color = c[2]
-        r = c[3]
-        fit_bias = c[4]
-        fit_dIdV = c[5]
+        bias = c['bias']
+        dIdV = c['dIdV']
+        color = c['colors']
+        r = c['radius']
+        fit_bias = c['fit_bias']
+        fit_dIdV = c['fit_dIdV']
         args = bias, dIdV
         kwargs = {"color":color,
                   'label':"%1.1lf nm" %(r),
@@ -217,7 +219,7 @@ def create_Ag_cache() -> list:
         c = get_corralspec(dat, Co_Ag_corrals)
         fit_bias, fit_dIdV = get_total_fit_dIdV(c)
         fit_dIdV = fit_dIdV/norm_val + len(wfall.keys())-n*1.05
-        cache.append([bias, dIdV, colors[n], radius, fit_bias, fit_dIdV])
+        cache.append({'bias':bias, 'dIdV':dIdV, 'colors':colors[n], 'radius':radius, 'fit_bias': fit_bias, 'fit_dIdV': fit_dIdV})
     return cache
 
 
@@ -239,8 +241,8 @@ def show_Ag_waterfall(cache: list, bias_idx: int=3, dIdV_idx: int =2) -> None:
     colors = plt.cm.copper(np.linspace(0, 1, len(cache)))
 
     for n, c in enumerate(cache):
-        r = c[3] #c[5].pix_to_nm(c[5].r)
-        args = [c[bias_idx], c[dIdV_idx]]
+        r = c['radius'] #c[5].pix_to_nm(c[5].r)
+        args = [c['bias'], c['dIdV']]
         kwargs = {'color':colors[n],
                   'linewidth':4.5,
                   'label':"%1.1lf nm" %r,
@@ -248,7 +250,7 @@ def show_Ag_waterfall(cache: list, bias_idx: int=3, dIdV_idx: int =2) -> None:
         plt.plot(*args, **kwargs)
 
         # also plot the fit on top
-        plt.plot(c[-2],c[-1], color="red", alpha=1, linewidth=4 )
+        plt.plot(c['fit_bias'],c['fit_dIdV'], color="red", alpha=1, linewidth=4 )
 
     # plt.text(47, cache[0][1][0] + 0.2,"%1.1lf nm" %(np.round(cache[0][3],1))) # 11 nm
     # plt.text(47, cache[len(cache)//2][1][0] - 0.6,"%1.1lf nm" %(np.round(cache[len(cache)//2][3],1)))
@@ -450,7 +452,7 @@ def fit_and_plot_functional_curve(radius_array: list,
                         #              method='trf'
                         )
     rng = np.arange(min(list(radius_array)),max(radius_array),0.05)
-    plt.plot(rng, np.array([w(x,*params) for x in rng]))#, label="Co/Ag corrals (our data)")
+    line = plt.plot(rng, np.array([w(x,*params) for x in rng]))#, label="Co/Ag corrals (our data)")
     # plt.plot(rng, np.array([w(x=x, d1=1.5, D=4000) for x in rng]), label="Fit changed" )
 
     #https://stackoverflow.com/questions/14581358/getting-standard-errors-on-fitted-parameters-using-the-optimize-leastsq-method-i
@@ -462,9 +464,9 @@ def fit_and_plot_functional_curve(radius_array: list,
             error.append(0.00)
     for n, p in enumerate(list(param_dict.keys())):
         print("%s: %lf pm %lf %s" %(p, params[n], error[n], param_dict[p]))
-    return params, pcov
+    return params, pcov, line
 
-def make_figure_3():
+def fit_phenomenological_model():
     bounds = {
         'Jb': (0.,0.8),
         'Js': (0,0.7),
@@ -506,15 +508,15 @@ def make_figure_3():
               'capsize':capsize,
               'elinewidth':elinewidth,
               'capthick':elinewidth}
-    r = np.array([c[0:2] for c in Co_Co_data]).T
+    r = np.array([[c['radius'], c['width']] for c in Co_Co_data]).T
     kwargs["c"]= "orange"
     kwargs["label"] = "Co walls"
-    ax1.errorbar(*r, yerr=[c[7][1][1][1] for c in Co_Co_data], **kwargs)
+    ax1.errorbar(*r, yerr=[c['fano_fit_result'][1][1][1] for c in Co_Co_data], **kwargs)
 
-    r = np.array([c[0:2] for c in Co_Ag_data]).T
+    r = np.array([[c['radius'], c['width']] for c in Co_Ag_data]).T
     kwargs["c"]= "b"
     kwargs["label"] = "Ag walls"
-    ax2.errorbar(*r, yerr=[c[7][1][1][1] for c in Co_Ag_data], **kwargs)
+    ax2.errorbar(*r, yerr=[c['fano_fit_result'][1][1][1] for c in Co_Ag_data], **kwargs)
     font_kwargs = {'family':'arial', 'style':'normal', 'size':7, 'weight':'normal', 'stretch':'normal'}
     _font = matplotlib.font_manager.FontProperties(**font_kwargs)
     # ax1.legend(fontsize=7, )
@@ -524,14 +526,14 @@ def make_figure_3():
               "show_Li_fit": False,
               "show_isolated_Co": False
               }
-    Co = np.array([c[0:2] for c in Co_Co_data]).T
-    Ag = np.array([c[0:2] for c in Co_Ag_data]).T
+    Co = np.array([[c['radius'], c['width']] for c in Co_Co_data]).T
+    Ag = np.array([[c['radius'], c['width']] for c in Co_Ag_data]).T
     f = np.concatenate([Co, Ag], axis=1)
     plt.gcf().axes[0].tick_params(direction="in")
     plt.gcf().axes[1].tick_params(direction="in")
 
     #https://stackoverflow.com/questions/14581358/getting-standard-errors-on-fitted-parameters-using-the-optimize-leastsq-method-i
-    w_sigma = [c[7][1][1][1] for c in Co_Ag_data]
+    w_sigma = [c['fano_fit_result'][1][1][1] for c in Co_Ag_data]
     kwargs["sigma"] = w_sigma
     nsamples = 200
     alpha = 0.005
@@ -561,7 +563,7 @@ def make_figure_3():
               "p0": p0,
               "show_Li_fit": False,
               "show_isolated_Co": False}
-    w_sigma = [c[7][1][1][1] for c in Co_Co_data]
+    w_sigma = [c['fano_fit_result'][1][1][1] for c in Co_Co_data]
     kwargs["sigma"] = w_sigma
     params, pcov, line = fit_and_plot_functional_curve(*Co, **kwargs)
     kwargs = {'mean':params, 'cov':pcov, 'allow_singular':False}

@@ -116,19 +116,19 @@ def analyze_data(corrals: list, # list of corralspectrum objects in data_array.p
     import shutil
     import platform
 
-    basepath = alldatapath
+#    basepath = alldatapath
     # enumerate over items in the list
     for n, c in enumerate(corrals):
         # for migrating dat files to data\ folder
         source_dat = os.path.join(basepath, str(c.datfile))
         datfiledir = os.path.dirname(c.datfile)
 
-        dir = os.path.join(alldatapath, datfiledir)
+        dir = os.path.join(basepath, datfiledir)
         dir_exists = os.path.exists(dir)
 
         if not dir_exists:
             os.makedirs(dir)
-        dest_path = os.path.join(alldatapath, datfiledir)
+        dest_path = os.path.join(basepath, datfiledir)
         dest_dat = os.path.join(dest_path, os.path.basename(c.datfile))
 
         if not os.path.exists(dest_dat):
@@ -138,13 +138,13 @@ def analyze_data(corrals: list, # list of corralspectrum objects in data_array.p
         # for migrating vert files to data\ folder
         source_vert = os.path.join(basepath, str(c.vertfile))
         vertfiledir = os.path.dirname(c.vertfile)
-        dir = os.path.join(alldatapath, vertfiledir)
+        dir = os.path.join(basepath, vertfiledir)
         dir_exists = os.path.exists(dir)
 
         if not dir_exists:
             os.makedirs(dir) #need to use makedirs instead of mkdir
 
-        dest_path = os.path.join(alldatapath, vertfiledir)
+        dest_path = os.path.join(basepath, vertfiledir)
         dest_vert = os.path.join(dest_path, os.path.basename(c.vertfile))
         if not os.path.exists(dest_vert):
             print("saving to " + dest_vert)
@@ -184,12 +184,18 @@ def analyze_data(corrals: list, # list of corralspectrum objects in data_array.p
         w_message = "width %1.1lf mV " %(width)
         print(c.datfile, c.vertfile, r_message, w_message)
 
-        data.append([radius, width, dIdV, bias_mv, S, C, c, r])
+        data.append({'radius': radius,
+                     'width': width,
+                     'dIdV': dIdV,
+                     'bias_mv': bias_mv,
+                     'Spec': S,
+                     'corralObj': C,
+                     'corral':c,
+                     'fano_fit_result':r})
     return data
 
 
 def get_old_Ag_Co_corrals(dist_cutoff_nm: float):
-    dir = "/Users/akipnis/Desktop/Aalto Atomic Scale Physics/modeling and analysis/spatial extent Kondo plots/width comparison"
     dir = r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\Kondo corrals fit data"
     Ag_Co_files = os.listdir(dir)
     #Ag_Co_files = [f for f in Ag_Co_files if f[-9:] =="width.txt" or f[-11:]=="default.txt"]

@@ -8,7 +8,9 @@ def imshow_dIdV_vs_r(dataset: list,
                     nm_step: float = 0.5,
                     enforce_conformity: bool = True,
                     norm_to_one: bool = False,
-                    cmap_str="plasma") -> None:
+                    cmap_str="plasma",
+                    savefig: bool =False,
+                    fig_path: str ="") -> None:
     """
 
     """
@@ -57,7 +59,7 @@ def imshow_dIdV_vs_r(dataset: list,
         xstep = mV_step # "pixel size" in in mV
         ystep = nm_step # "pixel size" in nm
         xnew = np.arange(min(X), max(X)+xstep, xstep)
-        ynew = np.arange(min(Y), max(Y)+ystep, ystep)
+        ynew = np.arange(min(Y), max(Y), ystep)
         Xn, Yn = np.meshgrid(xnew, ynew)
 
         # center things with bias index
@@ -107,6 +109,11 @@ def imshow_dIdV_vs_r(dataset: list,
     cbar = plt.colorbar()
     cbar.ax.set_ylabel(r'$dI/dV$ (a.u.)', rotation=270)
     cbar.ax.set_yticks([])
+
+    if savefig:
+        plt.savefig(fig_path)
+    return fig
+
     #plt.tight_layout()
     # # or pull them from MATLAB code
 # f = r"\\home.org.aalto.fi\kipnisa1\data\Documents\AaltoAtoms\AaltoAtoms\MATLAB\eigenmode_solvers\eigs-0.6nm-20potential.txt"

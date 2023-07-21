@@ -23,8 +23,6 @@ import data_array
 reload(data_array)
 
 from AaltoAtoms.Kondo_data_analysis import read_vertfile
-#read_vertfile = reload(read_vertfile)
-#Spec = read_vertfile.Spec
 
 from data_array import Co_Co_corrals, Co_Ag_corrals, corralspectrum
 
@@ -81,175 +79,6 @@ def get_total_fit_dIdV(c: corralspectrum) -> list:
     width = r[0][1] #e0, w, q, a, b, c
 
     return fit_bias, fit_dIdV
-
-
-def create_Co_waterfall() -> list:
-    """
-    Create waterfall of Co Co corrals
-
-    Returns:
-    cache: list w elements [bias, didv, color, radius, fit_bias, fit_didv]
-    """
-    cache = []
-    colors = plt.cm.copper(np.linspace(0, 1, len(Co_Co_data)))
-
-    # omit these indices from Co_Co_corrals
-    omit_n = [2, 5, 8, 11,13, 17, 22, 23, 27, 28,20,31]
-
-    for n, c in enumerate(Co_Co_data):
-        # only show those spectra from -80 to 80 mV
-        if np.isclose(80, c[3][0], 0.1):
-            #only show those spectra we've decided not to omit
-            if n not in omit_n:
-                bias = c[3]
-                norm_val = c[2][np.argmin([d+7.5 for d in c[2]])]
-                dIdV = c[2]/norm_val + c[0]
-                radius = c[0]
-                d = get_corralspec(c[5].label, Co_Co_corrals)
-                fit_bias, fit_dIdV = get_total_fit_dIdV(d)
-                fit_dIdV = fit_dIdV/norm_val + c[0]
-                cache.append([bias, dIdV, colors[n], radius, fit_bias, fit_dIdV])
-    return cache
-
-
-def show_Co_waterfall(cache: list) -> None:
-    """
-    Show waterfall of Co Co corrals
-
-    Parameters:
-        cache: list w/elements [bias, didv, color, radius, fit_bias, fit_didv]
-    """
-    plt.figure(figsize=(2, 3))
-    matplotlib.rcParams.update({'font.size': 7})
-    for n,c in enumerate(cache):
-        bias = c[0]
-        dIdV = c[1]
-        color = c[2]
-        r = c[3]
-        fit_bias = c[4]
-        fit_dIdV = c[5]
-        args = bias, dIdV
-        kwargs = {"color":color,
-                  'label':"%1.1lf nm" %(r),
-                  'linewidth':4.5,
-                  'alpha':0.8}
-        plt.plot(*args, **kwargs)
-
-        plt.plot(fit_bias, fit_dIdV, color="red", alpha=1, linewidth=4)
-
-    # instead of using a bulky legend we can label the lines individually
-    # from AaltoAtoms.utils.labellines
-    lines = plt.gca().get_lines()
-    xvals = map(int,np.linspace(-50,50, len(lines)//2))# [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50 ]
-
-    labellines.labelLines(lines, align=False, fontsize=7, xvals=xvals)
-    plt.yticks([])
-    plt.xlabel("Bias (mV)")
-    plt.ylabel(r"$dI/dV$ (a.u.)")
-    plt.xlim(-80,80)
-    plt.axvline(7.3)
-    plt.xticks([-80, -60, -40, -20, 0, 20, 40, 60, 80])
-    plt.gcf().axes[0].tick_params(direction="in")
-
-    plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\Co-Co-spectrum-waterfall.pdf")
-    #return lines
-
-
-def create_Ag_cache() -> list:
-    """
-        Create array with information to plot dIdv for Ag corrals.
-    """
-    dir = r"Y:\labdata\Createc\STMDATA\Ag(111)\2022-03 Co Kondo corrals\04-11 Ag Co"
-    wfall = {"A220411.133438.dat": "A220411.134351.L0013.VERT",
-            "A220411.141643.dat": "A220411.141923.L0017.VERT",
-            "A220411.145437.dat": "A220411.145852.VERT",
-            "A220411.153007.dat": "A220411.153513.VERT",
-            "A220411.161126.dat": "A220411.161806.L0017.VERT",
-            "A220411.165133.dat": "A220411.165336.VERT",
-            "A220411.173719.dat": "A220411.174011.VERT",
-            "A220411.183528.dat": "A220411.183838.VERT",
-            "A220411.193017.dat": "A220411.193232.VERT",
-            "A220411.200858.dat": "A220411.201104.VERT",
-            "A220411.204552.dat": "A220411.204741.VERT",
-            "A220411.215004.dat": "A220411.215940.L0016.VERT",
-            #"A220411.222442.dat": "A220411.222845.L0017.VERT",
-            #"A220411.233446.dat": "A220411.233625.VERT",
-            "A220412.010237.dat": "A220412.010418.VERT"}
-    cache = []
-    colors = plt.cm.copper(np.linspace(0, 1, len(wfall)))
-
-    for n, dat in enumerate(list(wfall.keys())):
-        C = CircCorralData(os.path.join(dir, dat),"")
-        C.occupied = True
-        C.corral = True
-        C.subtract_plane()
-        C.get_region_centroids(percentile=99)
-        radius = C.get_corral_radius(1.5, savefig=False, showfig=False)
-
-        S = Spec(os.path.join(dir,wfall[dat]))
-        norm_val = S.dIdV[0]
-        norm_val = S.dIdV[np.argmin(np.abs(7.5-S.bias_mv))]
-
-        #print(wfall[dat])
-        #plt.plot(S.dIdV); plt.show()
-        dIdV =  S.dIdV/norm_val + len(wfall.keys())-n*1.05
-        bias = S.bias_mv
-        c = get_corralspec(dat, Co_Ag_corrals)
-        fit_bias, fit_dIdV = get_total_fit_dIdV(c)
-        fit_dIdV = fit_dIdV/norm_val + len(wfall.keys())-n*1.05
-        cache.append([bias, dIdV, colors[n], radius, fit_bias, fit_dIdV])
-    return cache
-
-def show_Ag_waterfall(cache: list, bias_idx: int=3, dIdV_idx: int =2) -> None:
-    """
-    Plot the data created by create_waterfall
-
-    Parameters:
-        cache: list of [bias, dIdV + offset, color, radius, fit_bias, fit_dIdV]
-        bias_idx:
-        dIdV_ idx:
-
-    Returns:
-        None
-    """
-    plt.figure(figsize=(2, 3))
-    matplotlib.rcParams.update({'font.size': 7})
-    colors = plt.cm.copper(np.linspace(0, 1, len(cache)))
-
-    for n, c in enumerate(cache):
-        r = c[3] #c[5].pix_to_nm(c[5].r)
-        args = [c[bias_idx], c[dIdV_idx]]
-        kwargs = {'color':colors[n],
-                  'linewidth':4.5,
-                  'label':"%1.1lf nm" %r,
-                  'alpha': 0.8}
-        plt.plot(*args, **kwargs)
-
-        # also plot the fit on top
-        plt.plot(c[-2],c[-1], color="red", alpha=1, linewidth=4 )
-
-    # plt.text(47, cache[0][1][0] + 0.2,"%1.1lf nm" %(np.round(cache[0][3],1))) # 11 nm
-    # plt.text(47, cache[len(cache)//2][1][0] - 0.6,"%1.1lf nm" %(np.round(cache[len(cache)//2][3],1)))
-    # plt.text(47, cache[-1][1][0] - 0.9,"%1.1lf nm" %(np.round(cache[-1][3],1))) # 3.6 nm
-    plt.yticks([])
-    plt.xlabel("Bias (mV)")
-    plt.ylabel(r"$dI/dV$ (a.u.)")
-    plt.gcf().axes[0].tick_params(direction="in")
-    plt.axvline(7.3)
-
-    xvals = [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50 ]
-    labellines.labelLines(plt.gca().get_lines(), align=False,fontsize=12, xvals=xvals)
-
-    plt.xlim(-80,80)
-    plt.xticks([-80, -60, -40, -20, 0, 20, 40, 60, 80])
-
-    # # plt.legend()
-    plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\Co-Ag-spectrum-waterfall.pdf")
-    plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\Co-Ag-spectrum-waterfall.png")
-    plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\Co-Ag-spectrum-waterfall.svg")
-
-    plt.show()
-
 
 def show_current_param_fit_result(c: corralspectrum) -> None:
     """
@@ -311,8 +140,8 @@ def save_data(e0_fixed_val: float = np.nan) -> None:
                                         fit_type="default"))
 
     # sort by the radius from smallest to largest
-    Co_Ag_data = list(sorted(Co_Ag_data, key=lambda x: -x[0]))
-    Co_Co_data = list(sorted(Co_Co_data, key=lambda x: -x[0]))
+    Co_Ag_data = list(sorted(Co_Ag_data, key=lambda x: -x['radius']))
+    Co_Co_data = list(sorted(Co_Co_data, key=lambda x: -x['radius']))
 
     # save the Cobalt-Cobalt corrals in different pickle files
     with open(CC_data_loc, "wb") as handle:
@@ -333,6 +162,7 @@ def load_data() -> None:
     global Co_Ag_data
     with open(Co_Ag_data_loc, "rb") as handle:
         Co_Ag_data = pickle.load(handle)
+
 #%% load the data from previously saved pickle to save time
 load_data()
 
@@ -357,11 +187,7 @@ show_Co_waterfall(Co_waterfall_cache)
 Ag_waterfall_cache = create_Ag_cache()
 show_Ag_waterfall(Ag_waterfall_cache, 0, 1)
 
-# %% Show the interpolated spectra (i.e. SI figs 3, 4 )
-def show_interpolated_spectra(data: str, interpolate:bool=False):
-    imshow_dIdV_vs_r(data, downsample=False,
-                    interpolate=interpolate, nm_step=0.1,
-                    mV_step=0.1,  norm_mV=-67, norm_to_one=True)
+
 
 show_interpolated_spectra(Co_Ag_data, interpolate=True)
 plt.savefig(r"C:\Users\kipnisa1\Dropbox\papers-in-progress\Small Kondo corrals\images\interpolated_Co-Ag_corral_spectra.png", dpi=600)
