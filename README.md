@@ -2,8 +2,8 @@
 <img src="https://github.com/abekipnis/Atoms/blob/master/logo.png" alt="drawing" style="width:100px;" align="right"/>
 For doing data analysis of Createc STM-AFM dI/dV spectrum and topography files for measurement of the Kondo resonance on magnetic Co atoms inside circular quantum corrals on Ag(111).
 
-<img src="https://github.com/abekipnis/Atoms/blob/master/Co_Kondo.gif" width="250" height="250">
-<img src="https://github.com/abekipnis/Atoms/blob/master/H2Pc_GIF.gif" width="250" height="250">
+<img src="https://github.com/abekipnis/Atoms/blob/master/Co_Kondo.gif" width="250">
+<img src="https://github.com/abekipnis/Atoms/blob/master/H2Pc_GIF.gif" width="250">
 
 Example notebooks for data analysis and for automated experimentation:
 
