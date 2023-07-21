@@ -2,6 +2,7 @@
 <img src="https://github.com/abekipnis/Atoms/blob/master/logo.png" alt="drawing" style="width:100px;" align="right"/>
 For doing data analysis of Createc STM-AFM dI/dV spectrum and topography files for measurement of the Kondo resonance on magnetic Co atoms inside circular quantum corrals on Ag(111).
 
+![](https://github.com/abekipnis/Atoms/blob/master/Co_Kondo.gif)
 
 Example notebooks for data analysis and for automated experimentation:
 
@@ -51,6 +52,10 @@ Example notebooks for data analysis and for automated experimentation:
 
     scattering_model
     - for simulating LDOS rho(r, E) given a set of atom positions and a lattice
+
+## Data
+Currently all the data from the paper is also stored with the Github repository
+If you do not need the data, delete the `data` folder
 
 
 ## Installation
