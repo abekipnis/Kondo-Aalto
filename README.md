@@ -7,6 +7,7 @@ Contains data from measurement of Kondo resonance on Co/Ag(111) and H2Pc/Ag(111)
 Example outputs using the functionalities / notebooks available in this package:
   - Line spectra over Co adatoms in quantum corrals on Ag(111)
 <img src="https://github.com/abekipnis/Atoms/blob/master/Co_Kondo.gif" width="250">
+
   - Line spectra over H2Pc molecules in quantum corrals on Ag(111)
 <img src="https://github.com/abekipnis/Atoms/blob/master/H2Pc_GIF.gif" width="250">
 

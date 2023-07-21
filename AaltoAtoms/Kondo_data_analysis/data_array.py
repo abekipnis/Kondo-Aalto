@@ -116,5 +116,5 @@ H2Pc_corrals_edge = [
     corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/4 nm corral/A220518.151648.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/4 nm corral/A220518.153129.L0026.VERT", -20, 20, -20, 20, None, None, None, None), #4.10 nm
     corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/3p5nm corral/A220518.181143.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/3p5nm corral/A220518.182241.L0020.VERT", -20, 20, -20, 20, None, None, None, None), # 3.56 nm
     corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/3nm radius/A220519.211852.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/3nm radius/A220519.213027.L0020.VERT", -20, 20, -20, 20, None, None, None, None), #3.62 nm
-    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/3.93 nm radius corral/A220520.094659.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/3.93 nm radius corral\A220520.095212.L0009.VERT", -20, 20, -20, 20, None, None, None, None), #3.93 nm
+    corralspectrum(r"2022-05-16 H2Pc (2 min 300 C -130 C)/3.93 nm radius corral/A220520.094659.dat",95, r"2022-05-16 H2Pc (2 min 300 C -130 C)/3.93 nm radius corral/A220520.095212.L0009.VERT", -20, 20, -20, 20, None, None, None, None), #3.93 nm
 ]
