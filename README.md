@@ -60,11 +60,7 @@ Example notebooks for data analysis and for automated experimentation:
     scattering_model
     - for simulating LDOS rho(r, E) given a set of atom positions and a lattice
 
-## Data
-Currently all the data from the paper is also stored with the Github repository
-If you do not need the data, delete the `data` folder
-
-
 ## Installation
 Use `pip install .` or `pip3 install .` when inside the main directory.
-To reproduce experimental results, run the Jupyter notebook `Create Figures`
+To reproduce manuscript figures, run the Jupyter notebook `Create Figures`
+Data can be found on Zenodo repository. Summarized data is found in data_array.py, which is used for subsequent analysis routines
