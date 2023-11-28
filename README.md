@@ -63,4 +63,4 @@ Example notebooks for data analysis and for automated experimentation:
 ## Installation
 Use `pip install .` or `pip3 install .` when inside the main directory.
 To reproduce manuscript figures, run the Jupyter notebook `Create Figures`
-Data can be found on Zenodo repository. Summarized data is found in data_array.py, which is used for subsequent analysis routines
+Data can be found on Zenodo repository 0.5281/zenodo.10214707. Summarized data is found in data_array.py, which is used for subsequent analysis routines
