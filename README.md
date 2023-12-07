@@ -1,6 +1,6 @@
 # AaltoAtoms Python package
 <img src="https://github.com/abekipnis/Atoms/blob/master/etc/logo.png" alt="drawing" style="width:100px;" align="right"/>
-For doing data analysis of Createc STM-AFM dI/dV spectrum and topography files
+For semi-automated atom manipulation experiments and analysis of Createc STM-AFM dI/dV spectrum and topography files.
 
 Example outputs using the functionalities / notebooks available in this package:
   - Line spectra over Co adatoms in quantum corrals on Ag(111)
@@ -60,5 +60,8 @@ Example notebooks for data analysis and for automated experimentation:
 
 ## Installation
 Use `pip install .` or `pip3 install .` when inside the main directory.
-To reproduce manuscript figures, run the Jupyter notebook `Create Figures`
-Data can be found on Zenodo repository 0.5281/zenodo.10214707. Summarized data is found in data_array.py, which is used for subsequent analysis routines
+
+## Reproducibility and data availability
+To reproduce manuscript figures from https://arxiv.org/abs/2312.03364, check Jupyter notebook `Create Figures.ipynb` and `Phenomenological model fit.ipynb` as well as MATLAB codes under AaltoAtoms/MATLAB/Main figure scripts.
+
+Data for the manuscript can be found on Zenodo repository 0.5281/zenodo.10214707. Some manual editing of file paths may be necessary. For analyses done in Python, tabulated data is found in data_array.py which is used for subsequent analysis routines.
